@@ -69,6 +69,13 @@ if ! command -v conda >/dev/null 2>&1; then
 fi
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
+# Auto-create the DEDICATED env if missing, so a fresh node self-bootstraps (the wrapper installs all
+# deps per-run, so a bare python env is enough).  One-time per node; subsequent runs just activate.
+if ! conda env list | awk '{print $1}' | grep -qx "$CONDA_ENV"; then
+  log "conda env '$CONDA_ENV' not found — creating it (one-time on this node)."
+  conda create -y -q -n "$CONDA_ENV" "python=${CONDA_PYTHON:-3.11}" \
+    || { log "FATAL: could not create conda env '$CONDA_ENV'."; exit 2; }
+fi
 conda activate "$CONDA_ENV" || { log "FATAL: conda activate '$CONDA_ENV' failed."; exit 2; }
 
 # Harness's own deps (scaling_common imports matplotlib/ruamel at module level) — idempotent.
