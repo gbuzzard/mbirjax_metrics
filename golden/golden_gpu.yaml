@@ -1,0 +1,3995 @@
+kind: golden
+date: golden
+platform: gpu
+device_label: GPU (NVIDIA H100 80GB HBM3)
+git_commit: fcdd3fb1861aaf03474059ecc5358422a9f38773
+git_branch: greg/conebeam_sharding
+mbirjax_version: 0.6.18
+git_dirty: true
+config:
+  geometries:
+  - parallel
+  - cone
+  ops:
+  - direct_filter
+  - forward
+  - back
+  - vcd_nonconst
+  device_counts:
+  - 1
+  - 2
+  - 4
+  sizes:
+    cpu:
+    - - 128
+      - 112
+      - 96
+    - - 129
+      - 113
+      - 97
+    - - 200
+      - 208
+      - 160
+    gpu:
+    - - 512
+      - 448
+      - 384
+    - - 513
+      - 449
+      - 385
+    - - 1024
+      - 1008
+      - 992
+  single_trial_sizes:
+  - 1024x1008x992
+  vcd_iterations: 3
+  weight_mode: nonconstant
+  weight_seed: 13
+  warmup: 1
+  trials_by_op:
+    direct_filter: 3
+    forward: 3
+    back: 3
+    vcd_nonconst: 1
+  inline: false
+  cone_sdd_over_channels: 4.0
+  input_seed: 0
+  measure_seed: 7
+  out_dir: /tmp/golden_capture_av8fiyvk
+  date: golden
+  run_tag: ''
+  gate: false
+  compare_to_prior: false
+  golden_path: ''
+  main_baseline_path: ''
+  mem_hard_pct: 8.0
+  speedup_warn_pct: 15.0
+  time_soft_pct: 25.0
+  fp_rtol_single: 1e-05
+  fp_rtol_iter: 0.0001
+  k_sample_tol: 1
+device_counts:
+- 1
+- 2
+- 4
+cells:
+- n_devices: 4
+  min_ms: 5.277188029140234
+  mean_ms: 5.65195333911106
+  std_ms: 0.4259986749527479
+  mem_mb: 186.4365234375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 34
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 586.0996232467958
+    mean: 6.654144732688673e-06
+    l2norm: 4.8050314708868855
+    min: -0.0014440928352996707
+    max: 0.0014916183426976204
+    samples:
+    - 0.0008636291022412479
+    - -8.451239409623667e-06
+    - -8.04687624622602e-06
+    - 0.00034855070407502353
+    - 0.0008012408507056534
+    - -0.0005728875985369086
+    - -4.340054510976187e-05
+    - -0.0004318032006267458
+    - -0.00022349879145622253
+    - 0.0004189612518530339
+    - -0.0005423769471235573
+    - 0.00035726831993088126
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 2.418112063127196
+- n_devices: 2
+  min_ms: 7.357363996561617
+  mean_ms: 7.544857663257669
+  std_ms: 0.22335570181567924
+  mem_mb: 354.4365234375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 34
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 586.0996232467958
+    mean: 6.654144732688673e-06
+    l2norm: 4.8050314708868855
+    min: -0.0014440928352996707
+    max: 0.0014916183426976204
+    samples:
+    - 0.0008636291022412479
+    - -8.451239409623667e-06
+    - -8.04687624622602e-06
+    - 0.00034855070407502353
+    - 0.0008012408507056534
+    - -0.0005728875985369086
+    - -4.340054510976187e-05
+    - -0.0004318032006267458
+    - -0.00022349879145622253
+    - 0.0004189612518530339
+    - -0.0005423769471235573
+    - 0.00035726831993088126
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.7344298907350608
+- n_devices: 1
+  min_ms: 12.760832032654434
+  mean_ms: 13.076162683622291
+  std_ms: 0.3021573603785211
+  mem_mb: 690.4365234375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 34
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 586.0996232467958
+    mean: 6.654144732688673e-06
+    l2norm: 4.8050314708868855
+    min: -0.0014440928352996707
+    max: 0.0014916183426976204
+    samples:
+    - 0.0008636291022412479
+    - -8.451239409623667e-06
+    - -8.04687624622602e-06
+    - 0.00034855070407502353
+    - 0.0008012408507056534
+    - -0.0005728875985369086
+    - -4.340054510976187e-05
+    - -0.0004318032006267458
+    - -0.00022349879145622253
+    - 0.0004189612518530339
+    - -0.0005423769471235573
+    - 0.00035726831993088126
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 6.972777948249131
+  mean_ms: 7.442627975251526
+  std_ms: 0.5882874621204381
+  mem_mb: 275.4501953125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 35
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 587.6291773817674
+    mean: 6.626419340535624e-06
+    l2norm: 4.81194216891025
+    min: -0.001440684893168509
+    max: 0.0014854461187496781
+    samples:
+    - 0.0008619455620646477
+    - -0.00014622430899180472
+    - 0.00011347570398356766
+    - 0.00012956820137333125
+    - -0.0006366184679791331
+    - -0.0004399629251565784
+    - -0.0007120060035958886
+    - -0.0006480215233750641
+    - -0.00030878151301294565
+    - -0.0005162610323168337
+    - -0.00042214401764795184
+    - 0.001266702194698155
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero: false
+  speedup: 2.782252372296502
+- n_devices: 2
+  min_ms: 10.844201024156064
+  mean_ms: 11.00164366653189
+  std_ms: 0.21284734473425546
+  mem_mb: 362.68408203125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 35
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 587.6291773817674
+    mean: 6.626419340535624e-06
+    l2norm: 4.81194216891025
+    min: -0.001440684893168509
+    max: 0.0014854461187496781
+    samples:
+    - 0.0008619455620646477
+    - -0.00014622430899180472
+    - 0.00011347570398356766
+    - 0.00012956820137333125
+    - -0.0006366184679791331
+    - -0.0004399629251565784
+    - -0.0007120060035958886
+    - -0.0006480215233750641
+    - -0.00030878151301294565
+    - -0.0005162610323168337
+    - -0.00042214401764795184
+    - 0.001266702194698155
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero: false
+  speedup: 1.7889771634441518
+- n_devices: 1
+  min_ms: 19.40002798801288
+  mean_ms: 19.550313979076844
+  std_ms: 0.18999222652198935
+  mem_mb: 699.55615234375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 35
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 587.6291777060608
+    mean: 6.626419344192529e-06
+    l2norm: 4.811942168471401
+    min: -0.001440684893168509
+    max: 0.0014854461187496781
+    samples:
+    - 0.0008619455620646477
+    - -0.00014622430899180472
+    - 0.00011347584950271994
+    - 0.0001295682304771617
+    - -0.0006366184679791331
+    - -0.00043996309977956116
+    - -0.0007120058871805668
+    - -0.0006480215233750641
+    - -0.00030878186225891113
+    - -0.000516260857693851
+    - -0.00042214401764795184
+    - 0.0012667024275287986
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 33.90863898675889
+  mean_ms: 33.90863898675889
+  std_ms: 0.0
+  mem_mb: 2002.45751953125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 35
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 1471.2588121265612
+    mean: 1.4368681432785147e-06
+    l2norm: 8.185136884205674
+    min: -0.0007277600816451013
+    max: 0.0007495929021388292
+    samples:
+    - 0.0004316836129873991
+    - 0.00023519629030488431
+    - 9.667164704296737e-05
+    - -0.0002904459834098816
+    - -0.0001085844705812633
+    - 0.00021595014550257474
+    - -0.0002190310915466398
+    - -0.0002313802542630583
+    - -4.5187061914475634e-05
+    - 0.0002295962767675519
+    - 9.020955621963366e-05
+    - 0.00011744022776838392
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 3.7155963715839344
+- n_devices: 2
+  min_ms: 64.14521904662251
+  mean_ms: 64.14521904662251
+  std_ms: 0.0
+  mem_mb: 3955.45751953125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 35
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 1471.2588121265612
+    mean: 1.4368681432785147e-06
+    l2norm: 8.185136884205674
+    min: -0.0007277600816451013
+    max: 0.0007495929021388292
+    samples:
+    - 0.0004316836129873991
+    - 0.00023519629030488431
+    - 9.667164704296737e-05
+    - -0.0002904459834098816
+    - -0.0001085844705812633
+    - 0.00021595014550257474
+    - -0.0002190310915466398
+    - -0.0002313802542630583
+    - -4.5187061914475634e-05
+    - 0.0002295962767675519
+    - 9.020955621963366e-05
+    - 0.00011744022776838392
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.9641497504744236
+- n_devices: 1
+  min_ms: 125.99081598455086
+  mean_ms: 125.99081598455086
+  std_ms: 0.0
+  mem_mb: 7861.45751953125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 35
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: direct_filter
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 1471.2588121265612
+    mean: 1.4368681432785147e-06
+    l2norm: 8.185136884205674
+    min: -0.0007277600816451013
+    max: 0.0007495929021388292
+    samples:
+    - 0.0004316836129873991
+    - 0.00023519629030488431
+    - 9.667164704296737e-05
+    - -0.0002904459834098816
+    - -0.0001085844705812633
+    - 0.00021595014550257474
+    - -0.0002190310915466398
+    - -0.0002313802542630583
+    - -4.5187061914475634e-05
+    - 0.0002295962767675519
+    - 9.020955621963366e-05
+    - 0.00011744022776838392
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 230.87852000026032
+  mean_ms: 231.28397000255063
+  std_ms: 0.5673127489909762
+  mem_mb: 256.357666015625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: -637348.8178934298
+    mean: -0.007235990454962478
+    l2norm: 136066.31646878598
+    min: -87.9146728515625
+    max: 93.2774887084961
+    samples:
+    - 0.0
+    - 3.4688994884490967
+    - 27.45531463623047
+    - -15.717945098876953
+    - 2.709749221801758
+    - -11.70280647277832
+    - 12.980257034301758
+    - 1.0397177934646606
+    - 28.481338500976562
+    - 16.545984268188477
+    - -8.378129959106445
+    - 0.06166061758995056
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 4.379568380675972
+- n_devices: 2
+  min_ms: 503.1657639774494
+  mean_ms: 503.4523716312833
+  std_ms: 0.21627236604086528
+  mem_mb: 589.66943359375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: -637348.8510329479
+    mean: -0.007235990831204232
+    l2norm: 136066.31646517754
+    min: -87.9146728515625
+    max: 93.27749633789062
+    samples:
+    - 0.0
+    - 3.468898296356201
+    - 27.455312728881836
+    - -15.717944145202637
+    - 2.7097504138946533
+    - -11.70280647277832
+    - 12.980255126953125
+    - 1.0397224426269531
+    - 28.481338500976562
+    - 16.545984268188477
+    - -8.378129005432129
+    - 0.06166061758995056
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 2.0095728651675957
+- n_devices: 1
+  min_ms: 1011.1482659704052
+  mean_ms: 1011.3067206499787
+  std_ms: 0.11407700525667393
+  mem_mb: 1081.217529296875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: -637348.8595345297
+    mean: -0.007235990927724948
+    l2norm: 136066.31646793903
+    min: -87.9146728515625
+    max: 93.2774887084961
+    samples:
+    - 0.0
+    - 3.4688987731933594
+    - 27.45531463623047
+    - -15.71794605255127
+    - 2.7097508907318115
+    - -11.702802658081055
+    - 12.980264663696289
+    - 1.0397177934646606
+    - 28.481340408325195
+    - 16.545984268188477
+    - -8.378128051757812
+    - 0.06166060268878937
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 272.86004699999467
+  mean_ms: 272.91219799856964
+  std_ms: 0.03789098599445622
+  mem_mb: 270.468505859375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: -719364.7466781408
+    mean: -0.008111939729620793
+    l2norm: 136713.31075650168
+    min: -87.7677993774414
+    max: 91.85858154296875
+    samples:
+    - -0.18624547123908997
+    - -2.3632209300994873
+    - 13.9302339553833
+    - 7.761581897735596
+    - -7.786694049835205
+    - 8.004388809204102
+    - 0.26947784423828125
+    - 9.76687240600586
+    - -9.52523422241211
+    - 6.966372013092041
+    - 11.350886344909668
+    - -1.5568969249725342
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero: true
+  speedup: 4.016320322635806
+- n_devices: 2
+  min_ms: 591.1802990012802
+  mean_ms: 591.8348183428558
+  std_ms: 0.6516933750222472
+  mem_mb: 548.09619140625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: -719364.7811845473
+    mean: -0.008111940118733396
+    l2norm: 136713.31075682366
+    min: -87.76779174804688
+    max: 91.85859680175781
+    samples:
+    - -0.18624547123908997
+    - -2.3632233142852783
+    - 13.9302339553833
+    - 7.761584281921387
+    - -7.7866926193237305
+    - 8.004388809204102
+    - 0.26947546005249023
+    - 9.76687240600586
+    - -9.525236129760742
+    - 6.966375350952148
+    - 11.350886344909668
+    - -1.5568969249725342
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero: true
+  speedup: 1.8537379439957735
+- n_devices: 1
+  min_ms: 1095.8933520014398
+  mean_ms: 1096.1281300211947
+  std_ms: 0.21059634965616722
+  mem_mb: 1087.10009765625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: -719364.7536628577
+    mean: -0.008111939808384178
+    l2norm: 136713.31075535365
+    min: -87.7677993774414
+    max: 91.85858917236328
+    samples:
+    - -0.18624547123908997
+    - -2.363224983215332
+    - 13.930232048034668
+    - 7.761584281921387
+    - -7.786693096160889
+    - 8.004390716552734
+    - 0.26947450637817383
+    - 9.76687240600586
+    - -9.525232315063477
+    - 6.96637487411499
+    - 11.350886344909668
+    - -1.5568969249725342
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 9198.863271973096
+  mean_ms: 9198.863271973096
+  std_ms: 0.0
+  mem_mb: 2889.461669921875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 51
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 8166491.052717093
+    mean: 0.007975599357027886
+    l2norm: 746746.7840824045
+    min: -159.06825256347656
+    max: 153.55894470214844
+    samples:
+    - 0.0
+    - -8.138986587524414
+    - 2.1006107330322266
+    - 43.47739028930664
+    - -18.681114196777344
+    - 32.85934066772461
+    - 29.007427215576172
+    - -5.388121604919434
+    - -6.781179428100586
+    - 27.396190643310547
+    - -15.348450660705566
+    - -0.20931190252304077
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 3.6997012384925156
+- n_devices: 2
+  min_ms: 16914.664408948738
+  mean_ms: 16914.664408948738
+  std_ms: 0.0
+  mem_mb: 6648.45068359375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 51
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 8166491.056523626
+    mean: 0.00797559936074544
+    l2norm: 746746.7840745925
+    min: -159.0682373046875
+    max: 153.55894470214844
+    samples:
+    - 0.0
+    - -8.138983726501465
+    - 2.100616455078125
+    - 43.47739028930664
+    - -18.68111228942871
+    - 32.85933303833008
+    - 29.00742530822754
+    - -5.388121604919434
+    - -6.781179428100586
+    - 27.396194458007812
+    - -15.348448753356934
+    - -0.20931190252304077
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 2.0120438110517243
+- n_devices: 1
+  min_ms: 34033.04584004218
+  mean_ms: 34033.04584004218
+  std_ms: 0.0
+  mem_mb: 11151.2314453125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 50
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 52
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: forward
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 8166491.027154999
+    mean: 0.007975599332063306
+    l2norm: 746746.7840778929
+    min: -159.0682373046875
+    max: 153.55894470214844
+    samples:
+    - 0.0
+    - -8.138982772827148
+    - 2.1006104946136475
+    - 43.477386474609375
+    - -18.681116104125977
+    - 32.859336853027344
+    - 29.00742530822754
+    - -5.388123512268066
+    - -6.781180381774902
+    - 27.396190643310547
+    - -15.34846019744873
+    - -0.20931190252304077
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 172.84582694992423
+  mean_ms: 173.26291898886362
+  std_ms: 0.31618675215300146
+  mem_mb: 360.320556640625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 54
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  back_band_len: 34
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 13206819709.890472
+    mean: 255.97850266581153
+    l2norm: 1839076.9565435336
+    min: 226.31582641601562
+    max: 285.0342712402344
+    samples:
+    - 257.5657653808594
+    - 251.24037170410156
+    - 250.67303466796875
+    - 257.606689453125
+    - 248.35903930664062
+    - 261.4901123046875
+    - 244.0639190673828
+    - 254.85415649414062
+    - 256.48895263671875
+    - 260.425537109375
+    - 252.5811309814453
+    - 242.87452697753906
+    shape:
+    - 115164
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 3.818580064600216
+- n_devices: 2
+  min_ms: 358.8754909578711
+  mean_ms: 358.99822231537354
+  std_ms: 0.10368306064168659
+  mem_mb: 1280.330078125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 50
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 53
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  back_band_len: 112
+  back_n_bands_per_shard: 2
+  fingerprint:
+    sum: 13206819708.100662
+    mean: 255.9785026311209
+    l2norm: 1839076.9562945855
+    min: 226.31582641601562
+    max: 285.0342712402344
+    samples:
+    - 257.5657958984375
+    - 251.2403564453125
+    - 250.67306518554688
+    - 257.606689453125
+    - 248.3590545654297
+    - 261.4901123046875
+    - 244.06393432617188
+    - 254.85418701171875
+    - 256.4889831542969
+    - 260.425537109375
+    - 252.58111572265625
+    - 242.87452697753906
+    shape:
+    - 115164
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.8391493586777172
+- n_devices: 1
+  min_ms: 660.0256290403195
+  mean_ms: 660.191186684339
+  std_ms: 0.15564601457378682
+  mem_mb: 6642.977294921875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 51
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 53
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  back_band_len: 448
+  back_n_bands_per_shard: 1
+  fingerprint:
+    sum: 13206819707.870514
+    mean: 255.9785026266601
+    l2norm: 1839076.9562626581
+    min: 226.31582641601562
+    max: 285.0343017578125
+    samples:
+    - 257.5657653808594
+    - 251.2403564453125
+    - 250.67306518554688
+    - 257.606689453125
+    - 248.35903930664062
+    - 261.4901123046875
+    - 244.0639190673828
+    - 254.8541717529297
+    - 256.4889831542969
+    - 260.425537109375
+    - 252.58111572265625
+    - 242.87452697753906
+    shape:
+    - 115164
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 204.66009201481938
+  mean_ms: 204.7241239924915
+  std_ms: 0.0671982775692889
+  mem_mb: 449.353271484375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 54
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  back_band_len: 34
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 13333270174.91948
+    mean: 256.4797266515793
+    l2norm: 1849667.4660305944
+    min: 224.84310913085938
+    max: 286.3759460449219
+    samples:
+    - 256.81512451171875
+    - 251.1201934814453
+    - 247.139892578125
+    - 264.71337890625
+    - 258.7275085449219
+    - 256.7044372558594
+    - 263.64178466796875
+    - 261.20025634765625
+    - 247.48077392578125
+    - 260.1976318359375
+    - 250.01634216308594
+    - 266.2858581542969
+    shape:
+    - 115781
+    - 449
+    dtype: float32
+    padding_zero: true
+  speedup: 3.4354773715803457
+- n_devices: 2
+  min_ms: 430.182924028486
+  mean_ms: 430.2660296865118
+  std_ms: 0.09311156170869897
+  mem_mb: 1053.87353515625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 53
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  back_band_len: 112
+  back_n_bands_per_shard: 2
+  fingerprint:
+    sum: 13333270174.088608
+    mean: 256.4797266355966
+    l2norm: 1849667.4659162504
+    min: 224.8431396484375
+    max: 286.3759765625
+    samples:
+    - 256.81512451171875
+    - 251.12017822265625
+    - 247.139892578125
+    - 264.7134094238281
+    - 258.7275085449219
+    - 256.7044677734375
+    - 263.64178466796875
+    - 261.20025634765625
+    - 247.4807891845703
+    - 260.1976318359375
+    - 250.01634216308594
+    - 266.2858581542969
+    shape:
+    - 115781
+    - 449
+    dtype: float32
+    padding_zero: true
+  speedup: 1.63443287892084
+- n_devices: 1
+  min_ms: 703.1051149824634
+  mean_ms: 703.3884099801071
+  std_ms: 0.2625918286414499
+  mem_mb: 4025.97412109375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 51
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 53
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  back_band_len: 449
+  back_n_bands_per_shard: 1
+  fingerprint:
+    sum: 13333270174.20044
+    mean: 256.4797266377478
+    l2norm: 1849667.465931606
+    min: 224.84312438964844
+    max: 286.3759460449219
+    samples:
+    - 256.81512451171875
+    - 251.12020874023438
+    - 247.139892578125
+    - 264.7134094238281
+    - 258.7275085449219
+    - 256.7044677734375
+    - 263.64178466796875
+    - 261.20025634765625
+    - 247.4807891845703
+    - 260.1976318359375
+    - 250.01634216308594
+    - 266.285888671875
+    shape:
+    - 115781
+    - 449
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 4808.658694964834
+  mean_ms: 4808.658694964834
+  std_ms: 0.0
+  mem_mb: 3386.771240234375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 56
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 40
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  back_band_len: 63
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 398036688288.71277
+    mean: 512.0036136002906
+    l2norm: 14277348.835084507
+    min: 465.1571044921875
+    max: 557.35400390625
+    samples:
+    - 502.4432678222656
+    - 519.4373779296875
+    - 504.5624084472656
+    - 514.0250854492188
+    - 521.6071166992188
+    - 516.0823974609375
+    - 502.0223083496094
+    - 507.060302734375
+    - 509.8808898925781
+    - 503.77301025390625
+    - 508.447021484375
+    - 518.1051025390625
+    shape:
+    - 771240
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 4.687315483127385
+- n_devices: 2
+  min_ms: 11042.570480029099
+  mean_ms: 11042.570480029099
+  std_ms: 0.0
+  mem_mb: 5973.392822265625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 55
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 53
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 38
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  back_band_len: 129
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 398036688271.838
+    mean: 512.0036135785841
+    l2norm: 14277348.834480168
+    min: 465.1571044921875
+    max: 557.35400390625
+    samples:
+    - 502.4432373046875
+    - 519.4373779296875
+    - 504.56243896484375
+    - 514.0250854492188
+    - 521.6071166992188
+    - 516.0823974609375
+    - 502.0223388671875
+    - 507.060302734375
+    - 509.880859375
+    - 503.7729797363281
+    - 508.4469909667969
+    - 518.105224609375
+    shape:
+    - 771240
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 2.0411642737302587
+- n_devices: 1
+  min_ms: 22539.70035398379
+  mean_ms: 22539.70035398379
+  std_ms: 0.0
+  mem_mb: 24641.80712890625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 55
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 52
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: back
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  back_band_len: 129
+  back_n_bands_per_shard: 8
+  fingerprint:
+    sum: 398036688271.9823
+    mean: 512.0036135787698
+    l2norm: 14277348.834485222
+    min: 465.1571044921875
+    max: 557.35400390625
+    samples:
+    - 502.4432373046875
+    - 519.4373779296875
+    - 504.56243896484375
+    - 514.0250854492188
+    - 521.6071166992188
+    - 516.0823974609375
+    - 502.0223388671875
+    - 507.060302734375
+    - 509.880859375
+    - 503.7729797363281
+    - 508.4469909667969
+    - 518.105224609375
+    shape:
+    - 771240
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 2225.762128015049
+  mean_ms: 2225.762128015049
+  std_ms: 0.0
+  mem_mb: 1389.7919921875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 54
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 85317.90603824254
+    mean: 0.0012915158050513273
+    l2norm: 71.24795709979422
+    min: -0.05281408131122589
+    max: 0.06253131479024887
+    samples:
+    - 0.0
+    - 0.0
+    - -0.0038127487059682608
+    - 0.0036645766813308
+    - -0.004184382036328316
+    - 0.011090870946645737
+    - 0.013659285381436348
+    - 2.216314896941185e-06
+    - -0.0014122053980827332
+    - 0.00491460133343935
+    - 0.0
+    - 0.0
+    shape:
+    - 384
+    - 384
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 3.4831039190568096
+- n_devices: 2
+  min_ms: 4057.0654260227457
+  mean_ms: 4057.0654260227457
+  std_ms: 0.0
+  mem_mb: 2682.229248046875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 52
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 85317.90661707363
+    mean: 0.0012915158138134917
+    l2norm: 71.24795831836653
+    min: -0.05281408131122589
+    max: 0.06253131479024887
+    samples:
+    - 0.0
+    - 0.0
+    - -0.0038127508014440536
+    - 0.003664578078314662
+    - -0.004184379708021879
+    - 0.011090871877968311
+    - 0.013659284450113773
+    - 2.2168969735503196e-06
+    - -0.0014122058637440205
+    - 0.004914598539471626
+    - 0.0
+    - 0.0
+    shape:
+    - 384
+    - 384
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.9108789178629273
+- n_devices: 1
+  min_ms: 7752.560790977441
+  mean_ms: 7752.560790977441
+  std_ms: 0.0
+  mem_mb: 9423.57177734375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 50
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 51
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 85317.90586348706
+    mean: 0.0012915158024059336
+    l2norm: 71.24796229317224
+    min: -0.05281407758593559
+    max: 0.06253130733966827
+    samples:
+    - 0.0
+    - 0.0
+    - -0.003812749171629548
+    - 0.0036645792424678802
+    - -0.004184381105005741
+    - 0.011090874671936035
+    - 0.013659284450113773
+    - 2.214801497757434e-06
+    - -0.0014122023712843657
+    - 0.004914602730423212
+    - 0.0
+    - 0.0
+    shape:
+    - 384
+    - 384
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 2532.650897046551
+  mean_ms: 2532.650897046551
+  std_ms: 0.0
+  mem_mb: 1337.92431640625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 52
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 85748.99904248075
+    mean: 0.001288431277804138
+    l2norm: 71.28389062863185
+    min: -0.05107097700238228
+    max: 0.06079167127609253
+    samples:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    shape:
+    - 385
+    - 385
+    - 449
+    dtype: float32
+    padding_zero: true
+  speedup: 3.297621861233753
+- n_devices: 2
+  min_ms: 4699.292222969234
+  mean_ms: 4699.292222969234
+  std_ms: 0.0
+  mem_mb: 2882.71630859375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 85748.99905514091
+    mean: 0.0012884312779943648
+    l2norm: 71.28389098709961
+    min: -0.05107097700238228
+    max: 0.06079167127609253
+    samples:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    shape:
+    - 385
+    - 385
+    - 449
+    dtype: float32
+    padding_zero: true
+  speedup: 1.777230393154178
+- n_devices: 1
+  min_ms: 8351.724964973982
+  mean_ms: 8351.724964973982
+  std_ms: 0.0
+  mem_mb: 6942.84716796875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 85748.99873713477
+    mean: 0.0012884312732161275
+    l2norm: 71.28389020084484
+    min: -0.05107097700238228
+    max: 0.06079166382551193
+    samples:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    shape:
+    - 385
+    - 385
+    - 449
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 63177.93183599133
+  mean_ms: 63177.93183599133
+  std_ms: 0.0
+  mem_mb: 14474.556884765625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 51
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 41
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 497826.12757628947
+    mean: 0.0005018729742819362
+    l2norm: 182.31882250199254
+    min: -0.041337594389915466
+    max: 0.04061499238014221
+    samples:
+    - 0.0
+    - 0.0
+    - 0.010213878937065601
+    - 0.0026333704590797424
+    - 0.014271514490246773
+    - 0.013694795779883862
+    - 0.008263977244496346
+    - 0.00027638039318844676
+    - -0.008029627613723278
+    - 0.010616368614137173
+    - 0.0
+    - 0.0
+    shape:
+    - 992
+    - 992
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 4.377111474666547
+- n_devices: 2
+  min_ms: 121900.53446299862
+  mean_ms: 121900.53446299862
+  std_ms: 0.0
+  mem_mb: 28829.655029296875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 50
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 43
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 34
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 497826.1272679943
+    mean: 0.0005018729739711349
+    l2norm: 182.3188219209473
+    min: -0.041337594389915466
+    max: 0.04061499238014221
+    samples:
+    - 0.0
+    - 0.0
+    - 0.010213878005743027
+    - 0.002633369993418455
+    - 0.014271514490246773
+    - 0.013694794848561287
+    - 0.00826397817581892
+    - 0.00027638074243441224
+    - -0.008029625751078129
+    - 0.010616372339427471
+    - 0.0
+    - 0.0
+    shape:
+    - 992
+    - 992
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 2.268545019947865
+- n_devices: 1
+  min_ms: 276536.8503850186
+  mean_ms: 276536.8503850186
+  std_ms: 0.0
+  mem_mb: 60676.895751953125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: parallel
+  op: vcd_nonconst
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 497826.1267436968
+    mean: 0.0005018729734425753
+    l2norm: 182.31882090114055
+    min: -0.04133759066462517
+    max: 0.04061499238014221
+    samples:
+    - 0.0
+    - 0.0
+    - 0.010213878005743027
+    - 0.002633369993418455
+    - 0.014271514490246773
+    - 0.013694794848561287
+    - 0.008263979107141495
+    - 0.00027638114988803864
+    - -0.008029625751078129
+    - 0.010616371408104897
+    - 0.0
+    - 0.0
+    shape:
+    - 992
+    - 992
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 6.720451987348497
+  mean_ms: 7.361577668537696
+  std_ms: 0.5518699015382318
+  mem_mb: 190.377685546875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 2322.5935983962163
+    mean: 2.6369022169524331e-05
+    l2norm: 19.103303413129584
+    min: -0.0057557630352675915
+    max: 0.005909956991672516
+    samples:
+    - 0.0033924896270036697
+    - -3.3708758564898744e-05
+    - -3.1903618946671485e-05
+    - 0.001385764335282147
+    - 0.00319110625423491
+    - -0.0022794706746935844
+    - -0.0001725551119307056
+    - -0.0017196821281686425
+    - -0.0008887550211511552
+    - 0.0016613129992038012
+    - -0.0021680654026567936
+    - 0.0014031686587259173
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 2.1624820800452906
+- n_devices: 2
+  min_ms: 9.133770014159381
+  mean_ms: 9.365281012530128
+  std_ms: 0.23701860884316772
+  mem_mb: 358.377685546875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 2322.5935983962163
+    mean: 2.6369022169524331e-05
+    l2norm: 19.103303413129584
+    min: -0.0057557630352675915
+    max: 0.005909956991672516
+    samples:
+    - 0.0033924896270036697
+    - -3.3708758564898744e-05
+    - -3.1903618946671485e-05
+    - 0.001385764335282147
+    - 0.00319110625423491
+    - -0.0022794706746935844
+    - -0.0001725551119307056
+    - -0.0017196821281686425
+    - -0.0008887550211511552
+    - 0.0016613129992038012
+    - -0.0021680654026567936
+    - 0.0014031686587259173
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.5911126478898325
+- n_devices: 1
+  min_ms: 14.532856992445886
+  mean_ms: 14.819550638397535
+  std_ms: 0.22156209208118083
+  mem_mb: 694.377685546875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 2322.5935983962163
+    mean: 2.6369022169524331e-05
+    l2norm: 19.103303413129584
+    min: -0.0057557630352675915
+    max: 0.005909956991672516
+    samples:
+    - 0.0033924896270036697
+    - -3.3708758564898744e-05
+    - -3.1903618946671485e-05
+    - 0.001385764335282147
+    - 0.00319110625423491
+    - -0.0022794706746935844
+    - -0.0001725551119307056
+    - -0.0017196821281686425
+    - -0.0008887550211511552
+    - 0.0016613129992038012
+    - -0.0021680654026567936
+    - 0.0014031686587259173
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 8.971003000624478
+  mean_ms: 9.53016133280471
+  std_ms: 0.4254053340601148
+  mem_mb: 197.077880859375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 2328.6587403923
+    mean: 2.6259195269362806e-05
+    l2norm: 19.130874599662054
+    min: -0.00574832409620285
+    max: 0.005887612234801054
+    samples:
+    - 0.003385900752618909
+    - -0.0005834774347022176
+    - 0.0004529275465756655
+    - 0.0005129280034452677
+    - -0.0025332735385745764
+    - -0.0017512646736577153
+    - -0.002834100043401122
+    - -0.0025783823803067207
+    - -0.0012225403916090727
+    - -0.0020603586453944445
+    - -0.0016844955971464515
+    - 0.0049760835245251656
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero: true
+  speedup: 2.422743140637253
+- n_devices: 2
+  min_ms: 12.745289015583694
+  mean_ms: 13.00120702944696
+  std_ms: 0.1997815953189865
+  mem_mb: 365.891357421875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 2328.658741086282
+    mean: 2.6259195277188517e-05
+    l2norm: 19.130874597932674
+    min: -0.00574832409620285
+    max: 0.005887612234801054
+    samples:
+    - 0.003385900752618909
+    - -0.0005834774347022176
+    - 0.0004529275465756655
+    - 0.0005129279452376068
+    - -0.0025332742370665073
+    - -0.001751264906488359
+    - -0.002834100043401122
+    - -0.002578380983322859
+    - -0.0012225393438711762
+    - -0.0020603586453944445
+    - -0.0016844955971464515
+    - 0.0049760835245251656
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero: false
+  speedup: 1.7052917323274839
+- n_devices: 1
+  min_ms: 21.73443598439917
+  mean_ms: 21.831456668830167
+  std_ms: 0.12452907647190956
+  mem_mb: 703.518310546875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 2328.6587410253996
+    mean: 2.6259195276501976e-05
+    l2norm: 19.13087459877529
+    min: -0.005748322699218988
+    max: 0.005887612234801054
+    samples:
+    - 0.003385900752618909
+    - -0.0005834774347022176
+    - 0.0004529275465756655
+    - 0.0005129279452376068
+    - -0.0025332742370665073
+    - -0.001751264906488359
+    - -0.002834100043401122
+    - -0.0025783823803067207
+    - -0.0012225403916090727
+    - -0.0020603579469025135
+    - -0.0016844964120537043
+    - 0.0049760835245251656
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 37.48477599583566
+  mean_ms: 37.48477599583566
+  std_ms: 0.0
+  mem_mb: 2025.348388671875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 5834.037703611222
+    mean: 5.697667095626954e-06
+    l2norm: 32.56915572732621
+    min: -0.0028985077515244484
+    max: 0.0029749704990535975
+    samples:
+    - 0.001699935644865036
+    - 0.0009352108463644981
+    - 0.0003848106716759503
+    - -0.0011538869002833962
+    - -0.00043403779272921383
+    - 0.0008610180229879916
+    - -0.0008733075810596347
+    - -0.0009248958667740226
+    - -0.00017953333735931665
+    - 0.0009139491594396532
+    - 0.0003587003448046744
+    - 0.0004624387074727565
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 3.4142539088591746
+- n_devices: 2
+  min_ms: 67.13278405368328
+  mean_ms: 67.13278405368328
+  std_ms: 0.0
+  mem_mb: 3982.162841796875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 5834.037703611222
+    mean: 5.697667095626954e-06
+    l2norm: 32.56915572732621
+    min: -0.0028985077515244484
+    max: 0.0029749704990535975
+    samples:
+    - 0.001699935644865036
+    - 0.0009352108463644981
+    - 0.0003848106716759503
+    - -0.0011538869002833962
+    - -0.00043403779272921383
+    - 0.0008610180229879916
+    - -0.0008733075810596347
+    - -0.0009248958667740226
+    - -0.00017953333735931665
+    - 0.0009139491594396532
+    - 0.0003587003448046744
+    - 0.0004624387074727565
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.9064089888503684
+- n_devices: 1
+  min_ms: 127.98254296649247
+  mean_ms: 127.98254296649247
+  std_ms: 0.0
+  mem_mb: 7888.162841796875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: direct_filter
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 5834.037703611222
+    mean: 5.697667095626954e-06
+    l2norm: 32.56915572732621
+    min: -0.0028985077515244484
+    max: 0.0029749704990535975
+    samples:
+    - 0.001699935644865036
+    - 0.0009352108463644981
+    - 0.0003848106716759503
+    - -0.0011538869002833962
+    - -0.00043403779272921383
+    - 0.0008610180229879916
+    - -0.0008733075810596347
+    - -0.0009248958667740226
+    - -0.00017953333735931665
+    - 0.0009139491594396532
+    - 0.0003587003448046744
+    - 0.0004624387074727565
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 470.30738403555006
+  mean_ms: 487.6908803319869
+  std_ms: 12.528512378150635
+  mem_mb: 1452.79052734375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 43
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: -374974.6025383454
+    mean: -0.004257186282684069
+    l2norm: 55573.479339960555
+    min: -37.962013244628906
+    max: 35.99000549316406
+    samples:
+    - 0.013402603566646576
+    - -14.644451141357422
+    - 0.7315942049026489
+    - 4.620363235473633
+    - -2.7803802490234375
+    - 3.4227135181427
+    - 6.084836959838867
+    - 0.8207361698150635
+    - -6.079798698425293
+    - -6.277034759521484
+    - -3.278116464614868
+    - -0.28650981187820435
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 2.67782686971154
+- n_devices: 2
+  min_ms: 662.3757709749043
+  mean_ms: 670.5738840003809
+  std_ms: 11.11801545538148
+  mem_mb: 2616.38037109375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: -374974.60159267974
+    mean: -0.004257186271947676
+    l2norm: 55573.479339959515
+    min: -37.962013244628906
+    max: 35.99000549316406
+    samples:
+    - 0.013402603566646576
+    - -14.644451141357422
+    - 0.7315940856933594
+    - 4.620362281799316
+    - -2.7803802490234375
+    - 3.4227137565612793
+    - 6.084836006164551
+    - 0.8207359313964844
+    - -6.079799652099609
+    - -6.277034759521484
+    - -3.2781152725219727
+    - -0.2865102291107178
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.9013403043721169
+- n_devices: 1
+  min_ms: 1259.4017499941401
+  mean_ms: 1259.564472323594
+  std_ms: 0.1151019841568622
+  mem_mb: 4613.7294921875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: -374974.6017376842
+    mean: -0.004257186273593951
+    l2norm: 55573.47933808414
+    min: -37.962013244628906
+    max: 35.99000930786133
+    samples:
+    - 0.013402901589870453
+    - -14.644452095031738
+    - 0.7315945625305176
+    - 4.620361804962158
+    - -2.7803783416748047
+    - 3.422713041305542
+    - 6.084835052490234
+    - 0.8207359910011292
+    - -6.079800605773926
+    - -6.277036666870117
+    - -3.2781150341033936
+    - -0.2865101397037506
+    shape:
+    - 512
+    - 448
+    - 384
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 1
+  min_ms: 1368.8252689898945
+  mean_ms: 1368.9755016821437
+  std_ms: 0.1804029906208348
+  mem_mb: 4625.46337890625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 43
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: -384227.5370666195
+    mean: -0.004332754193943831
+    l2norm: 55841.46698270688
+    min: -36.34902572631836
+    max: 38.60502243041992
+    samples:
+    - 4.497854709625244
+    - -8.8720064163208
+    - 3.14260196685791
+    - -13.838214874267578
+    - 2.1507925987243652
+    - -5.512369155883789
+    - -0.6205780506134033
+    - 3.0756657123565674
+    - -1.1803157329559326
+    - 0.22626516222953796
+    - -0.05179929733276367
+    - 1.5805606842041016
+    shape:
+    - 513
+    - 449
+    - 385
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- geometry: cone
+  op: forward
+  size: 513x449x385
+  n_devices: 4
+  failed: true
+  oom: false
+  error: voxel_values must have shape[0:2] = (num_indices, num_slices)
+- geometry: cone
+  op: forward
+  size: 513x449x385
+  n_devices: 2
+  failed: true
+  oom: false
+  error: voxel_values must have shape[0:2] = (num_indices, num_slices)
+- n_devices: 4
+  min_ms: 15086.431611038279
+  mean_ms: 15086.431611038279
+  std_ms: 0.0
+  mem_mb: 8021.781005859375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 43
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 5965828.414755051
+    mean: 0.005826377199424993
+    l2norm: 304410.0216861088
+    min: -65.60243225097656
+    max: 63.47590637207031
+    samples:
+    - 2.9241268634796143
+    - -9.420431137084961
+    - 3.096359968185425
+    - 2.1499805450439453
+    - -15.071547508239746
+    - -11.104236602783203
+    - 13.33033561706543
+    - -10.9012451171875
+    - -1.2953221797943115
+    - 4.010166168212891
+    - 5.054131031036377
+    - 2.0805885791778564
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 2.716336485893009
+- n_devices: 2
+  min_ms: 21565.033218997996
+  mean_ms: 21565.033218997996
+  std_ms: 0.0
+  mem_mb: 15800.223388671875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 50
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 5965828.441314846
+    mean: 0.005826377225363953
+    l2norm: 304410.0216872911
+    min: -65.6024169921875
+    max: 63.47590637207031
+    samples:
+    - 2.9241268634796143
+    - -9.420431137084961
+    - 3.0963611602783203
+    - 2.14998197555542
+    - -15.071545600891113
+    - -11.104236602783203
+    - 13.330336570739746
+    - -10.901247024536133
+    - -1.2953218221664429
+    - 4.010167121887207
+    - 5.054131507873535
+    - 2.0805885791778564
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.90029035479951
+- n_devices: 1
+  min_ms: 40979.82462699292
+  mean_ms: 40979.82462699292
+  std_ms: 0.0
+  mem_mb: 26162.518798828125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 48
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 36
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: forward
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 5965828.449469838
+    mean: 0.005826377233328322
+    l2norm: 304410.02169170015
+    min: -65.60243225097656
+    max: 63.47590255737305
+    samples:
+    - 2.9241273403167725
+    - -9.42043399810791
+    - 3.096359968185425
+    - 2.149979591369629
+    - -15.071549415588379
+    - -11.104236602783203
+    - 13.330333709716797
+    - -10.901241302490234
+    - -1.2953234910964966
+    - 4.010165214538574
+    - 5.054129600524902
+    - 2.0805883407592773
+    shape:
+    - 1024
+    - 1008
+    - 992
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 355.8722780435346
+  mean_ms: 355.98549865729484
+  std_ms: 0.12070609720883589
+  mem_mb: 391.91748046875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: cone
+  op: back
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  back_band_len: 34
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 6509189786.074493
+    mean: 126.1630499702461
+    l2norm: 916131.1308903667
+    min: 0.9237576723098755
+    max: 163.64059448242188
+    samples:
+    - 58.5155029296875
+    - 134.537353515625
+    - 126.89582061767578
+    - 110.67291259765625
+    - 138.21206665039062
+    - 123.08885192871094
+    - 142.62261962890625
+    - 118.70401763916016
+    - 146.96546936035156
+    - 129.18081665039062
+    - 123.51473999023438
+    - 54.48553466796875
+    shape:
+    - 115164
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.8109398055130361
+- n_devices: 2
+  min_ms: 740.4313800507225
+  mean_ms: 740.5293223370487
+  std_ms: 0.0782546483800534
+  mem_mb: 1195.24462890625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: back
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  back_band_len: 112
+  back_n_bands_per_shard: 2
+  fingerprint:
+    sum: 6509189786.144877
+    mean: 126.1630499716103
+    l2norm: 916131.1309009048
+    min: 0.9237577319145203
+    max: 163.64059448242188
+    samples:
+    - 58.51551055908203
+    - 134.537353515625
+    - 126.89581298828125
+    - 110.67291259765625
+    - 138.21206665039062
+    - 123.08885192871094
+    - 142.62261962890625
+    - 118.70401763916016
+    - 146.9654541015625
+    - 129.1808319091797
+    - 123.5147476196289
+    - 54.48553466796875
+    shape:
+    - 115164
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 0.8703889264437866
+- n_devices: 1
+  min_ms: 644.4632739876397
+  mean_ms: 645.7974649965763
+  std_ms: 1.1429814472663589
+  mem_mb: 5358.959716796875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: back
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  back_band_len: 448
+  back_n_bands_per_shard: 1
+  fingerprint:
+    sum: 6509189786.184863
+    mean: 126.16304997238532
+    l2norm: 916131.1309068458
+    min: 0.9237576723098755
+    max: 163.64059448242188
+    samples:
+    - 58.5155143737793
+    - 134.537353515625
+    - 126.89582824707031
+    - 110.67291259765625
+    - 138.21206665039062
+    - 123.08885192871094
+    - 142.62261962890625
+    - 118.70402526855469
+    - 146.96546936035156
+    - 129.18081665039062
+    - 123.5147476196289
+    - 54.48553466796875
+    shape:
+    - 115164
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 283.45884202281013
+  mean_ms: 283.61213001577806
+  std_ms: 0.20404309144259722
+  mem_mb: 400.265380859375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 37
+  throttled: false
+  geometry: cone
+  op: back
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  back_band_len: 34
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 6571355424.163099
+    mean: 126.40705699417082
+    l2norm: 921390.6484111088
+    min: 1.0661441087722778
+    max: 164.49905395507812
+    samples:
+    - 57.13485336303711
+    - 135.57797241210938
+    - 137.49853515625
+    - 125.08988189697266
+    - 113.671630859375
+    - 142.01858520507812
+    - 118.8125991821289
+    - 149.49977111816406
+    - 132.87472534179688
+    - 121.5672607421875
+    - 126.57466125488281
+    - 54.86445236206055
+    shape:
+    - 115781
+    - 449
+    dtype: float32
+    padding_zero: true
+  speedup: 2.177922807313605
+- n_devices: 2
+  min_ms: 666.623872006312
+  mean_ms: 666.7666366750685
+  std_ms: 0.13997452125366702
+  mem_mb: 966.6015625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 46
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: back
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  back_band_len: 112
+  back_n_bands_per_shard: 2
+  fingerprint:
+    sum: 6571355424.140663
+    mean: 126.40705699373923
+    l2norm: 921390.6484071414
+    min: 1.0661441087722778
+    max: 164.49905395507812
+    samples:
+    - 57.13483810424805
+    - 135.57797241210938
+    - 137.49853515625
+    - 125.08988952636719
+    - 113.671630859375
+    - 142.01858520507812
+    - 118.81259155273438
+    - 149.49977111816406
+    - 132.87472534179688
+    - 121.5672607421875
+    - 126.57466125488281
+    - 54.86445617675781
+    shape:
+    - 115781
+    - 449
+    dtype: float32
+    padding_zero: true
+  speedup: 0.9260866628105644
+- n_devices: 1
+  min_ms: 617.3514769761823
+  mean_ms: 617.6781403288866
+  std_ms: 0.4545335498262711
+  mem_mb: 3377.95947265625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: back
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 3
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  back_band_len: 449
+  back_n_bands_per_shard: 1
+  fingerprint:
+    sum: 6571355424.129185
+    mean: 126.40705699351844
+    l2norm: 921390.6484062246
+    min: 1.0661439895629883
+    max: 164.49905395507812
+    samples:
+    - 57.13483810424805
+    - 135.57797241210938
+    - 137.49853515625
+    - 125.08988952636719
+    - 113.671630859375
+    - 142.01858520507812
+    - 118.81259155273438
+    - 149.49977111816406
+    - 132.87472534179688
+    - 121.5672607421875
+    - 126.57466125488281
+    - 54.86445236206055
+    shape:
+    - 115781
+    - 449
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 11208.881421014667
+  mean_ms: 11208.881421014667
+  std_ms: 0.0
+  mem_mb: 3203.664794921875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 43
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 41
+  throttled: false
+  geometry: cone
+  op: back
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  back_band_len: 63
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 195969809561.5559
+    mean: 252.08040767161282
+    l2norm: 7105345.690272036
+    min: 0.6811548471450806
+    max: 322.37884521484375
+    samples:
+    - 117.02762603759766
+    - 270.6756591796875
+    - 286.1090087890625
+    - 284.8712158203125
+    - 226.259765625
+    - 264.471435546875
+    - 248.47842407226562
+    - 310.04644775390625
+    - 210.08026123046875
+    - 232.54364013671875
+    - 244.2535858154297
+    - 105.83506774902344
+    shape:
+    - 771240
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 1.660314590544727
+- n_devices: 2
+  min_ms: 21784.25344399875
+  mean_ms: 21784.25344399875
+  std_ms: 0.0
+  mem_mb: 5952.175048828125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 55
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: back
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  back_band_len: 129
+  back_n_bands_per_shard: 4
+  fingerprint:
+    sum: 195969809561.3824
+    mean: 252.08040767138962
+    l2norm: 7105345.690266154
+    min: 0.6811548471450806
+    max: 322.37884521484375
+    samples:
+    - 117.02759552001953
+    - 270.6756591796875
+    - 286.1090087890625
+    - 284.8712463378906
+    - 226.259765625
+    - 264.471435546875
+    - 248.47842407226562
+    - 310.04644775390625
+    - 210.08026123046875
+    - 232.54364013671875
+    - 244.2535858154297
+    - 105.83506774902344
+    shape:
+    - 771240
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 0.8542991576387129
+- n_devices: 1
+  min_ms: 18610.269366996363
+  mean_ms: 18610.269366996363
+  std_ms: 0.0
+  mem_mb: 20729.7958984375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 52
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: back
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  back_band_len: 129
+  back_n_bands_per_shard: 8
+  fingerprint:
+    sum: 195969809561.37714
+    mean: 252.08040767138286
+    l2norm: 7105345.690266544
+    min: 0.6811548471450806
+    max: 322.37884521484375
+    samples:
+    - 117.02759552001953
+    - 270.6756591796875
+    - 286.1090087890625
+    - 284.8712463378906
+    - 226.259765625
+    - 264.471435546875
+    - 248.47842407226562
+    - 310.04644775390625
+    - 210.08026123046875
+    - 232.54364013671875
+    - 244.2535858154297
+    - 105.83506774902344
+    shape:
+    - 771240
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 4
+  min_ms: 4101.889853016473
+  mean_ms: 4101.889853016473
+  std_ms: 0.0
+  mem_mb: 2277.538818359375
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 47
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 40
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 41
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 39
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 176890.6744274104
+    mean: 0.002677715762114304
+    l2norm: 107.63850805961653
+    min: -0.08548130095005035
+    max: 0.10404669493436813
+    samples:
+    - 0.0
+    - 0.0
+    - -0.01458780001848936
+    - 0.0054920874536037445
+    - 0.029596516862511635
+    - 0.022441750392317772
+    - 0.021176522597670555
+    - 0.011296434327960014
+    - -0.014599842019379139
+    - 0.008221845142543316
+    - 0.0
+    - 0.0
+    shape:
+    - 384
+    - 384
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 2.1184326182224944
+- n_devices: 2
+  min_ms: 6667.171841021627
+  mean_ms: 6667.171841021627
+  std_ms: 0.0
+  mem_mb: 4534.3486328125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 39
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 176890.67307641538
+    mean: 0.0026777157416633633
+    l2norm: 107.6385086611868
+    min: -0.08548130095005035
+    max: 0.10404670238494873
+    samples:
+    - 0.0
+    - 0.0
+    - -0.01458780001848936
+    - 0.00549208652228117
+    - 0.029596511274576187
+    - 0.022441748529672623
+    - 0.021176520735025406
+    - 0.011296434327960014
+    - -0.014599845744669437
+    - 0.00822184793651104
+    - 0.0
+    - 0.0
+    shape:
+    - 384
+    - 384
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.3033378272209712
+- n_devices: 1
+  min_ms: 8689.57726098597
+  mean_ms: 8689.57726098597
+  std_ms: 0.0
+  mem_mb: 8139.552978515625
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 512x448x384
+  recon_shape:
+  - 384
+  - 384
+  - 448
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 176890.6735696104
+    mean: 0.0026777157491291955
+    l2norm: 107.63851334748286
+    min: -0.08548130840063095
+    max: 0.10404670983552933
+    samples:
+    - 0.0
+    - 0.0
+    - -0.014587802812457085
+    - 0.00549208652228117
+    - 0.029596518725156784
+    - 0.02244175225496292
+    - 0.021176522597670555
+    - 0.011296436190605164
+    - -0.014599844813346863
+    - 0.008221844211220741
+    - 0.0
+    - 0.0
+    shape:
+    - 384
+    - 384
+    - 448
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- n_devices: 1
+  min_ms: 9059.24201401649
+  mean_ms: 9059.24201401649
+  std_ms: 0.0
+  mem_mb: 8279.08935546875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 49
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 37
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 42
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 513x449x385
+  recon_shape:
+  - 385
+  - 385
+  - 449
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 177960.6942544405
+    mean: 0.0026739685274176565
+    l2norm: 107.7992622259343
+    min: -0.07870671153068542
+    max: 0.09633005410432816
+    samples:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    shape:
+    - 385
+    - 385
+    - 449
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+- geometry: cone
+  op: vcd_nonconst
+  size: 513x449x385
+  n_devices: 4
+  failed: true
+  oom: false
+  error: voxel_values must have shape[0:2] = (num_indices, num_slices)
+- geometry: cone
+  op: vcd_nonconst
+  size: 513x449x385
+  n_devices: 2
+  failed: true
+  oom: false
+  error: voxel_values must have shape[0:2] = (num_indices, num_slices)
+- n_devices: 4
+  min_ms: 119664.58538098959
+  mean_ms: 119664.58538098959
+  std_ms: 0.0
+  mem_mb: 18627.97705078125
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 58
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 54
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 44
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 4
+  platform: gpu
+  fingerprint:
+    sum: 1033356.9665089926
+    mean: 0.0010417571628908771
+    l2norm: 262.06622035831106
+    min: -0.05505432188510895
+    max: 0.06829304248094559
+    samples:
+    - 0.0
+    - 0.0
+    - 0.010955256409943104
+    - 0.01661817729473114
+    - 0.0004939970094710588
+    - 0.024503668770194054
+    - 0.0037967590615153313
+    - -0.019017379730939865
+    - 0.011418310925364494
+    - 0.006552581209689379
+    - 0.0
+    - 0.0
+    shape:
+    - 992
+    - 992
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 2.2060507914140928
+- n_devices: 2
+  min_ms: 205522.7017510333
+  mean_ms: 205522.7017510333
+  std_ms: 0.0
+  mem_mb: 37044.83154296875
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 57
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 45
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 44
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 35
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 2
+  platform: gpu
+  fingerprint:
+    sum: 1033356.9589503263
+    mean: 0.0010417571552707662
+    l2norm: 262.06624996214657
+    min: -0.05505433678627014
+    max: 0.06829304993152618
+    samples:
+    - 0.0
+    - 0.0
+    - 0.010955259203910828
+    - 0.01661818102002144
+    - 0.0004939952632412314
+    - 0.024503672495484352
+    - 0.0037967574317008257
+    - -0.019017381593585014
+    - 0.011418311856687069
+    - 0.006552583537995815
+    - 0.0
+    - 0.0
+    shape:
+    - 992
+    - 992
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 1.2844622566501664
+- n_devices: 1
+  min_ms: 263986.15328397136
+  mean_ms: 263986.15328397136
+  std_ms: 0.0
+  mem_mb: 72026.67749023438
+  gpu_state:
+  - index: 0
+    sm_mhz: 1980
+    temp_c: 53
+  - index: 1
+    sm_mhz: 1980
+    temp_c: 38
+  - index: 2
+    sm_mhz: 1980
+    temp_c: 50
+  - index: 3
+    sm_mhz: 1980
+    temp_c: 36
+  throttled: false
+  geometry: cone
+  op: vcd_nonconst
+  size: 1024x1008x992
+  recon_shape:
+  - 992
+  - 992
+  - 1008
+  trials: 1
+  is_sharded: true
+  n_shard_devices: 1
+  platform: gpu
+  fingerprint:
+    sum: 1033356.9644855848
+    mean: 0.001041757160851021
+    l2norm: 262.06624955980067
+    min: -0.05505433678627014
+    max: 0.06829304993152618
+    samples:
+    - 0.0
+    - 0.0
+    - 0.010955259203910828
+    - 0.01661818102002144
+    - 0.0004939950304105878
+    - 0.024503670632839203
+    - 0.0037967576645314693
+    - -0.019017381593585014
+    - 0.011418311856687069
+    - 0.006552583537995815
+    - 0.0
+    - 0.0
+    shape:
+    - 992
+    - 992
+    - 1008
+    dtype: float32
+    padding_zero:
+  speedup: 1.0
+vs_main:
+  baseline: main_baseline_gpu.yaml
+  notes:
+  - parallel|direct_filter|512x448x384  time 12.7608 ms vs 12.6193 ms expected 
+    (+0.141559 ms, +1.1%)  mem 690.437 MB vs 689.997 MB expected (+0.439453 MB, 
+    +0.1%)
+  - parallel|direct_filter|513x449x385  time 19.4 ms vs 19.2887 ms expected 
+    (+0.111291 ms, +0.6%)  mem 699.556 MB vs 699.114 MB expected (+0.441895 MB, 
+    +0.1%)
+  - parallel|direct_filter|1024x1008x992  time 125.991 ms vs 124.329 ms expected
+    (+1.66198 ms, +1.3%)  mem 7861.46 MB vs 7858.52 MB expected (+2.94214 MB, 
+    +0.0%)
+  - parallel|forward|512x448x384  time 1011.15 ms vs 1176.56 ms expected 
+    (-165.416 ms, -14.1%)  mem 1081.22 MB vs 6457.22 MB expected (-5376 MB, 
+    -83.3%)
+  - parallel|forward|513x449x385  time 1095.89 ms vs 1366.94 ms expected 
+    (-271.042 ms, -19.8%)  mem 1087.1 MB vs 3607.58 MB expected (-2520.48 MB, 
+    -69.9%)
+  - parallel|forward|1024x1008x992  time 34033 ms vs 36617.2 ms expected 
+    (-2584.15 ms, -7.1%)  mem 11151.2 MB vs 22512.9 MB expected (-11361.7 MB, 
+    -50.5%)
+  - parallel|back|512x448x384  time 660.026 ms vs 660.534 ms expected (-0.507973
+    ms, -0.1%)  mem 6642.98 MB vs 6642.98 MB expected (+0 MB, +0.0%)
+  - parallel|back|513x449x385  time 703.105 ms vs 703.419 ms expected (-0.313844
+    ms, -0.0%)  mem 4025.97 MB vs 4025.97 MB expected (+0 MB, +0.0%)
+  - parallel|back|1024x1008x992  time 22539.7 ms vs 22541.2 ms expected 
+    (-1.49221 ms, -0.0%)  mem 24641.8 MB vs 24641.8 MB expected (+0 MB, +0.0%)
+  - parallel|vcd_nonconst|512x448x384  time 7752.56 ms vs 8584.07 ms expected 
+    (-831.508 ms, -9.7%)  mem 9423.57 MB vs 9516.87 MB expected (-93.2961 MB, 
+    -1.0%)
+  - parallel|vcd_nonconst|513x449x385  time 8351.72 ms vs 9618.82 ms expected 
+    (-1267.09 ms, -13.2%)  mem 6942.85 MB vs 6688.4 MB expected (+254.449 MB, 
+    +3.8%)
+  - parallel|vcd_nonconst|1024x1008x992  time 276537 ms vs 288782 ms expected 
+    (-12244.9 ms, -4.2%)  mem 60676.9 MB vs 61507.1 MB expected (-830.168 MB, 
+    -1.3%)
+  - cone|direct_filter|512x448x384  time 14.5329 ms vs 685.027 ms expected 
+    (-670.495 ms, -97.9%)  mem 694.378 MB vs 1921.71 MB expected (-1227.33 MB, 
+    -63.9%)
+  - cone|direct_filter|513x449x385  time 21.7344 ms vs 787.668 ms expected 
+    (-765.933 ms, -97.2%)  mem 703.518 MB vs 2129.48 MB expected (-1425.96 MB, 
+    -67.0%)
+  - cone|direct_filter|1024x1008x992  time 127.983 ms vs 1673.8 ms expected 
+    (-1545.81 ms, -92.4%)  mem 7888.16 MB vs 19642.7 MB expected (-11754.5 MB, 
+    -59.8%)
+  - cone|forward|512x448x384  time 1259.4 ms vs 1235.59 ms expected (+23.8091 
+    ms, +1.9%)  mem 4613.73 MB vs 4949.73 MB expected (-335.998 MB, -6.8%)
+  - cone|forward|513x449x385  time 1368.83 ms vs 1344.84 ms expected (+23.9876 
+    ms, +1.8%)  mem 4625.46 MB vs 2848.08 MB expected (+1777.38 MB, +62.4%)
+  - cone|forward|1024x1008x992  time 40979.8 ms vs 38004.7 ms expected (+2975.16
+    ms, +7.8%)  mem 26162.5 MB vs 18568.3 MB expected (+7594.27 MB, +40.9%)
+  - cone|back|512x448x384  time 644.463 ms vs 641.573 ms expected (+2.89061 ms, 
+    +0.5%)  mem 5358.96 MB vs 7029.7 MB expected (-1670.74 MB, -23.8%)
+  - cone|back|513x449x385  time 617.351 ms vs 612.888 ms expected (+4.46341 ms, 
+    +0.7%)  mem 3377.96 MB vs 4022.77 MB expected (-644.809 MB, -16.0%)
+  - cone|back|1024x1008x992  time 18610.3 ms vs 18436.1 ms expected (+174.184 
+    ms, +0.9%)  mem 20729.8 MB vs 21135.2 MB expected (-405.424 MB, -1.9%)
+  - cone|vcd_nonconst|512x448x384  time 8689.58 ms vs 9429.14 ms expected 
+    (-739.558 ms, -7.8%)  mem 8139.55 MB vs 8123.62 MB expected (+15.9341 MB, 
+    +0.2%)
+  - cone|vcd_nonconst|513x449x385  time 9059.24 ms vs 9933.33 ms expected 
+    (-874.091 ms, -8.8%)  mem 8279.09 MB vs 6015.18 MB expected (+2263.91 MB, 
+    +37.6%)
+  - cone|vcd_nonconst|1024x1008x992  time 263986 ms vs 253757 ms expected 
+    (+10229.2 ms, +4.0%)  mem 72026.7 MB vs 57563.1 MB expected (+14463.5 MB, 
+    +25.1%)
