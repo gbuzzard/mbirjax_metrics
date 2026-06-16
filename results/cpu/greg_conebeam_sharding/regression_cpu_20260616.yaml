@@ -2,8 +2,8 @@ kind: regression
 date: '20260616'
 platform: cpu
 device_label: CPU (cpu)
-git_commit: 2d4dad7589f19e44c312760147accb8d05508ba7
-git_branch: HEAD
+git_commit: 1c21bc8c389ce8526a8036f86118bed0c1a1fa77
+git_branch: greg/conebeam_sharding
 mbirjax_version: 0.6.18
 git_dirty: false
 config:
@@ -59,7 +59,7 @@ config:
     /Users/gbuzzard/.mbirjax/regression/metrics/results/cpu/greg_conebeam_sharding
   date: '20260616'
   run_tag: greg/conebeam_sharding
-  lib_root: /Users/gbuzzard/.mbirjax/regression/wt_greg_conebeam_sharding
+  lib_root: /Users/gbuzzard/.mbirjax/regression/lib_greg_conebeam_sharding
   gate: true
   compare_to_prior: true
   golden_path: ''
@@ -77,10 +77,10 @@ device_counts:
 - 4
 cells:
 - n_devices: 4
-  min_ms: 5.535874981433153
-  mean_ms: 5.579972329239051
-  std_ms: 0.03121048292099276
-  mem_mb: 520.328125
+  min_ms: 5.064833996584639
+  mean_ms: 5.320013675373048
+  std_ms: 0.18068608648347917
+  mem_mb: 500.515625
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -119,12 +119,16 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 2.528860942669122
+  speedup: 2.705633395067464
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 2
-  min_ms: 8.321708010043949
-  mean_ms: 8.461000009750327
-  std_ms: 0.12053875128040334
-  mem_mb: 556.5625
+  min_ms: 7.710542005952448
+  mean_ms: 7.884694670792669
+  std_ms: 0.12325958110067073
+  mem_mb: 544.484375
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -163,12 +167,16 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 1.6822818112758462
+  speedup: 1.7772530116629157
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 1
-  min_ms: 13.999458024045452
-  mean_ms: 14.393888675840572
-  std_ms: 0.4670135596007648
-  mem_mb: 565.171875
+  min_ms: 13.703584001632407
+  mean_ms: 13.93000032597532
+  std_ms: 0.161358049324334
+  mem_mb: 557.296875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -208,11 +216,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 5.930708022788167
-  mean_ms: 6.088527666482453
-  std_ms: 0.11170359150196438
-  mem_mb: 531.625
+  min_ms: 5.859291995875537
+  mean_ms: 5.99551399742874
+  std_ms: 0.1243797140885926
+  mem_mb: 535.71875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -251,12 +262,14 @@ cells:
     - 97
     dtype: float32
     padding_zero: true
-  speedup: 2.7416976095544485
+  speedup: 2.706825846767997
+  new_records:
+  - min_ms
 - n_devices: 2
-  min_ms: 9.629625012166798
-  mean_ms: 9.837000000212962
-  std_ms: 0.22395202581164916
-  mem_mb: 587.796875
+  min_ms: 9.593334019882604
+  mean_ms: 9.781680681044236
+  std_ms: 0.17906903823158907
+  mem_mb: 588.328125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -295,12 +308,14 @@ cells:
     - 97
     dtype: float32
     padding_zero: true
-  speedup: 1.6885608721522727
+  speedup: 1.6532399461257192
+  new_records:
+  - min_ms
 - n_devices: 1
-  min_ms: 16.26020800904371
-  mean_ms: 17.118985997512937
-  std_ms: 0.8308215418098517
-  mem_mb: 600.921875
+  min_ms: 15.860083018196747
+  mean_ms: 15.952902671415359
+  std_ms: 0.10629033791519177
+  mem_mb: 596.921875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -340,11 +355,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 49.21029100660235
-  mean_ms: 49.3686250022923
-  std_ms: 0.17329403690129455
-  mem_mb: 594.265625
+  min_ms: 49.194541992619634
+  mean_ms: 49.29787500683839
+  std_ms: 0.0867771624856609
+  mem_mb: 593.703125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -383,12 +401,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 3.5722321573407476
+  speedup: 3.4982065087795955
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 2
-  min_ms: 91.77749999798834
-  mean_ms: 92.31954199882846
-  std_ms: 0.49698901532060485
-  mem_mb: 747.65625
+  min_ms: 89.9938749789726
+  mean_ms: 90.15123599480528
+  std_ms: 0.1293897299523092
+  mem_mb: 742.1875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -427,12 +448,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 1.9153995697173516
+  speedup: 1.9122708854932986
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 1
-  min_ms: 175.7905840058811
-  mean_ms: 176.19166699781394
-  std_ms: 0.378753579392388
-  mem_mb: 776.171875
+  min_ms: 172.09266699501313
+  mean_ms: 172.28065267166434
+  std_ms: 0.14222098722670182
+  mem_mb: 768.6875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -472,11 +496,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 27.06295798998326
-  mean_ms: 28.349249992364395
-  std_ms: 1.0368144077239891
-  mem_mb: 907.6875
+  min_ms: 25.784833007492125
+  mean_ms: 26.59886100445874
+  std_ms: 0.5902361491205376
+  mem_mb: 900.21875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -515,12 +542,15 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 1.5871879201083634
+  speedup: 1.5788011883821642
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 2
-  min_ms: 27.757082978496328
-  mean_ms: 33.57963865467658
-  std_ms: 4.137622182829315
-  mem_mb: 1323.59375
+  min_ms: 31.767500011483207
+  mean_ms: 32.79127800487913
+  std_ms: 0.7483625041541073
+  mem_mb: 1326.28125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -559,12 +589,12 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 1.5474969051098926
+  speedup: 1.2814708422050467
 - n_devices: 1
-  min_ms: 42.954000004101545
-  mean_ms: 43.654416678085305
-  std_ms: 0.6311777061189614
-  mem_mb: 1700.578125
+  min_ms: 40.70912499446422
+  mean_ms: 41.326791659230366
+  std_ms: 0.6003169172948819
+  mem_mb: 1692.3125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -604,11 +634,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 29.41620899946429
-  mean_ms: 30.27611166665641
-  std_ms: 0.7441197365061996
-  mem_mb: 927.25
+  min_ms: 29.114375007338822
+  mean_ms: 30.418388671629753
+  std_ms: 1.8093526992943958
+  mem_mb: 936.0
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -647,12 +680,15 @@ cells:
     - 97
     dtype: float32
     padding_zero: true
-  speedup: 1.6490752087609426
+  speedup: 1.7034683377934707
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 28.757334017427638
-  mean_ms: 35.79087534065669
-  std_ms: 4.995033102537983
-  mem_mb: 1377.875
+  min_ms: 34.47187499841675
+  mean_ms: 36.993110998688884
+  std_ms: 1.955731725048735
+  mem_mb: 1389.515625
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -691,12 +727,12 @@ cells:
     - 97
     dtype: float32
     padding_zero: true
-  speedup: 1.686858071313187
+  speedup: 1.4387211604220855
 - n_devices: 1
-  min_ms: 48.50954099674709
-  mean_ms: 49.508277676068246
-  std_ms: 0.8890880158855917
-  mem_mb: 1744.46875
+  min_ms: 49.59541599964723
+  mean_ms: 53.280180329844974
+  std_ms: 3.79768240240429
+  mem_mb: 1769.25
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -737,10 +773,10 @@ cells:
     padding_zero:
   speedup: 1.0
 - n_devices: 4
-  min_ms: 199.82937499298714
-  mean_ms: 217.20988899081325
-  std_ms: 22.041856228009348
-  mem_mb: 1672.015625
+  min_ms: 191.91466699703597
+  mean_ms: 194.82129166135564
+  std_ms: 2.8694239026030646
+  mem_mb: 1729.859375
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -779,12 +815,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 1.7640728897391842
+  speedup: 1.8319904335477328
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 217.16179099166766
-  mean_ms: 218.66512466416074
-  std_ms: 1.0861502947937323
-  mem_mb: 2815.90625
+  min_ms: 211.23266700305976
+  mean_ms: 223.89284733799286
+  std_ms: 9.023201729501638
+  mem_mb: 2852.0
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -823,12 +862,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 1.623276274287955
+  speedup: 1.6644482076769682
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 352.5135829986539
-  mean_ms: 359.4936806669769
-  std_ms: 5.2061966376507645
-  mem_mb: 3870.0625
+  min_ms: 351.5858339960687
+  mean_ms: 354.5611113368068
+  std_ms: 2.128446851761899
+  mem_mb: 3911.71875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -868,11 +910,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 15.251291013555601
-  mean_ms: 15.842027661468213
-  std_ms: 0.658142224778503
-  mem_mb: 766.78125
+  min_ms: 14.302374998806044
+  mean_ms: 14.830249652732164
+  std_ms: 0.3770203071020068
+  mem_mb: 803.28125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -912,12 +956,15 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 0.8697405359726395
+  speedup: 0.9188042551191491
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 11.620875011431053
-  mean_ms: 11.817333336997157
-  std_ms: 0.14208852125751237
-  mem_mb: 901.3125
+  min_ms: 10.397042002296075
+  mean_ms: 11.183889000676572
+  std_ms: 0.5784607898764778
+  mem_mb: 947.40625
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -957,12 +1004,15 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 1.1414515694693002
+  speedup: 1.2639251629752637
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 13.264666020404547
-  mean_ms: 13.691499994214004
-  std_ms: 0.3193331518748959
-  mem_mb: 1021.265625
+  min_ms: 13.141083007212728
+  mean_ms: 13.491180667188019
+  std_ms: 0.2543507577378457
+  mem_mb: 1067.9375
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1003,11 +1053,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 32.0490830054041
-  mean_ms: 32.31923600348333
-  std_ms: 0.3307758473955847
-  mem_mb: 1016.71875
+  min_ms: 30.06733299116604
+  mean_ms: 31.12463866515706
+  std_ms: 0.7801788089432252
+  mem_mb: 1031.125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1047,12 +1099,15 @@ cells:
     - 113
     dtype: float32
     padding_zero: true
-  speedup: 0.8132551866073994
+  speedup: 0.853192000843631
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 25.820666982326657
-  mean_ms: 27.92523633494663
-  std_ms: 2.046360334649494
-  mem_mb: 1225.6875
+  min_ms: 26.898583018919453
+  mean_ms: 27.953360666288063
+  std_ms: 1.251251380221856
+  mem_mb: 1227.90625
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1092,12 +1147,12 @@ cells:
     - 113
     dtype: float32
     padding_zero: true
-  speedup: 1.009427176997244
+  speedup: 0.9537010918649941
 - n_devices: 1
-  min_ms: 26.064082980155945
-  mean_ms: 26.356166335366044
-  std_ms: 0.2105236576688546
-  mem_mb: 1445.9375
+  min_ms: 25.65320799476467
+  mean_ms: 26.673458002430078
+  std_ms: 0.7356587527393851
+  mem_mb: 1447.671875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1138,11 +1193,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 145.8111249958165
-  mean_ms: 151.6113749918683
-  std_ms: 4.493767738654071
-  mem_mb: 1361.046875
+  min_ms: 141.63541700690985
+  mean_ms: 144.42737499484792
+  std_ms: 3.7988357865019595
+  mem_mb: 1427.625
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1182,12 +1239,15 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.1782614324827243
+  speedup: 1.2260113229827108
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 130.1309590053279
-  mean_ms: 142.49966667072536
-  std_ms: 8.747714885701788
-  mem_mb: 1861.84375
+  min_ms: 146.22295799199492
+  mean_ms: 148.5453056617795
+  std_ms: 3.067904789206458
+  mem_mb: 1803.234375
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1227,12 +1287,14 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.3202363705200562
+  speedup: 1.1875469308681055
+  new_records:
+  - mem_mb
 - n_devices: 1
-  min_ms: 171.80362500948831
-  mean_ms: 173.65131967623407
-  std_ms: 1.9688315818720337
-  mem_mb: 2518.984375
+  min_ms: 173.64662498584948
+  mean_ms: 175.47619465040043
+  std_ms: 1.532570549186155
+  mem_mb: 2457.3125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1273,11 +1335,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - mem_mb
 - n_devices: 4
-  min_ms: 446.40899999649264
-  mean_ms: 446.40899999649264
+  min_ms: 454.829875001451
+  mean_ms: 454.829875001451
   std_ms: 0.0
-  mem_mb: 1613.515625
+  mem_mb: 1641.171875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1316,12 +1380,12 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 0.9933844299952178
+  speedup: 0.9447435329343462
 - n_devices: 2
-  min_ms: 402.8390840103384
-  mean_ms: 402.8390840103384
+  min_ms: 382.5299579766579
+  mean_ms: 382.5299579766579
   std_ms: 0.0
-  mem_mb: 2370.984375
+  mem_mb: 2383.953125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1360,12 +1424,15 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 1.100826031058273
+  speedup: 1.1233043949440902
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 443.45575000625104
-  mean_ms: 443.45575000625104
+  min_ms: 429.6975829929579
+  mean_ms: 429.6975829929579
   std_ms: 0.0
-  mem_mb: 3199.03125
+  mem_mb: 3157.484375
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1405,11 +1472,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 656.7347919917665
-  mean_ms: 656.7347919917665
+  min_ms: 621.7988329881337
+  mean_ms: 621.7988329881337
   std_ms: 0.0
-  mem_mb: 2224.90625
+  mem_mb: 2130.28125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1424,21 +1494,21 @@ cells:
   n_shard_devices: 4
   platform: cpu
   fingerprint:
-    sum: 5366.598257602736
-    mean: 0.005047509828758134
-    l2norm: 21.252593559439838
-    min: -0.10783106833696365
+    sum: 5366.598294664552
+    mean: 0.005047509863616319
+    l2norm: 21.252595646107576
+    min: -0.10783110558986664
     max: 0.13579536974430084
     samples:
     - 0.0
     - 0.0
     - -0.032167840749025345
     - 0.05118393898010254
-    - -0.005167739000171423
-    - 0.01220537256449461
-    - 0.021782441064715385
-    - -0.014685879461467266
-    - 0.032930582761764526
+    - -0.005167740397155285
+    - 0.012205373495817184
+    - 0.021782442927360535
+    - -0.014685878530144691
+    - 0.032930586487054825
     - 0.004523905459791422
     - 0.0
     - 0.0
@@ -1448,12 +1518,15 @@ cells:
     - 113
     dtype: float32
     padding_zero: true
-  speedup: 0.9416413330845418
+  speedup: 0.9363704322186693
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 2
-  min_ms: 548.6012080218643
-  mean_ms: 548.6012080218643
+  min_ms: 493.1479999795556
+  mean_ms: 493.1479999795556
   std_ms: 0.0
-  mem_mb: 3237.796875
+  mem_mb: 3177.328125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1492,12 +1565,16 @@ cells:
     - 113
     dtype: float32
     padding_zero: true
-  speedup: 1.1272461962742886
+  speedup: 1.1806476798492551
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 1
-  min_ms: 618.4086250141263
-  mean_ms: 618.4086250141263
+  min_ms: 582.2340419981629
+  mean_ms: 582.2340419981629
   std_ms: 0.0
-  mem_mb: 4025.8125
+  mem_mb: 3949.71875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1537,11 +1614,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 2419.9999580159783
-  mean_ms: 2419.9999580159783
+  min_ms: 2203.7734169862233
+  mean_ms: 2203.7734169862233
   std_ms: 0.0
-  mem_mb: 3694.453125
+  mem_mb: 3711.21875
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1580,12 +1660,15 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.5404552089513075
+  speedup: 1.6875405104424661
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 2450.8868330158293
-  mean_ms: 2450.8868330158293
+  min_ms: 2444.2335829953663
+  mean_ms: 2444.2335829953663
   std_ms: 0.0
-  mem_mb: 5617.296875
+  mem_mb: 5628.453125
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1624,12 +1707,15 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.5210418901310334
+  speedup: 1.5215227148802002
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 3727.9015409876592
-  mean_ms: 3727.9015409876592
+  min_ms: 3718.956917000469
+  mean_ms: 3718.956917000469
   std_ms: 0.0
-  mem_mb: 7234.765625
+  mem_mb: 7184.515625
   gpu_state: []
   throttled: false
   geometry: parallel
@@ -1669,11 +1755,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 5.945959012024105
-  mean_ms: 6.156597334969168
-  std_ms: 0.18138809189037322
-  mem_mb: 559.21875
+  min_ms: 5.796249984996393
+  mean_ms: 5.951166657420496
+  std_ms: 0.11238310440082223
+  mem_mb: 559.375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1712,12 +1801,14 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 2.4778944751855976
+  speedup: 2.4289985812394144
+  new_records:
+  - min_ms
 - n_devices: 2
-  min_ms: 8.502917014993727
-  mean_ms: 8.666805670751879
-  std_ms: 0.12980692881648936
-  mem_mb: 597.828125
+  min_ms: 8.369416987989098
+  mean_ms: 8.486485991549367
+  std_ms: 0.08502509761012027
+  mem_mb: 599.46875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1756,12 +1847,14 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 1.7327534726722735
+  speedup: 1.6822059422143774
+  new_records:
+  - min_ms
 - n_devices: 1
-  min_ms: 14.733458985574543
-  mean_ms: 15.235236322041601
-  std_ms: 0.5320820824677347
-  mem_mb: 616.5625
+  min_ms: 14.079082990065217
+  mean_ms: 14.191305332739526
+  std_ms: 0.13296396238818897
+  mem_mb: 608.46875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1801,11 +1894,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 6.313749996479601
-  mean_ms: 6.404291654083257
-  std_ms: 0.11195232246970134
-  mem_mb: 574.953125
+  min_ms: 6.184958998346701
+  mean_ms: 6.578166998224333
+  std_ms: 0.2833870682148131
+  mem_mb: 572.390625
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1844,12 +1940,16 @@ cells:
     - 97
     dtype: float32
     padding_zero: true
-  speedup: 2.706005465191155
+  speedup: 2.7131613988721557
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 2
-  min_ms: 10.462415986694396
-  mean_ms: 10.655777325155213
-  std_ms: 0.16107611998823662
-  mem_mb: 616.859375
+  min_ms: 10.02679200610146
+  mean_ms: 10.273055668221787
+  std_ms: 0.23300100745830976
+  mem_mb: 610.578125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1888,12 +1988,16 @@ cells:
     - 97
     dtype: float32
     padding_zero: true
-  speedup: 1.6329920372170617
+  speedup: 1.673595303234563
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 1
-  min_ms: 17.085041996324435
-  mean_ms: 17.575527997299407
-  std_ms: 0.4662970633374932
-  mem_mb: 630.609375
+  min_ms: 16.780792007921264
+  mean_ms: 16.922042006626725
+  std_ms: 0.1323389114200565
+  mem_mb: 641.078125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1933,11 +2037,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 50.599333975696936
-  mean_ms: 50.884430655666314
-  std_ms: 0.2962910502126377
-  mem_mb: 645.953125
+  min_ms: 49.549459014087915
+  mean_ms: 50.14879201189615
+  std_ms: 0.5525097798568039
+  mem_mb: 629.78125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -1976,12 +2082,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 3.5499635447580875
+  speedup: 3.4636082699875916
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 2
-  min_ms: 93.09437498450279
-  mean_ms: 93.32755565992557
-  std_ms: 0.2843223552919846
-  mem_mb: 791.15625
+  min_ms: 91.18179199867882
+  mean_ms: 91.71893067347507
+  std_ms: 0.7080628417620295
+  mem_mb: 783.671875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2020,12 +2129,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 1.9295020889572043
+  speedup: 1.8821730989570025
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 1
-  min_ms: 179.62579100276344
-  mean_ms: 180.0084996696872
-  std_ms: 0.47695607021941927
-  mem_mb: 817.515625
+  min_ms: 171.61991601460613
+  mean_ms: 172.39281899916628
+  std_ms: 0.9471614003407619
+  mem_mb: 812.171875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2065,11 +2177,14 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 4
-  min_ms: 260.09754100232385
-  mean_ms: 261.4915553228154
-  std_ms: 1.5511277353570703
-  mem_mb: 2196.375
+  min_ms: 240.32258297665976
+  mean_ms: 242.27831932754876
+  std_ms: 1.4851353393876212
+  mem_mb: 2038.9375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2108,12 +2223,16 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 1.6073082213614664
+  speedup: 1.806421821113198
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 2
-  min_ms: 270.463666995056
-  mean_ms: 276.0152223442371
-  std_ms: 4.251247563627902
-  mem_mb: 3662.296875
+  min_ms: 261.4887500240002
+  mean_ms: 267.06044433133985
+  std_ms: 3.9397982481854834
+  mem_mb: 3493.34375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2152,12 +2271,16 @@ cells:
     - 96
     dtype: float32
     padding_zero:
-  speedup: 1.5457045327148442
+  speedup: 1.66020128191167
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 1
-  min_ms: 418.05691600893624
-  mean_ms: 424.0987223359601
-  std_ms: 6.4584148804739705
-  mem_mb: 4377.484375
+  min_ms: 434.1239579953253
+  mean_ms: 440.07455532361445
+  std_ms: 4.254440381990646
+  mem_mb: 4201.046875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2197,11 +2320,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - mem_mb
 - n_devices: 1
-  min_ms: 457.6627920032479
-  mean_ms: 459.9749446691324
-  std_ms: 1.9214586185324316
-  mem_mb: 1256.84375
+  min_ms: 431.548708002083
+  mean_ms: 436.6018469930471
+  std_ms: 3.5754689955343957
+  mem_mb: 1263.65625
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2241,6 +2366,8 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - geometry: cone
   op: forward
   size: 129x113x97
@@ -2256,10 +2383,10 @@ cells:
   oom: false
   error: voxel_values must have shape[0:2] = (num_indices, num_slices)
 - n_devices: 4
-  min_ms: 1534.3069579976145
-  mean_ms: 1545.532055334964
-  std_ms: 12.443989827484929
-  mem_mb: 3712.109375
+  min_ms: 1457.8130000154488
+  mean_ms: 1468.173055667042
+  std_ms: 13.135352859728254
+  mem_mb: 3963.875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2298,12 +2425,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 3.2551510575937854
+  speedup: 3.3794313810753187
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 2956.389999977546
-  mean_ms: 2972.9581943150456
-  std_ms: 13.349792753856212
-  mem_mb: 6325.609375
+  min_ms: 2887.771999987308
+  mean_ms: 2912.227555672871
+  std_ms: 24.80264878635278
+  mem_mb: 6585.0625
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2342,12 +2472,15 @@ cells:
     - 160
     dtype: float32
     padding_zero:
-  speedup: 1.68935793891786
+  speedup: 1.7060138404324907
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 4994.400916999439
-  mean_ms: 5016.029972330823
-  std_ms: 15.782589625342274
-  mem_mb: 6377.15625
+  min_ms: 4926.5789999917615
+  mean_ms: 4942.2243473333465
+  std_ms: 15.75121309538489
+  mem_mb: 6638.328125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2387,11 +2520,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 243.13641598564573
-  mean_ms: 250.42524999783686
-  std_ms: 6.910764940701494
-  mem_mb: 692.203125
+  min_ms: 240.21379198529758
+  mean_ms: 314.67858332325704
+  std_ms: 53.228803908292996
+  mem_mb: 674.046875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2431,12 +2566,15 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 0.44516984248891006
+  speedup: 0.41635342080185245
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 2
-  min_ms: 88.09204201679677
-  mean_ms: 93.35659733430172
-  std_ms: 3.786657828381184
-  mem_mb: 847.359375
+  min_ms: 80.52958399639465
+  mean_ms: 83.85041666527589
+  std_ms: 2.945309332076761
+  mem_mb: 839.15625
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2476,12 +2614,16 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 1.2286807926079197
+  speedup: 1.2419514550247885
+  new_records:
+  - min_ms
+  - mem_mb
+  - speedup
 - n_devices: 1
-  min_ms: 108.23700000764802
-  mean_ms: 110.45408333302476
-  std_ms: 1.8129858309346063
-  mem_mb: 980.859375
+  min_ms: 100.01383401686326
+  mean_ms: 112.04166700675462
+  std_ms: 8.952857421068373
+  mem_mb: 990.484375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2522,11 +2664,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 95.3972079732921
-  mean_ms: 97.71938865499881
-  std_ms: 1.7907268744531384
-  mem_mb: 793.4375
+  min_ms: 88.27387500787154
+  mean_ms: 89.05705600045621
+  std_ms: 0.6366148334821697
+  mem_mb: 845.0
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2566,12 +2710,15 @@ cells:
     - 113
     dtype: float32
     padding_zero: true
-  speedup: 1.368372500462698
+  speedup: 1.3828034284435995
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 94.2323750059586
-  mean_ms: 96.52418033025849
-  std_ms: 1.8088719814419665
-  mem_mb: 1008.84375
+  min_ms: 88.2670420105569
+  mean_ms: 93.3282919965374
+  std_ms: 4.1019349959001135
+  mem_mb: 1056.828125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2611,12 +2758,14 @@ cells:
     - 113
     dtype: float32
     padding_zero: true
-  speedup: 1.3852873389142466
+  speedup: 1.382910475104482
+  new_records:
+  - min_ms
 - n_devices: 1
-  min_ms: 130.53891601157375
-  mean_ms: 136.38448600734895
-  std_ms: 5.158162518557036
-  mem_mb: 1161.40625
+  min_ms: 122.06541700288653
+  mean_ms: 128.14293066427732
+  std_ms: 4.363593337050173
+  mem_mb: 1209.609375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2657,11 +2806,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 717.9035839799326
-  mean_ms: 749.8227083318246
-  std_ms: 23.485478363509145
-  mem_mb: 1279.03125
+  min_ms: 633.162291982444
+  mean_ms: 646.8879583214099
+  std_ms: 13.657334813414707
+  mem_mb: 1326.078125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2701,12 +2852,15 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.3237057819580522
+  speedup: 1.3898582466732827
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 768.796124990331
-  mean_ms: 790.0966249969011
-  std_ms: 24.58826595491008
-  mem_mb: 1804.6875
+  min_ms: 631.4540419843979
+  mean_ms: 696.9146669919913
+  std_ms: 47.67779933673501
+  mem_mb: 1862.984375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2746,12 +2900,15 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.2360794937859456
+  speedup: 1.3936181803965713
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 950.293125002645
-  mean_ms: 962.2069029913595
-  std_ms: 15.662531724072897
-  mem_mb: 2175.046875
+  min_ms: 880.0058329943568
+  mean_ms: 897.6336246608602
+  std_ms: 12.70769422414222
+  mem_mb: 2233.8125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2792,11 +2949,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 4
-  min_ms: 3111.0403329948895
-  mean_ms: 3111.0403329948895
+  min_ms: 2724.1571659978945
+  mean_ms: 2724.1571659978945
   std_ms: 0.0
-  mem_mb: 2903.484375
+  mem_mb: 3153.171875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2835,12 +2994,15 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 0.8048250819631397
+  speedup: 0.8989629238612763
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 2
-  min_ms: 1885.9174580138642
-  mean_ms: 1885.9174580138642
+  min_ms: 1764.7535830037668
+  mean_ms: 1764.7535830037668
   std_ms: 0.0
-  mem_mb: 4597.703125
+  mem_mb: 4861.6875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2879,12 +3041,15 @@ cells:
     - 112
     dtype: float32
     padding_zero:
-  speedup: 1.3276526394904598
+  speedup: 1.3876817220197073
+  new_records:
+  - min_ms
+  - speedup
 - n_devices: 1
-  min_ms: 2503.8432909932453
-  mean_ms: 2503.8432909932453
+  min_ms: 2448.9162910031155
+  mean_ms: 2448.9162910031155
   std_ms: 0.0
-  mem_mb: 5468.328125
+  mem_mb: 5722.734375
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2924,11 +3089,13 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - n_devices: 1
-  min_ms: 2803.0489579832647
-  mean_ms: 2803.0489579832647
+  min_ms: 2748.4453749784734
+  mean_ms: 2748.4453749784734
   std_ms: 0.0
-  mem_mb: 2521.609375
+  mem_mb: 2570.65625
   gpu_state: []
   throttled: false
   geometry: cone
@@ -2968,6 +3135,8 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 - geometry: cone
   op: vcd_nonconst
   size: 129x113x97
@@ -2983,10 +3152,10 @@ cells:
   oom: false
   error: voxel_values must have shape[0:2] = (num_indices, num_slices)
 - n_devices: 4
-  min_ms: 10964.138375013135
-  mean_ms: 10964.138375013135
+  min_ms: 10811.666833003983
+  mean_ms: 10811.666833003983
   std_ms: 0.0
-  mem_mb: 6254.546875
+  mem_mb: 6244.328125
   gpu_state: []
   throttled: false
   geometry: cone
@@ -3025,12 +3194,15 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 2.4359014212076415
+  speedup: 2.418918966145603
+  new_records:
+  - min_ms
+  - mem_mb
 - n_devices: 2
-  min_ms: 16435.22650000523
-  mean_ms: 16435.22650000523
+  min_ms: 16145.305999991251
+  mean_ms: 16145.305999991251
   std_ms: 0.0
-  mem_mb: 8926.515625
+  mem_mb: 9049.71875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -3069,12 +3241,14 @@ cells:
     - 208
     dtype: float32
     padding_zero:
-  speedup: 1.6250192992474575
+  speedup: 1.6198234928476967
+  new_records:
+  - min_ms
 - n_devices: 1
-  min_ms: 26707.56025001174
-  mean_ms: 26707.56025001174
+  min_ms: 26152.5459580007
+  mean_ms: 26152.5459580007
   std_ms: 0.0
-  mem_mb: 8926.515625
+  mem_mb: 9049.71875
   gpu_state: []
   throttled: false
   geometry: cone
@@ -3114,6 +3288,8 @@ cells:
     dtype: float32
     padding_zero:
   speedup: 1.0
+  new_records:
+  - min_ms
 gate:
   result: warn
   hard: []

@@ -1,0 +1,449 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_greg_conebeam_sharding
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [168 items]
+
+............................F............s......F...s................... [ 42%]
+..................................................F..........F.......... [ 85%]
+........................                                                 [100%]
+=================================== FAILURES ===================================
+_________________ TestProjectors.test_hessian_anisotropic_cone _________________
+[gw3] darwin -- Python 3.11.15 /Users/gbuzzard/miniforge3/envs/mbirjax_regression/bin/python
+
+self = <test_projectors.TestProjectors testMethod=test_hessian_anisotropic_cone>
+geometry_type = 'anisotropic_cone', operation = 'hessian'
+
+    def test(self, geometry_type=geometry_type, operation=operation):
+        print('Testing {} with {}'.format(operation, geometry_type))
+>       getattr(self, 'verify_' + operation)(geometry_type)
+
+../tests/geometries/test_projectors.py:344: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../tests/geometries/test_projectors.py:328: in verify_hessian
+    Ax = ct_model.sparse_forward_project(voxel_values, indices)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1321: in sparse_forward_project
+    return self._sparse_forward_project_sharded(
+../mbirjax/tomography_model.py:1475: in _sparse_forward_project_sharded
+    owned_views = self._forward_project_to_view_shards(
+../mbirjax/tomography_model.py:1542: in _forward_project_to_view_shards
+    return mjs.run_per_device(devices, worker, executor=pool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:85: in run_per_device
+    return list(executor.map(_run_on_device, range(n)))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:619: in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:317: in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/thread.py:58: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:82: in _run_on_device
+    return worker_fn(i, devices[i])
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1536: in worker
+    part = self.projector_functions.sparse_forward_project(
+../mbirjax/projectors.py:97: in sparse_forward_project_public
+    return _jit_sparse_forward_project(
+../mbirjax/projectors.py:358: in _sparse_forward_project
+    return sum_function_in_batches(forward_project_pixel_batch, (voxel_values, pixel_indices),
+../mbirjax/projectors.py:283: in sum_function_in_batches
+    summed_output = function_to_sum(*initial_batch, *extra_args)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:355: in forward_project_pixel_batch
+    return concatenate_function_in_batches(forward_project_view_batch, cur_view_params_array,
+../mbirjax/projectors.py:175: in concatenate_function_in_batches
+    output_data = function(*initial_batch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:353: in forward_project_view_batch
+    return jax.vmap(forward_project_single_view)(view_params_batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:348: in forward_project_single_view
+    return fwd_kernel(local_values, local_pix_indices, single_view_params, projector_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+voxel_values = JitTracer(float32[2048,16])
+pixel_indices = JitTracer(int32[2048])
+single_view_params = JitTracer(float32[2])
+projector_params = ProjectorParams(sinogram_shape=(64, 40, 128), recon_shape=(67, 128, 14), geometry_params=GeometryParams(delta_det_row=...slice_aspect=2.9, recon_slice_offset=0.0, magnification=2.0, psf_radius=2, bp_psf_radius=1, use_curved_detector=False))
+
+    @staticmethod
+    @partial(jax.jit, static_argnames='projector_params')
+    def forward_project_pixel_batch_to_one_view(voxel_values, pixel_indices, single_view_params, projector_params):
+        """
+        Forward project a set of voxels determined by indices into the flattened array of size num_rows x num_cols.
+    
+        Args:
+            voxel_values (jax array):  2D array of shape (num_indices, num_slices) of voxel values, where
+                voxel_values[i, j] is the value of the voxel in slice j at the location determined by indices[i].
+            pixel_indices (jax array of int):  1D vector of indices into flattened array of size num_rows x num_cols.
+            single_view_params: These are the angle and helical_z_shift for the view being forward projected.
+            projector_params (namedtuple):  tuple of (sinogram_shape, recon_shape, get_geometry_params())
+    
+        Returns:
+            jax array of shape (num_det_rows, num_det_channels)
+        """
+        recon_shape = projector_params.recon_shape
+        num_recon_slices = recon_shape[2]
+        if voxel_values.shape[0] != pixel_indices.shape[0] or len(voxel_values.shape) < 2 or \
+                voxel_values.shape[1] != num_recon_slices:
+>           raise ValueError('voxel_values must have shape[0:2] = (num_indices, num_slices)')
+E           ValueError: voxel_values must have shape[0:2] = (num_indices, num_slices)
+E           --------------------
+E           For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+../mbirjax/cone_beam.py:300: ValueError
+----------------------------- Captured stdout call -----------------------------
+Testing hessian with anisotropic_cone
+_________________ TestProjectors.test_adjoint_anisotropic_cone _________________
+[gw1] darwin -- Python 3.11.15 /Users/gbuzzard/miniforge3/envs/mbirjax_regression/bin/python
+
+self = <test_projectors.TestProjectors testMethod=test_adjoint_anisotropic_cone>
+geometry_type = 'anisotropic_cone', operation = 'adjoint'
+
+    def test(self, geometry_type=geometry_type, operation=operation):
+        print('Testing {} with {}'.format(operation, geometry_type))
+>       getattr(self, 'verify_' + operation)(geometry_type)
+
+../tests/geometries/test_projectors.py:344: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../tests/geometries/test_projectors.py:250: in verify_adjoint
+    sinogram = ct_model.sparse_forward_project(voxel_values[0], full_indices[0])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1321: in sparse_forward_project
+    return self._sparse_forward_project_sharded(
+../mbirjax/tomography_model.py:1475: in _sparse_forward_project_sharded
+    owned_views = self._forward_project_to_view_shards(
+../mbirjax/tomography_model.py:1542: in _forward_project_to_view_shards
+    return mjs.run_per_device(devices, worker, executor=pool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:85: in run_per_device
+    return list(executor.map(_run_on_device, range(n)))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:619: in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:317: in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/thread.py:58: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:82: in _run_on_device
+    return worker_fn(i, devices[i])
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1536: in worker
+    part = self.projector_functions.sparse_forward_project(
+../mbirjax/projectors.py:97: in sparse_forward_project_public
+    return _jit_sparse_forward_project(
+../mbirjax/projectors.py:358: in _sparse_forward_project
+    return sum_function_in_batches(forward_project_pixel_batch, (voxel_values, pixel_indices),
+../mbirjax/projectors.py:283: in sum_function_in_batches
+    summed_output = function_to_sum(*initial_batch, *extra_args)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:355: in forward_project_pixel_batch
+    return concatenate_function_in_batches(forward_project_view_batch, cur_view_params_array,
+../mbirjax/projectors.py:175: in concatenate_function_in_batches
+    output_data = function(*initial_batch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:353: in forward_project_view_batch
+    return jax.vmap(forward_project_single_view)(view_params_batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:348: in forward_project_single_view
+    return fwd_kernel(local_values, local_pix_indices, single_view_params, projector_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+voxel_values = JitTracer(float32[2048,16])
+pixel_indices = JitTracer(int32[2048])
+single_view_params = JitTracer(float32[2])
+projector_params = ProjectorParams(sinogram_shape=(64, 40, 128), recon_shape=(67, 128, 14), geometry_params=GeometryParams(delta_det_row=...slice_aspect=2.9, recon_slice_offset=0.0, magnification=2.0, psf_radius=2, bp_psf_radius=1, use_curved_detector=False))
+
+    @staticmethod
+    @partial(jax.jit, static_argnames='projector_params')
+    def forward_project_pixel_batch_to_one_view(voxel_values, pixel_indices, single_view_params, projector_params):
+        """
+        Forward project a set of voxels determined by indices into the flattened array of size num_rows x num_cols.
+    
+        Args:
+            voxel_values (jax array):  2D array of shape (num_indices, num_slices) of voxel values, where
+                voxel_values[i, j] is the value of the voxel in slice j at the location determined by indices[i].
+            pixel_indices (jax array of int):  1D vector of indices into flattened array of size num_rows x num_cols.
+            single_view_params: These are the angle and helical_z_shift for the view being forward projected.
+            projector_params (namedtuple):  tuple of (sinogram_shape, recon_shape, get_geometry_params())
+    
+        Returns:
+            jax array of shape (num_det_rows, num_det_channels)
+        """
+        recon_shape = projector_params.recon_shape
+        num_recon_slices = recon_shape[2]
+        if voxel_values.shape[0] != pixel_indices.shape[0] or len(voxel_values.shape) < 2 or \
+                voxel_values.shape[1] != num_recon_slices:
+>           raise ValueError('voxel_values must have shape[0:2] = (num_indices, num_slices)')
+E           ValueError: voxel_values must have shape[0:2] = (num_indices, num_slices)
+E           --------------------
+E           For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+../mbirjax/cone_beam.py:300: ValueError
+----------------------------- Captured stdout call -----------------------------
+Testing adjoint with anisotropic_cone
+___________________________ TestVCD.test_split_sino ____________________________
+[gw7] darwin -- Python 3.11.15 /Users/gbuzzard/miniforge3/envs/mbirjax_regression/bin/python
+
+self = <test_vcd.TestVCD testMethod=test_split_sino>
+
+    def test_split_sino(self):
+        geometry_type = 'cone'
+        self.set_view_params(geometry_type)
+        ct_model = self.get_model(geometry_type)
+        ct_model.set_params(verbose=0)
+    
+        # Generate synthetic sinogram data
+        phantom_shape = ct_model.get_params('recon_shape')
+        phantom = mj.generate_3d_shepp_logan_low_dynamic_range(phantom_shape)
+        sinogram = ct_model.forward_project(phantom)
+    
+        # ##########################
+        # Mode-vs-mode: the stitched half-sino recon against the unsplit recon at the
+        # same iteration count (each seeded: the partition sequence is drawn from the
+        # global RNG).
+        sinogram = jax.device_put(sinogram, ct_model.main_device)
+        print('  Starting unsplit recon')
+        np.random.seed(0)
+        recon_full, _ = ct_model.recon(sinogram, max_iterations=self.SPLIT_SINO_ITERATIONS,
+                                       stop_threshold_change_pct=0.0)
+        recon_full = np.asarray(recon_full)
+        print('  Starting split recon')
+        np.random.seed(0)
+>       recon, recon_dict = ct_model.split_sino_recon(sinogram,
+                                                      max_iterations=self.SPLIT_SINO_ITERATIONS,
+                                                      stop_threshold_change_pct=0.0)
+
+../tests/geometries/test_vcd.py:278: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../mbirjax/cone_beam.py:1291: in split_sino_recon
+    recon_top_half, recon_top_dict = ct_model_top_half.recon(sino_top_half, weights=weights_top_half,
+../mbirjax/tomography_model.py:2833: in recon
+    recon, loss_vectors = self.vcd_recon(sinogram, partitions, partition_sequence, weights=weights,
+../mbirjax/tomography_model.py:2953: in vcd_recon
+    error_sinogram = self.forward_project(init_recon, output_sharded=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1189: in forward_project
+    sinogram = self.sparse_forward_project(voxel_values, full_indices)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1321: in sparse_forward_project
+    return self._sparse_forward_project_sharded(
+../mbirjax/tomography_model.py:1475: in _sparse_forward_project_sharded
+    owned_views = self._forward_project_to_view_shards(
+../mbirjax/tomography_model.py:1542: in _forward_project_to_view_shards
+    return mjs.run_per_device(devices, worker, executor=pool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:85: in run_per_device
+    return list(executor.map(_run_on_device, range(n)))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:619: in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:317: in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/thread.py:58: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:82: in _run_on_device
+    return worker_fn(i, devices[i])
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1536: in worker
+    part = self.projector_functions.sparse_forward_project(
+../mbirjax/projectors.py:97: in sparse_forward_project_public
+    return _jit_sparse_forward_project(
+../mbirjax/projectors.py:358: in _sparse_forward_project
+    return sum_function_in_batches(forward_project_pixel_batch, (voxel_values, pixel_indices),
+../mbirjax/projectors.py:283: in sum_function_in_batches
+    summed_output = function_to_sum(*initial_batch, *extra_args)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:355: in forward_project_pixel_batch
+    return concatenate_function_in_batches(forward_project_view_batch, cur_view_params_array,
+../mbirjax/projectors.py:175: in concatenate_function_in_batches
+    output_data = function(*initial_batch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:353: in forward_project_view_batch
+    return jax.vmap(forward_project_single_view)(view_params_batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:348: in forward_project_single_view
+    return fwd_kernel(local_values, local_pix_indices, single_view_params, projector_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+voxel_values = JitTracer(float32[2048,28])
+pixel_indices = JitTracer(int32[2048])
+single_view_params = JitTracer(float32[2])
+projector_params = ProjectorParams(sinogram_shape=(64, 25, 128), recon_shape=(128, 128, 26), geometry_params=GeometryParams(delta_det_row...lice_aspect=1.0, recon_slice_offset=-3.5, magnification=2.0, psf_radius=1, bp_psf_radius=1, use_curved_detector=False))
+
+    @staticmethod
+    @partial(jax.jit, static_argnames='projector_params')
+    def forward_project_pixel_batch_to_one_view(voxel_values, pixel_indices, single_view_params, projector_params):
+        """
+        Forward project a set of voxels determined by indices into the flattened array of size num_rows x num_cols.
+    
+        Args:
+            voxel_values (jax array):  2D array of shape (num_indices, num_slices) of voxel values, where
+                voxel_values[i, j] is the value of the voxel in slice j at the location determined by indices[i].
+            pixel_indices (jax array of int):  1D vector of indices into flattened array of size num_rows x num_cols.
+            single_view_params: These are the angle and helical_z_shift for the view being forward projected.
+            projector_params (namedtuple):  tuple of (sinogram_shape, recon_shape, get_geometry_params())
+    
+        Returns:
+            jax array of shape (num_det_rows, num_det_channels)
+        """
+        recon_shape = projector_params.recon_shape
+        num_recon_slices = recon_shape[2]
+        if voxel_values.shape[0] != pixel_indices.shape[0] or len(voxel_values.shape) < 2 or \
+                voxel_values.shape[1] != num_recon_slices:
+>           raise ValueError('voxel_values must have shape[0:2] = (num_indices, num_slices)')
+E           ValueError: voxel_values must have shape[0:2] = (num_indices, num_slices)
+E           --------------------
+E           For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+../mbirjax/cone_beam.py:300: ValueError
+----------------------------- Captured stdout call -----------------------------
+  Starting unsplit recon
+  Starting split recon
+______________________ TestVCD.test_vcd_anisotropic_cone _______________________
+[gw7] darwin -- Python 3.11.15 /Users/gbuzzard/miniforge3/envs/mbirjax_regression/bin/python
+
+self = <test_vcd.TestVCD testMethod=test_vcd_anisotropic_cone>
+geometry_type = 'anisotropic_cone'
+
+    def test(self, geometry_type=geometry_type):
+        print("Testing vcd with", geometry_type)
+        sanity_only = geometry_type not in self.FULL_CONVERGENCE_GEOMETRIES
+>       self.verify_vcd(geometry_type, self.tolerances_by_geometry[geometry_type],
+                        sanity_only=sanity_only)
+
+../tests/geometries/test_vcd.py:299: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../tests/geometries/test_vcd.py:198: in verify_vcd
+    recon, recon_dict = ct_model.recon(sinogram, max_iterations=self.SANITY_ITERATIONS,
+../mbirjax/tomography_model.py:2833: in recon
+    recon, loss_vectors = self.vcd_recon(sinogram, partitions, partition_sequence, weights=weights,
+../mbirjax/tomography_model.py:2953: in vcd_recon
+    error_sinogram = self.forward_project(init_recon, output_sharded=True)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1189: in forward_project
+    sinogram = self.sparse_forward_project(voxel_values, full_indices)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1321: in sparse_forward_project
+    return self._sparse_forward_project_sharded(
+../mbirjax/tomography_model.py:1475: in _sparse_forward_project_sharded
+    owned_views = self._forward_project_to_view_shards(
+../mbirjax/tomography_model.py:1542: in _forward_project_to_view_shards
+    return mjs.run_per_device(devices, worker, executor=pool)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:85: in run_per_device
+    return list(executor.map(_run_on_device, range(n)))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:619: in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:317: in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+../../../../miniforge3/envs/mbirjax_regression/lib/python3.11/concurrent/futures/thread.py:58: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/_sharding/thread_execution.py:82: in _run_on_device
+    return worker_fn(i, devices[i])
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/tomography_model.py:1536: in worker
+    part = self.projector_functions.sparse_forward_project(
+../mbirjax/projectors.py:97: in sparse_forward_project_public
+    return _jit_sparse_forward_project(
+../mbirjax/projectors.py:358: in _sparse_forward_project
+    return sum_function_in_batches(forward_project_pixel_batch, (voxel_values, pixel_indices),
+../mbirjax/projectors.py:283: in sum_function_in_batches
+    summed_output = function_to_sum(*initial_batch, *extra_args)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:355: in forward_project_pixel_batch
+    return concatenate_function_in_batches(forward_project_view_batch, cur_view_params_array,
+../mbirjax/projectors.py:175: in concatenate_function_in_batches
+    output_data = function(*initial_batch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:353: in forward_project_view_batch
+    return jax.vmap(forward_project_single_view)(view_params_batch)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../mbirjax/projectors.py:348: in forward_project_single_view
+    return fwd_kernel(local_values, local_pix_indices, single_view_params, projector_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+voxel_values = JitTracer(float32[2048,16])
+pixel_indices = JitTracer(int32[2048])
+single_view_params = JitTracer(float32[2])
+projector_params = ProjectorParams(sinogram_shape=(64, 40, 128), recon_shape=(67, 128, 14), geometry_params=GeometryParams(delta_det_row=...slice_aspect=2.9, recon_slice_offset=0.0, magnification=2.0, psf_radius=2, bp_psf_radius=1, use_curved_detector=False))
+
+    @staticmethod
+    @partial(jax.jit, static_argnames='projector_params')
+    def forward_project_pixel_batch_to_one_view(voxel_values, pixel_indices, single_view_params, projector_params):
+        """
+        Forward project a set of voxels determined by indices into the flattened array of size num_rows x num_cols.
+    
+        Args:
+            voxel_values (jax array):  2D array of shape (num_indices, num_slices) of voxel values, where
+                voxel_values[i, j] is the value of the voxel in slice j at the location determined by indices[i].
+            pixel_indices (jax array of int):  1D vector of indices into flattened array of size num_rows x num_cols.
+            single_view_params: These are the angle and helical_z_shift for the view being forward projected.
+            projector_params (namedtuple):  tuple of (sinogram_shape, recon_shape, get_geometry_params())
+    
+        Returns:
+            jax array of shape (num_det_rows, num_det_channels)
+        """
+        recon_shape = projector_params.recon_shape
+        num_recon_slices = recon_shape[2]
+        if voxel_values.shape[0] != pixel_indices.shape[0] or len(voxel_values.shape) < 2 or \
+                voxel_values.shape[1] != num_recon_slices:
+>           raise ValueError('voxel_values must have shape[0:2] = (num_indices, num_slices)')
+E           ValueError: voxel_values must have shape[0:2] = (num_indices, num_slices)
+E           --------------------
+E           For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+../mbirjax/cone_beam.py:300: ValueError
+----------------------------- Captured stdout call -----------------------------
+Testing vcd with anisotropic_cone
+  Creating phantom
+  Creating sinogram
+  Starting recon
+=========================== short test summary info ============================
+FAILED ../tests/geometries/test_projectors.py::TestProjectors::test_hessian_anisotropic_cone
+FAILED ../tests/geometries/test_projectors.py::TestProjectors::test_adjoint_anisotropic_cone
+FAILED ../tests/geometries/test_vcd.py::TestVCD::test_split_sino - ValueError...
+FAILED ../tests/geometries/test_vcd.py::TestVCD::test_vcd_anisotropic_cone - ...
+============= 4 failed, 162 passed, 2 skipped in 86.53s (0:01:26) ==============
