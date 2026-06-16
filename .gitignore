@@ -48,7 +48,8 @@ tests_data_dependent/data/*
 *.zip
 *.xrm
 *.txrm
-*.npy
+# *.npy is TRACKED here: small deep-diff correctness baselines live in golden/ (size-capped by the
+# nightly wrapper).  png/pdf/csv stay ignored — they're regenerable from the YAML time series.
 *.csv
 *.docx
 *.xlsx
