@@ -26,13 +26,18 @@ log() { echo "[$(date '+%F %T')] $*"; }
 
 [ "${ENABLED:-0}" = "1" ] || { log "ENABLED=0 — nothing to do."; exit 0; }
 
-# ── Phase 1: bootstrap — preamble, lock, fresh metrics clone, re-exec ─────────────────────────
+# Node preamble (cluster: `module load` conda/cuda + export HTTPS_PROXY; empty on the Mac).  SOURCED
+# in BOTH phases: phase 1 needs the proxy to git-clone from github, phase 2 needs conda/cuda — and
+# conda's shell function does NOT survive the phase-1->2 exec, so phase 2 must re-source, not inherit.
+# It is SOURCED, so PREAMBLE_FILE must be source-safe: module loads + exports only, NO `exit`.
+if [ -n "${PREAMBLE_FILE:-}" ] && [ -f "$PREAMBLE_FILE" ]; then
+  # shellcheck disable=SC1090
+  source "$PREAMBLE_FILE"
+  set -uo pipefail   # re-assert in case the preamble changed shell options (e.g. turned on set -e)
+fi
+
+# ── Phase 1: bootstrap — lock, fresh metrics clone, re-exec ───────────────────────────────────
 if [ -z "${REG_FRESH:-}" ]; then
-  # Node preamble (proxy + modules) — needed BEFORE git/conda on the cluster; empty on the Mac.
-  if [ -n "${PREAMBLE_FILE:-}" ] && [ -f "$PREAMBLE_FILE" ]; then
-    # shellcheck disable=SC1090
-    source "$PREAMBLE_FILE"
-  fi
   mkdir -p "$WORK_DIR"
   # Portable single-instance lock (macOS has no flock): mkdir is atomic everywhere.  Held as a dir
   # on disk across the exec; phase 2 sets the EXIT trap that removes it.
@@ -54,7 +59,14 @@ trap 'rm -rf "$WORK_DIR/.lock.d"' EXIT
 METRICS_REPO="$(cd "$HERE/../.." && pwd)"        # = $WORK_DIR/metrics
 HARNESS_DIR="$METRICS_REPO/tooling"
 
-# Conda env (DEDICATED — the per-branch editable installs churn it).
+# Conda env (DEDICATED — the per-branch editable installs churn it).  conda must be on PATH here
+# (Mac: your shell PATH; cluster: from PREAMBLE_FILE's `module load conda`).  We (re)source conda.sh
+# to define the `conda activate` shell function, which does not survive the phase-1->2 exec.
+if ! command -v conda >/dev/null 2>&1; then
+  log "FATAL: 'conda' not found.  On the cluster, set PREAMBLE_FILE in regression.env to a script"
+  log "       that loads conda+cuda (e.g. PREAMBLE_FILE=\"\$HOME/load_conda_cuda.sh\")."
+  exit 2
+fi
 # shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$CONDA_ENV" || { log "FATAL: conda activate '$CONDA_ENV' failed."; exit 2; }
