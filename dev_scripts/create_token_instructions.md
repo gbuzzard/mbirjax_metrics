@@ -37,7 +37,11 @@ This writes a git **credential-store** file — one line `https://<user>:<token>
 GIT_TERMINAL_PROMPT=0 git -c credential.helper="store --file=$HOME/.config/mbirjax/metrics_credentials" push --dry-run
 ```
 
-Success = the credential works. A *fast* failure (no hang) = wrong username/token/format.
+**The token is working if you see EITHER** `Everything up-to-date` **OR** `! [rejected] ... (fetch first)`
+— both mean git reached the remote and authenticated; "rejected" just means that clone is behind
+origin (run `git pull --rebase` first for a clean check; the harness does this automatically before
+every push). **Only** `fatal: Authentication failed` or a username/password prompt means the token,
+username, or file format is wrong.
 
 ## Notes
 - The token is plaintext in a `chmod 600` file — standard for git's credential store; the minimal
