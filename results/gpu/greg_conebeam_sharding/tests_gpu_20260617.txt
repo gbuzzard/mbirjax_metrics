@@ -7,8 +7,8 @@ plugins: xdist-3.8.0
 created: 10/10 workers
 10 workers [168 items]
 
-...................................F....F........s...................... [ 42%]
-...s.s........................................F....F.................... [ 85%]
+...................................F.....ss.......s............F........ [ 42%]
+...............................................F.....F.................. [ 85%]
 ........................                                                 [100%]
 =================================== FAILURES ===================================
 _________________ TestProjectors.test_hessian_anisotropic_cone _________________
@@ -446,4 +446,4 @@ FAILED ../tests/geometries/test_projectors.py::TestProjectors::test_hessian_anis
 FAILED ../tests/geometries/test_projectors.py::TestProjectors::test_adjoint_anisotropic_cone
 FAILED ../tests/geometries/test_vcd.py::TestVCD::test_split_sino - ValueError...
 FAILED ../tests/geometries/test_vcd.py::TestVCD::test_vcd_anisotropic_cone - ...
-============= 4 failed, 161 passed, 3 skipped in 297.90s (0:04:57) =============
+============= 4 failed, 161 passed, 3 skipped in 245.67s (0:04:05) =============
