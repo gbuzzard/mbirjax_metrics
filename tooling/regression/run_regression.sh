@@ -94,7 +94,11 @@ RES="$METRICS_REPO/results/$PLAT"; STATE="$METRICS_REPO/state/$PLAT"
 mkdir -p "$RES" "$STATE"
 log "platform=$PLAT extras=[$EXTRAS] env=$CONDA_ENV metrics=$METRICS_REPO"
 
-# Credential for unattended push (cluster), scoped to this repo only.
+# Credential for unattended push (cluster), scoped to this repo only.  TOKEN_FILE must be a git
+# credential-STORE file (chmod 600), i.e. ONE line:  https://<user>:<PAT>@github.com  (not the bare
+# token).  Never prompt interactively: GIT_TERMINAL_PROMPT=0 makes a missing/invalid credential fail
+# fast (a WARN on push) instead of hanging an unattended job on a password prompt.
+export GIT_TERMINAL_PROMPT=0
 if [ -n "${TOKEN_FILE:-}" ] && [ -f "$TOKEN_FILE" ]; then
   git -C "$METRICS_REPO" config credential.helper "store --file=$TOKEN_FILE"
 fi
