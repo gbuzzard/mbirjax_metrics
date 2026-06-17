@@ -131,6 +131,7 @@ for i in "${!CHANGED_BR[@]}"; do
   fi
   SHA="$(git -C "$WT" rev-parse HEAD)"   # the tip we actually got; recorded as state below
 
+  log "$BR: installing library [$EXTRAS] into $CONDA_ENV (first time pulls jax — can be slow)..."
   if ! pip install -e "$WT[$EXTRAS]" >"$WT/.install.log" 2>&1; then
     log "ERROR $BR: pip install -e '$WT[$EXTRAS]' failed (see $WT/.install.log) — skip."
     rm -rf "$WT"; continue
@@ -140,20 +141,26 @@ for i in "${!CHANGED_BR[@]}"; do
 
   # Tests: reuse the branch's OWN runner (your -n 10 tuning + conftest knobs); NON-FATAL (logged,
   # not gated — per-branch test diffing is a later increment; the perf engine is the alert path).
+  # `tee` shows progress live (interactive) AND records to tests_*.txt; on an unattended run the
+  # stdout copy just lands in the cron/slurm log.
   if [ "${RUN_TESTS:-0}" = "1" ]; then
+    TLOG="$OUT/tests_${PLAT}_${DATE}.txt"
+    log "$BR: running tests (MBIRJAX_NUM_CPU_DEVICES=$TEST_CPU_DEVICES) -> $(basename "$TLOG") ..."
     if [ -f "$WT/dev_scripts/run_tests.sh" ]; then
       # run_tests.sh uses a path RELATIVE to dev_scripts/ (`python -m pytest -n 10 ../tests`), so it
       # MUST be invoked from there or it collects 0 tests (../tests would resolve outside the clone).
-      ( cd "$WT/dev_scripts" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" bash run_tests.sh ) \
-        >"$OUT/tests_${PLAT}_${DATE}.txt" 2>&1 || log "$BR: tests reported failures (non-fatal)."
+      ( cd "$WT/dev_scripts" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" bash run_tests.sh ) 2>&1 | tee "$TLOG"
     else
-      ( cd "$WT" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" python -m pytest tests -q -n 10 ) \
-        >"$OUT/tests_${PLAT}_${DATE}.txt" 2>&1 || log "$BR: tests reported failures (non-fatal)."
+      ( cd "$WT" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" python -m pytest tests -q -n 10 ) 2>&1 | tee "$TLOG"
     fi
+    [ "${PIPESTATUS[0]}" -eq 0 ] || log "$BR: tests reported failures (non-fatal; see $(basename "$TLOG"))."
+    log "$BR: tests done."
   fi
 
   # Perf engine (fixed harness; lib_root=$WT selects the library + provenance; golden + vs-main
-  # baseline come from the metrics repo's golden/).
+  # baseline come from the metrics repo's golden/).  run_nightly.py prints to stdout, so the engine
+  # output shows live on a manual run (and lands in the cron/slurm log unattended).
+  log "$BR: running perf engine (output follows)..."
   if REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
        REG_GOLDEN_DIR="$METRICS_REPO/golden" \
        python "$HARNESS_DIR/scaling_tests/run_nightly.py"; then
