@@ -2,9 +2,9 @@
 # run_regression.sh — fire-on-change nightly regression driver (FRESH-CLONE model).
 #
 # Phase 1 (bootstrap, runs from wherever cron/launchd/scrontab invokes it): source the node preamble
-#   (proxy + modules), fresh-clone the metrics repo into $WORK_DIR/metrics, and re-exec the FRESH
-#   clone's copy of this script — so harness/engine/wrapper updates on the remote are always used.
-# Phase 2 (work, runs from the fresh metrics clone): for each tracked branch whose remote head moved
+#   (proxy + modules), update (or clone) the PERSISTENT metrics clone at $WORK_DIR/metrics, and re-exec
+#   ITS copy of this script — so harness/engine/wrapper updates on the remote are always used.
+# Phase 2 (work, runs from the persistent metrics clone): for each tracked branch whose remote head moved
 #   since last measured (git ls-remote vs metrics state/), make a SHALLOW single-branch clone of the
 #   library tip, pip install -e (+platform extras), run that branch's tests + the perf engine, record
 #   results + the measured SHA into the metrics clone, and push (non-fatal).
@@ -36,7 +36,7 @@ if [ -n "${PREAMBLE_FILE:-}" ] && [ -f "$PREAMBLE_FILE" ]; then
   set -uo pipefail   # re-assert in case the preamble changed shell options (e.g. turned on set -e)
 fi
 
-# ── Phase 1: bootstrap — lock, fresh metrics clone, re-exec ───────────────────────────────────
+# ── Phase 1: bootstrap — lock, update/clone the persistent metrics clone, re-exec ─────────────
 if [ -z "${REG_FRESH:-}" ]; then
   mkdir -p "$WORK_DIR"
   # Portable single-instance lock (macOS has no flock): mkdir is atomic everywhere.  Held as a dir
@@ -44,14 +44,27 @@ if [ -z "${REG_FRESH:-}" ]; then
   if ! mkdir "$WORK_DIR/.lock.d" 2>/dev/null; then
     log "another run holds the lock ($WORK_DIR/.lock.d) — exiting."; exit 0
   fi
-  rm -rf "$WORK_DIR/metrics"
-  log "fresh-cloning metrics -> $WORK_DIR/metrics"
-  if ! git clone --quiet "$METRICS_URL" "$WORK_DIR/metrics"; then
-    log "FATAL: clone metrics failed."; rmdir "$WORK_DIR/.lock.d" 2>/dev/null; exit 2
+  # PERSISTENT metrics clone (NOT throwaway): reuse it across runs so a FAILED push never loses a
+  # run's results — they stay committed locally and the next run's rebase-retry pushes them (and you
+  # can `git -C "$WORK_DIR/metrics" push` by hand).  Reuse = fetch + rebase (gets remote changes while
+  # keeping any unpushed local commits, public repo so no creds needed for read); re-clone only if the
+  # existing clone is missing or unusable.  NOTE: this entrypoint must be a SEPARATE checkout from
+  # $WORK_DIR/metrics (the cron/standing wrapper), so updating it here never modifies the running script.
+  MC="$WORK_DIR/metrics"
+  if [ -d "$MC/.git" ]; then
+    log "updating metrics clone (fetch + rebase) -> $MC"
+    if ! { git -C "$MC" fetch -q origin && git -C "$MC" pull -q --rebase --autostash; }; then
+      log "metrics clone unusable — re-cloning fresh."
+      rm -rf "$MC"
+      git clone --quiet "$METRICS_URL" "$MC" || { log "FATAL: clone metrics failed."; rmdir "$WORK_DIR/.lock.d" 2>/dev/null; exit 2; }
+    fi
+  else
+    log "cloning metrics -> $MC"
+    git clone --quiet "$METRICS_URL" "$MC" || { log "FATAL: clone metrics failed."; rmdir "$WORK_DIR/.lock.d" 2>/dev/null; exit 2; }
   fi
-  # Re-exec the FRESH copy (picks up remote wrapper/engine changes).  The env (proxy/modules from the
+  # Re-exec the updated copy (picks up remote wrapper/engine changes).  The env (proxy/modules from the
   # preamble, the lock dir on disk) carries through exec.
-  exec env REG_FRESH=1 "$WORK_DIR/metrics/tooling/regression/run_regression.sh"
+  exec env REG_FRESH=1 "$MC/tooling/regression/run_regression.sh"
 fi
 
 # ── Phase 2: work — running from the FRESH metrics clone ──────────────────────────────────────
