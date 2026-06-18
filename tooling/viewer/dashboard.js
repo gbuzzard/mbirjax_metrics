@@ -28,8 +28,9 @@ const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back
 
 const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runDate: null };
 
-// Displayed name for each reference ("golden" stays the internal key).
-const REF_LABEL = { golden: "baseline", main: "main", best: "best-ever" };
+// Displayed name for each reference (internal key -> label).  References are now derived from the
+// tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
+const REF_LABEL = { main: "main", prerelease: "prerelease", prior: "prior run", best: "best-ever" };
 
 // ---- generic helpers ---------------------------------------------------------
 const uniq = (a) => [...new Set(a)];
@@ -48,16 +49,35 @@ function currentRun() {
 // date.  Lets older prerelease checkouts sit at their real point on the timeline.
 const runTime = (r) => (r.commit_date ? Date.parse(r.commit_date) / 1000 : dateToUnix(r.date));
 const runDateLabel = (r) => (r.commit_date ? r.commit_date.slice(0, 10) : dateLabel(r.date));
-// Branch/date/sha provenance string for the active comparison reference.
-function refProvenance() {
-  if (state.ref === "golden") {
-    const g = M.golden[state.platform]; if (!g) return "";
-    const d = g.commit_date ? g.commit_date.slice(0, 10) : null;
-    return `${g.branch || "?"}${g.commit ? " @ " + g.commit : ""}${d ? " · " + d : ""}`;
+// Commit date AND time, to the minute (e.g. "2026-06-17 23:00") — the unambiguous run stamp.
+// ISO is "YYYY-MM-DDTHH:MM:SS±zz"; slice to the minute and swap the T for a space.
+const commitMinute = (r) => (r.commit_date ? r.commit_date.slice(0, 16).replace("T", " ") : (r.date ? dateLabel(r.date) : "?"));
+// The run shown for a given platform on the currently-selected branch: honour an explicitly
+// picked run (state.runDate) only on the active platform; otherwise the latest for that platform.
+function runOnPlat(plat) {
+  const rs = runsFor(plat, state.branch);
+  if (!rs.length) return null;
+  if (plat === state.platform && state.runDate) { const m = rs.find((r) => r.date === state.runDate); if (m) return m; }
+  return rs[rs.length - 1];
+}
+// The run backing the active reference overlay: the tracked main/prerelease tip, or this branch's
+// immediately-preceding run.  best-ever is records-derived (not a single run) -> handled separately.
+function refRun() {
+  if (state.ref === "main") return latestRun(state.platform, "main");
+  if (state.ref === "prerelease") return latestRun(state.platform, "prerelease");
+  if (state.ref === "prior") {
+    const rs = runsFor(state.platform, state.branch), cur = currentRun();
+    const i = cur ? rs.indexOf(cur) : -1;
+    return i > 0 ? rs[i - 1] : null;
   }
-  if (state.ref === "main") { const m = M.main[state.platform]; return m ? `${m.branch || "main"}${m.version ? " · v" + m.version : ""}` : ""; }
+  return null;
+}
+// Branch/sha/date provenance string for the active comparison reference.
+function refProvenance() {
   if (state.ref === "best") return "per-config best-ever";
-  return "";
+  const r = refRun(); if (!r) return "";
+  const d = r.commit_date ? r.commit_date.slice(0, 10) : (r.date ? runDateLabel(r) : "");
+  return `${r.branch || "?"}${r.commit ? " @ " + r.commit : ""}${d ? " · " + d : ""}`;
 }
 const branchesFor = (p) => uniq(M.runs.filter((r) => r.platform === p).map((r) => r.branch)).sort();
 const findCell = (run, key) => run.cells.find((c) => cellKey(c) === key) || null;
@@ -87,8 +107,15 @@ function linePlot(el, xs, specs, o) {
   const axc = (cs.getPropertyValue("--muted").trim() || "#888");
   const grc = (cs.getPropertyValue("--border").trim() || "#ddd");
   const bg = (cs.getPropertyValue("--bg").trim() || "#fff");
-  const data = [xs, ...specs.map((s) => s.ys)];
-  const series = [{}, ...specs.map((s) => ({
+  // Optional data-domain padding (o.xPad): extend the x-domain by a multiplicative factor on each
+  // end with null y's, so the extreme ticks/labels don't clip at the panel edge — WITHOUT pinning a
+  // fixed scale range, which would hard-clamp the scale and block drag-zoom (#6).  Auto-range keeps
+  // zoom working (a prepended pad column shifts the data index by padOff, undone for the callbacks).
+  const padOff = (o.xPad && xs.length > 1) ? 1 : 0;
+  const X = padOff ? [xs[0] / o.xPad, ...xs, xs[xs.length - 1] * o.xPad] : xs;
+  const S = padOff ? specs.map((s) => ({ ...s, ys: [null, ...s.ys, null] })) : specs;
+  const data = [X, ...S.map((s) => s.ys)];
+  const series = [{}, ...S.map((s) => ({
     stroke: s.color, width: s.width == null ? 2 : s.width, dash: s.dash || undefined,
     spanGaps: true,  // bridge null cells (e.g. a failed non-dividing size) so the curve stays connected
     points: { show: true, size: s.psize == null ? 5 : s.psize, stroke: s.ring || s.color,
@@ -108,6 +135,20 @@ function linePlot(el, xs, specs, o) {
   if (o.yLabelText) yAxis.label = o.yLabelText;
   const xScale = { distr: o.xLog ? 3 : 1, time: !!o.xTime };
   if (o.xRange) xScale.range = o.xRange;
+  // Nearest drawn series at the cursor's x-index (shared by the click-to-pick and hover-tooltip
+  // handlers): the series whose y at idx is closest (in px) to the cursor, within a px threshold.
+  const nearestSeries = (u, idx, maxPx) => {
+    let best = -1, bestD = Infinity;
+    for (let si = 1; si < u.data.length; si++) {
+      const v = u.data[si][idx]; if (v == null) continue;
+      const d = Math.abs(u.valToPos(v, "y") - u.cursor.top);
+      if (d < bestD) { bestD = d; best = si; }
+    }
+    return (best > 0 && bestD <= maxPx) ? best : -1;
+  };
+  // Optional hover tooltip: o.tooltip(spec, idx) -> HTML string (or null to hide).
+  let tip = null;
+  if (o.tooltip) { tip = document.createElement("div"); tip.className = "u-tip"; }
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
     scales: { x: xScale, y: { distr: o.yLog ? 3 : 1 } },
@@ -115,23 +156,32 @@ function linePlot(el, xs, specs, o) {
     // drag a region to zoom (both axes on the scaling panels, x-only on the
     // time-series history panels); double-click resets.
     cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime } },
+    hooks: o.tooltip ? { setCursor: [(u) => {
+      const idx = u.cursor.idx, cl = u.cursor.left, ct = u.cursor.top;
+      // hide while off-plot or mid drag-zoom
+      if (idx == null || cl == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
+      const si = nearestSeries(u, idx, 30), oi = idx - padOff;
+      const html = (si > 0 && oi >= 0 && oi < xs.length) ? o.tooltip(specs[si - 1], oi) : null;
+      if (!html) { tip.style.display = "none"; return; }
+      tip.innerHTML = html; tip.style.display = "block";
+      const ob = u.over.getBoundingClientRect(), eb = el.getBoundingClientRect();
+      let lx = ob.left - eb.left + cl + 14;
+      if (lx + tip.offsetWidth > el.clientWidth) lx = Math.max(0, ob.left - eb.left + cl - tip.offsetWidth - 14);
+      tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + ct + 8) + "px";
+    }] } : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
   el.innerHTML = "";
   try { el._u = new uPlot(opts, data, el); } catch (e) { el.innerHTML = "<p class='muted'>chart error: " + e.message + "</p>"; return null; }
+  if (tip) el.appendChild(tip);
   // Optional: a plain click (vs a drag, which zooms) selects the nearest point.
   if (o.onPick) {
     const over = el.querySelector(".u-over");
     if (over) over.addEventListener("click", () => {
       const u = el._u; const idx = u.cursor.idx;
       if (idx == null) return;
-      let best = -1, bestD = Infinity;
-      for (let si = 1; si < u.data.length; si++) {
-        const v = u.data[si][idx]; if (v == null) continue;
-        const d = Math.abs(u.valToPos(v, "y") - u.cursor.top);
-        if (d < bestD) { bestD = d; best = si; }
-      }
-      if (best > 0 && bestD < 40) o.onPick(specs[best - 1], idx);
+      const si = nearestSeries(u, idx, 40), oi = idx - padOff;
+      if (si > 0 && oi >= 0 && oi < xs.length) o.onPick(specs[si - 1], oi);
     });
   }
   return el._u;
@@ -154,28 +204,48 @@ function syncGoSelect() {
 }
 
 // ---- tiles + drill-down ------------------------------------------------------
+// Headline numbers for one platform's run of the selected branch (null if none).
+function platMetrics(plat) {
+  const run = runOnPlat(plat);
+  if (!run) return null;
+  return { run,
+    cells: run.cells.filter((c) => !c.failed).length,
+    cellsFailed: run.cells.filter((c) => c.failed).length,
+    gate: run.gate.hard.length,
+    testsFailed: run.tests ? (run.tests.failures || []).length : 0,
+    testsPassed: run.tests ? run.tests.passed : null };
+}
 function renderTiles() {
-  const run = currentRun();
   const box = $("tiles");
-  if (!run) { box.innerHTML = "<p class='muted'>no runs.</p>"; return; }
-  const nRuns = runsFor(state.platform, state.branch).length;
-  const failed = run.cells.filter((c) => c.failed);
-  const hard = run.gate.hard.length;
-  const tf = run.tests ? (run.tests.failures || []).length : 0;
-  const tiles = [
-    { id: "cells", lbl: "configs measured", val: run.cells.filter((c) => !c.failed).length,
-      bad: failed.length > 0, sub: failed.length ? failed.length + " failed — click for details" : "all ran", click: failed.length > 0 },
-    { id: "gate", lbl: "hard gate hits", val: hard, bad: hard > 0,
-      sub: hard > 0 ? "click for details" : "all passed — click", click: true },
-    { id: "tests", lbl: "tests failed", val: tf, bad: tf > 0,
-      sub: tf > 0 ? "click for details" : (run.tests ? run.tests.passed + " passed" : "no log"), click: tf > 0 },
-    { id: "run", lbl: "run shown", val: runDateLabel(run), bad: false,
-      sub: state.platform.toUpperCase() + " · " + run.commit + (run.dirty ? " · dirty" : "") + (nRuns > 1 ? " · pick in history" : ""), click: false },
+  const cur = currentRun();
+  if (!cur) { box.innerHTML = "<p class='muted'>no runs.</p>"; return; }
+  // The first three tiles always show BOTH platforms (cpu + gpu) for the selected branch.
+  const mets = {}; M.platforms.forEach((p) => mets[p] = platMetrics(p));
+  const anyBad = (isBad) => M.platforms.some((p) => mets[p] && isBad(mets[p]));
+  const pvs = (pick, isBad) => `<div class="pvs">` + M.platforms.map((p) => {
+    const m = mets[p];
+    if (!m) return `<span class="pv none" title="no ${state.branch} run on ${p}">${p.toUpperCase()}<b>—</b></span>`;
+    return `<span class="pv">${p.toUpperCase()}<b class="${isBad(m) ? "bad" : ""}">${pick(m)}</b></span>`;
+  }).join("") + `</div>`;
+  const health = [
+    { id: "cells", lbl: "configs measured", body: pvs((m) => m.cells, (m) => m.cellsFailed > 0),
+      click: anyBad((m) => m.cellsFailed > 0), sub: anyBad((m) => m.cellsFailed > 0) ? "failures — click" : "all ran" },
+    { id: "gate", lbl: "hard gate hits", body: pvs((m) => m.gate, (m) => m.gate > 0),
+      click: true, sub: "click for details" },
+    { id: "tests", lbl: "tests failed", body: pvs((m) => m.testsFailed, (m) => m.testsFailed > 0),
+      click: anyBad((m) => m.testsFailed > 0), sub: anyBad((m) => m.testsFailed > 0) ? "failures — click" : "none failing" },
   ];
-  box.innerHTML = tiles.map((t) =>
+  const nRuns = runsFor(state.platform, state.branch).length;
+  const runTile =
+    `<div class="tile" data-click="false">
+       <div class="lbl">run shown</div>
+       <div class="when">${commitMinute(cur)}</div>
+       <div class="sub">${state.branch} · ${state.platform.toUpperCase()} · ${cur.commit}${cur.dirty ? " · dirty" : ""}${nRuns > 1 ? " · pick in history" : ""}</div>
+     </div>`;
+  box.innerHTML = health.map((t) =>
     `<div class="tile ${t.click ? "click" : ""} ${state.openTile === t.id ? "open" : ""}" data-id="${t.id}" data-click="${!!t.click}">
-       <div class="lbl">${t.lbl}</div><div class="val ${t.bad ? "bad" : ""}">${t.val}</div><div class="sub">${t.sub}</div></div>`
-  ).join("");
+       <div class="lbl">${t.lbl}</div>${t.body}<div class="sub">${t.sub}</div></div>`
+  ).join("") + runTile;
   box.querySelectorAll(".tile").forEach((el) => {
     if (el.dataset.click === "true") el.onclick = () => {
       state.openTile = state.openTile === el.dataset.id ? null : el.dataset.id;
@@ -184,30 +254,38 @@ function renderTiles() {
   });
 }
 function renderDetail() {
-  const run = currentRun();
   const box = $("detail");
-  if (!run || !state.openTile) { box.innerHTML = ""; return; }
-  let title = "", body = "";
+  if (!state.openTile) { box.innerHTML = ""; return; }
+  const titles = { gate: "Gate — hard-gate hits", tests: "Failing tests", cells: "Failed configs" };
+  const pct = (v) => v == null ? "?" : v + "%";
+  // The drill-down covers BOTH platforms (matching the tiles).  Gate gets a one-time threshold
+  // explanation since the thresholds are identical across platforms.
+  let intro = "";
   if (state.openTile === "gate") {
-    title = "Gate";
-    const gc = run.gate_config || {};
-    const cmp = (run.gate.compared_to || []).join(", ") || "the prior run and the golden snapshot";
-    const pct = (v) => v == null ? "?" : v + "%";
-    body =
-      `<p class="muted">After each run the engine compares this run against ${cmp}, per config and metric, and flags changes. Memory and correctness are deterministic so they hard-fail; timing is noisy so it only warns.</p>
-       <p><b>Hard</b> (fails the gate): a correctness fingerprint that drifts beyond tolerance (${gc.fp_rtol_single ?? "?"} single-shot / ${gc.fp_rtol_iter ?? "?"} iterative), a structural change, a config that went ok→fail, a config that was expected but is now absent, and — GPU only — peak-memory growth above ${pct(gc.mem_hard_pct)}.</p>
-       <p><b>Soft</b> (warn only): speedup drop above ${pct(gc.speedup_warn_pct)}, absolute-time increase above ${pct(gc.time_soft_pct)}, CPU memory, and sweep add/drop.</p>`;
-    body += run.gate.hard.length
-      ? `<h3>Hard-gate hits this run</h3><ul>${run.gate.hard.map((h) => `<li class="bad"><span class="basis">vs ${h.basis || "?"}</span> — ${h.text}</li>`).join("")}</ul>`
-      : `<p class="muted">No hard-gate hits this run (gate result: ${run.gate.result || "?"}).</p>`;
-  } else if (state.openTile === "tests") {
-    title = "Failing tests";
-    body = `<ul>${(run.tests.failures || []).map((f) => `<li class="bad">${f}</li>`).join("") || "<li>none</li>"}</ul>`;
-  } else if (state.openTile === "cells") {
-    title = "Failed configs";
-    body = `<ul>${run.cells.filter((c) => c.failed).map((c) => `<li class="bad">${cellKey(c)}${c.oom ? " — OOM" : ""}${c.error ? " — " + c.error : ""}</li>`).join("") || "<li>none</li>"}</ul>`;
+    const anyRun = M.platforms.map(runOnPlat).find(Boolean);
+    const gc = (anyRun && anyRun.gate_config) || {};
+    intro = `<p>Each run is compared per config + metric against its reference run(s); memory + correctness hard-fail, timing only warns. <b>Hard:</b> fingerprint drift (&gt;${gc.fp_rtol_single ?? "?"} single / ${gc.fp_rtol_iter ?? "?"} iter), structural change, ok→fail, expected-but-absent, GPU peak-memory &gt;${pct(gc.mem_hard_pct)}. <b>Soft:</b> speedup drop &gt;${pct(gc.speedup_warn_pct)}, time &gt;${pct(gc.time_soft_pct)}, CPU memory, sweep add/drop.</p>`;
   }
-  box.innerHTML = `<div class="detail-box"><h3>${title}</h3>${body}</div>`;
+  const section = (plat) => {
+    const run = runOnPlat(plat);
+    const head = `<h4>${plat.toUpperCase()}${run ? ` · ${run.commit} · ${commitMinute(run)}` : ""}</h4>`;
+    if (!run) return head + `<p class="muted">no ${state.branch} run on ${plat}.</p>`;
+    if (state.openTile === "gate") {
+      const cmp = (run.gate.compared_to || []).join(", ") || "its reference run(s)";
+      return head + (run.gate.hard.length
+        ? `<p class="muted">vs ${cmp}</p><ul>${run.gate.hard.map((h) => `<li class="bad"><span class="basis">vs ${h.basis || "?"}</span> — ${h.text}</li>`).join("")}</ul>`
+        : `<p class="muted">no hard-gate hits (result: ${run.gate.result || "?"}).</p>`);
+    }
+    if (state.openTile === "tests") {
+      const f = (run.tests && run.tests.failures) || [];
+      return head + (f.length ? `<ul>${f.map((x) => `<li class="bad">${x}</li>`).join("")}</ul>`
+        : `<p class="muted">${run.tests ? run.tests.passed + " passed, none failing" : "no test log"}.</p>`);
+    }
+    const f = run.cells.filter((c) => c.failed);  // "cells"
+    return head + (f.length ? `<ul>${f.map((c) => `<li class="bad">${cellKey(c)}${c.oom ? " — OOM" : ""}${c.error ? " — " + c.error : ""}</li>`).join("")}</ul>`
+      : `<p class="muted">all configs ran.</p>`);
+  };
+  box.innerHTML = `<div class="detail-box"><h3>${titles[state.openTile] || ""}</h3>${intro}${M.platforms.map(section).join("")}</div>`;
 }
 
 // ---- scaling view: data ------------------------------------------------------
@@ -220,19 +298,21 @@ function gridFor(run, geom, op) {
 }
 function refVal(geom, op, size, nd, metric) {
   const key = `${geom}|${op}|${size}|${nd}`;
-  if (state.ref === "golden") { const g = M.golden[state.platform]; return g && g.cells[key] ? g.cells[key][metric] : null; }
-  if (state.ref === "main") { const m = M.main[state.platform]; return m && m.cells[key] ? m.cells[key][metric] : null; }
   if (state.ref === "best") { const r = M.records[state.platform + "|" + state.branch]; const e = r && r[key]; return e && e[metric] ? e[metric].value : null; }
-  return null;
+  const run = refRun(); if (!run) return null;
+  const c = findCell(run, key);
+  return c ? c[metric] : null;
 }
-// reference overlay series for the absolute (vs-size) panels
+// reference overlay series for the absolute (vs-size) panels.  No device-count restriction: a
+// reference run carries whatever device counts it measured (main is n=1-only, prerelease shards
+// parallel, etc.), and refVal returns null where the ref lacks a cell -> spanGaps bridges it.
 function refSeries(geom, op, sizes, ndevs, metric, div) {
   if (state.ref === "none") return [];
-  const devs = state.ref === "main" ? [1] : ndevs;
+  const lab = REF_LABEL[state.ref] || state.ref;
   const out = [];
-  devs.forEach((nd) => {
+  ndevs.forEach((nd) => {
     const ys = sizes.map((s) => { const v = refVal(geom, op, s, nd, metric); return v != null ? v / div : null; });
-    if (ys.some((y) => y != null)) out.push({ label: `${state.ref} n=${nd}`, color: REFC, ys, width: 4, fillPoints: true, psize: 4 });
+    if (ys.some((y) => y != null)) out.push({ label: `${lab} n=${nd}`, color: REFC, ys, width: 4, fillPoints: true, psize: 4 });
   });
   return out;
 }
@@ -301,8 +381,27 @@ function renderScaling() {
   sizes.forEach((s) => { const v = sizeVol(s); if (!xticks.length || v / xticks[xticks.length - 1] > 1.03) xticks.push(v); xLabels[v] = s; });
   // Pad the log x-range so the smallest/largest ticks don't sit on the axes
   // (their labels would otherwise be clipped at the panel edges).
-  const xr = [xticks[0] / 1.7, xticks[xticks.length - 1] * 1.7];
   const w = $("pTime").clientWidth || 460;
+  // Hover tooltips: a rich cell readout (config + result) over a measured curve; a plain label+value
+  // over the ideal/reference/gate overlays.  `fb` formats the overlay's y for the panel's unit.
+  const cellLine = (c) => `<span class="tdim">time</span> ${c.min_ms != null ? (c.min_ms / 1000).toFixed(2) + " s" : "—"}`
+    + `<br><span class="tdim">peak mem</span> ${fmtGB(c.mem_mb)}`
+    + (c.speedup != null ? `<br><span class="tdim">speedup</span> ${c.speedup.toFixed(2)}×` : "")
+    + (c.throttled ? `<br><span class="bad">throttled</span>` : "");
+  const sizeTip = (fb) => (spec, idx) => {
+    const size = sizes[idx], m = /n=(\d+)/.exec(spec.label || "");
+    if (!m || spec.color === REFC) { const y = spec.ys[idx]; return y == null ? null : `<b>${geom} · ${op}</b> · ${size}<br>${spec.label}: ${fb(y)}`; }
+    const c = at(size, +m[1]); if (!c) return null;
+    const head = `<b>${geom} · ${op}</b> · ${size} · n=${m[1]}`;
+    return c.failed ? `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " — " + c.error : ""}` : `${head}<br>${cellLine(c)}`;
+  };
+  const devTip = (spec, idx) => {
+    const nd = ndevs[idx], size = spec.label;
+    if (!/^\d+x\d+x\d+$/.test(size)) { const y = spec.ys[idx]; return y == null ? null : `n=${nd}<br>${spec.label}: ${fmtNum(y)}`; }
+    const c = at(size, nd); if (!c) return null;
+    const head = `<b>${geom} · ${op}</b> · ${size} · n=${nd}`;
+    return c.failed ? `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>` : `${head}<br>${cellLine(c)}`;
+  };
 
   // anchor the ideal at the fastest measured point (smallest size, most devices)
   const fastN = ndevs[ndevs.length - 1], aV = xvol[0];
@@ -325,7 +424,7 @@ function renderScaling() {
     return yy ? { label: "failed", color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
-  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xRange: xr, yLabelText: "minutes" });
+  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
@@ -339,7 +438,7 @@ function renderScaling() {
     return yy ? { label: "failed", color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const memSpecs = [...memFails, ...(gM ? [gM] : []), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
-  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xRange: xr, yLabelText: "GB" });
+  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
   const w2 = $("pSpeed").clientWidth || 460;
@@ -353,7 +452,7 @@ function renderScaling() {
     return yy ? { label: "failed", color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const speedSpecs = [...speedFails, ...speedCurves, { label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: speedIdeal }];
-  linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices" });
+  linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices", tooltip: devTip });
 
   // --- per-device memory ÷ sino shard (one curve per size; ideal 2x) ---
   const shardCurves = sizes.map((s, i) => ({ label: s, color: SIZEC[i % SIZEC.length],
@@ -365,7 +464,7 @@ function renderScaling() {
     return yy ? { label: "failed", color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const shardSpecs = [...shardFails, ...shardCurves, { label: "ideal 2×", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: ndevs.map(() => 2) }];
-  linePlot($("pShard"), ndevs, shardSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices" });
+  linePlot($("pShard"), ndevs, shardSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip });
 
   renderScalingLegend(ndevs, sizes);
 }
@@ -471,7 +570,16 @@ function renderHistory() {
   };
   // With a single point, uPlot's auto time-range sprawls across years; pin a ±12h window.
   const xr = xs.length < 2 ? [xs[0] - 43200, xs[0] + 43200] : null;
-  const opts = (yl) => ({ xTime: true, xRange: xr, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun });
+  // hover tooltip: the same identity as the "run shown" tile (branch · platform · commit date+time).
+  const histTip = (spec, idx) => {
+    const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === spec._xs[idx]);
+    if (!r) return null;
+    const y = spec.ys[idx];
+    return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
+      + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
+      + (y != null ? `<br><span class="tdim">${spec.label}</span> ${fmtNum(y)}` : "");
+  };
+  const opts = (yl) => ({ xTime: true, xRange: xr, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip });
   linePlot($("hVcd"), xs, specsFor("vcd"), { width: $("hVcd").clientWidth || 320, ...opts("min") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB") });
   const gateSpecs = [];
@@ -480,7 +588,7 @@ function renderHistory() {
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gate : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun });
+  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   $("hist-legend").innerHTML =

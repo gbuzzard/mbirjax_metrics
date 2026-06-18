@@ -14,10 +14,6 @@
       <h1>mbirjax metrics</h1>
       <span id="gen" class="muted"></span>
     </div>
-    <div class="controls">
-      <label>platform <select id="platform"></select></label>
-      <label>branch <select id="branch"></select></label>
-    </div>
   </header>
 
   <div id="tiles" class="tiles"></div>
@@ -39,11 +35,14 @@
       <span id="sv-meta" class="muted"></span>
     </div>
     <div class="controls wrap">
+      <label>platform <select id="platform"></select></label>
+      <label>branch <select id="branch"></select></label>
       <label>op <select id="op"></select></label>
       <label>compare against <select id="ref">
         <option value="none">none</option>
-        <option value="golden">baseline</option>
         <option value="main">main</option>
+        <option value="prerelease">prerelease</option>
+        <option value="prior">prior run</option>
         <option value="best">best-ever</option>
       </select></label>
       <span class="seg" id="view-seg"></span>

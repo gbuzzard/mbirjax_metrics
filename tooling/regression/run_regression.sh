@@ -13,11 +13,19 @@
 # Exits non-zero ONLY on a hard-gate perf regression (so the cron/slurm mail is a real alert); setup/
 # transport hiccups are WARNs.
 set -uo pipefail
-# Keep an INTERACTIVE terminal open on a nonzero exit so the error stays visible (some terminals
+# Keep an INTERACTIVE terminal open on a nonzero exit so the message stays visible (some terminals
 # close the window when a command exits nonzero).  A tty-less run (cron/launchd/scrontab/slurm) has
 # no stdin tty, so it skips the pause and exits with the real code — the alert path is preserved.
+# Word the two nonzero cases distinctly: exit 1 is a perf REGRESSION (an alert — the run completed),
+# exit >=2 is a harness/setup error.  (When invoked via run_one_night.sh, stdin is detached so this
+# trap does not install and that wrapper owns the single message + pause.)
 if [ -t 0 ]; then
-  trap '_ec=$?; [ "$_ec" -ne 0 ] && { echo; echo ">>> $(basename "$0") exited with status $_ec — press Enter to close."; read -r _ || true; }' EXIT
+  trap '_ec=$?;
+    if [ "$_ec" -eq 1 ]; then
+      echo; echo ">>> $(basename "$0"): regression(s) DETECTED (exit 1) — an alert, not a failure.  Press Enter to close."; read -r _ || true
+    elif [ "$_ec" -ne 0 ]; then
+      echo; echo ">>> $(basename "$0") exited with status $_ec (harness/setup error) — press Enter to close."; read -r _ || true
+    fi' EXIT
 fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
