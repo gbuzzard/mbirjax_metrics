@@ -7,7 +7,7 @@ plugins: xdist-3.8.0
 created: 10/10 workers
 10 workers [161 items]
 
-.............................................................ss......... [ 44%]
+..........................................................ss............ [ 44%]
 ........................................................................ [ 89%]
 .................                                                        [100%]
 =============================== warnings summary ===============================
@@ -24,4 +24,4 @@ tests/sharding/test_vcd_sharded.py: 9 warnings
     warnings.warn('\nUnable to determine sinogram background. This may affect regularization.\n')
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-============ 159 passed, 2 skipped, 15 warnings in 80.77s (0:01:20) ============
+============ 159 passed, 2 skipped, 15 warnings in 80.06s (0:01:20) ============
