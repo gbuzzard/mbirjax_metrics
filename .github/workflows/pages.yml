@@ -1,0 +1,50 @@
+name: Build & publish dashboard
+
+# Rebuild the static dashboard from the YAML time series and publish it to GitHub Pages whenever new
+# results, the viewer code, or this workflow change on main.  The cluster/nightly only PUSHES data
+# (results/ + state/); this Action regenerates and deploys the dashboard — so there is no committed
+# HTML artifact, and the cluster env needs no dashboard dependencies.
+#
+# One-time setup: repo Settings -> Pages -> Source = "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'results/**'
+      - 'golden/**'
+      - 'tooling/viewer/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a run finish; don't pile up deploys.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build the dashboard
+        run: |
+          pip install --quiet pyyaml
+          python tooling/viewer/build_dashboard.py     # writes dashboard/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+      - id: deploy
+        uses: actions/deploy-pages@v4

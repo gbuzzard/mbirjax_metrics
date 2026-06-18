@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# enable_nightly.sh (macOS / launchd) — install + load the nightly regression agent.
+# enable_nightly.sh — install + start the scheduled nightly regression.  Platform-aware:
+#   macOS         -> launchd agent (filled from com.mbirjax.regression.plist).  Works now.
+#   Linux/cluster -> scrontab + nightly_regression.slurm.  NOT YET — pending the slurm script.
 #
 # Run it from the regression/ dir (in the metrics clone for the real install, or here during dev).
-# It fills com.mbirjax.regression.plist from regression.env (schedule + the wrapper path + a PATH
-# that includes conda) and loads it.  launchd runs at the scheduled time and at the next wake if the
-# laptop was asleep.  Re-run after editing regression.env to apply changes.
-#
-# (Cluster uses scrontab + nightly_regression.slurm instead — see README; this script is Mac-only.)
+# On macOS it fills the plist from regression.env (schedule + wrapper path + a conda PATH) and loads
+# it; launchd runs at the scheduled time and at the next wake if the laptop slept.  Re-run after
+# editing regression.env / run_configs.env to apply changes.
 set -euo pipefail
 # Keep an interactive terminal open on a nonzero exit so the error stays visible.
 if [ -t 0 ]; then
@@ -16,6 +16,14 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "$HERE/regression.env"
 
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "enable_nightly: scheduled runs on $(uname -s) are not implemented yet."
+  echo "  macOS uses launchd (this path); the cluster will use scrontab + nightly_regression.slurm,"
+  echo "  which is still to be written.  For now, trigger a pass by hand: action_scripts/run_one_night.sh"
+  exit 1
+fi
+
+# ── macOS / launchd ───────────────────────────────────────────────────────────────────────────
 LABEL="com.mbirjax.regression"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 WRAPPER="$HERE/run_regression.sh"

@@ -6,6 +6,9 @@ This is the standalone, version-controlled home for mbirjax's performance time s
 that gather and display it. Keeping it separate from the mbirjax library means the results survive
 mbirjax's branch churn and are never pushed to the library's `main`.
 
+**Live dashboard:** <https://gbuzzard.github.io/mbirjax_metrics/> — rebuilt from the YAML time series
+and published automatically by a GitHub Action on every push to `main` (`.github/workflows/pages.yml`).
+
 ## Quick start
 
 ```bash

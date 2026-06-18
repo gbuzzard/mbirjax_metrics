@@ -1,86 +1,79 @@
 # Nightly regression harness
 
-A standing, **fire-on-change** day-over-day check: it watches a few mbirjax branches and, whenever
-one moves, measures every geometry × op × size × device-count (time + peak memory + a tolerant
-correctness fingerprint), diffs against that branch's previous run + the golden, and flags
-regressions. CPU runs on a Mac (launchd); GPU runs on the cluster (slurm/scrontab).
+A standing, **fire-on-change** check: it watches a few mbirjax branches and, whenever one moves,
+measures every geometry × op × size × device-count (min time + peak memory + a tolerant correctness
+fingerprint), diffs against that branch's previous run + the golden reference, and flags regressions.
+Runs on a Mac via launchd (working) and, eventually, on the cluster via scrontab + slurm (pending the
+slurm script).
 
-## How it's laid out (two repos)
+## Layout (canonical home: this repo)
 
-- **`mbirjax_metrics`** (github.com/gbuzzard/mbirjax_metrics) — the **self-contained harness + data**,
-  cloned on every node:
-  ```
-  tooling/scaling_tests/   engine: scaling_common.py, performance_tracking.py, run_nightly.py,
-                           capture_golden.py, capture_main_baseline.py, run_performance_local.py
-  tooling/regression/      this wrapper: run_regression.sh, regression.env, enable/disable,
-                           com.mbirjax.regression.plist, cluster_preamble.sh.example, README.md
-  golden/                  golden_<plat>.yaml, main_baseline_<plat>.yaml, <geom>_<op>.npy
-  results/<plat>/<branch>/ regression_<plat>_<date>.yaml  (the time series) + tests_*.txt
-  state/<plat>/<branch>    last MEASURED commit per branch (fire-on-change)
-  ```
-  The harness is **authored in the mbirjax tree** (`experiments/sharding/scaling_tests/` +
-  `dev_scripts/regression/`) and **deployed** into `tooling/` with `deploy_to_metrics.sh`.
-
-- **`mbirjax`** — only the **library under test**. The nightly never uses a fixed checkout; it
-  fresh-clones mbirjax and makes a throwaway worktree per changed branch.
+The harness and data live entirely in `mbirjax_metrics` — **edit them here directly** (no deploy step):
+```
+action_scripts/          top-level entry points + run_configs.env (the run knobs); see its README
+tooling/scaling_tests/   engine: scaling_common.py, performance_tracking.py, run_nightly.py,
+                         capture_golden.py, capture_main_baseline.py, run_performance_local.py,
+                         backfill_commit_dates.py
+tooling/regression/      this wrapper: run_regression.sh, regression.env, enable/disable_nightly.sh,
+                         com.mbirjax.regression.plist, cluster_preamble.sh.example, README.md
+golden/                  golden_<plat>.yaml, main_baseline_<plat>.yaml, <geom>_<op>.npy
+results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + tests_*.txt
+state/<plat>/<branch>    last MEASURED commit per branch (fire-on-change)
+```
+`mbirjax` itself is only the **library under test**: the nightly fresh-clones it and makes a throwaway
+worktree per changed branch (no fixed checkout).
 
 ## What a run does (`run_regression.sh`)
 
-1. **Bootstrap**: source the node preamble (cluster proxy/modules), fresh-clone `mbirjax_metrics`
-   into `$WORK_DIR/metrics`, and re-exec that clone's wrapper (so remote harness changes are picked up).
+1. **Bootstrap**: source the node preamble (cluster proxy/modules), update-or-clone the persistent
+   metrics clone at `$WORK_DIR/metrics`, and re-exec that copy — so remote harness / `run_configs.env`
+   / engine changes are always picked up.
 2. Activate the **dedicated** conda env; install the harness deps (matplotlib, ruamel).
 3. For each tracked branch: `git ls-remote` its head; **skip if unchanged** (vs `state/`).
-4. If anything changed: fresh-clone mbirjax once; per changed branch → worktree at that commit →
-   `pip install -e "$WT[extras]"` → run its tests → run the perf engine (`run_nightly.py`, with
-   `lib_root=$WT` so the library under test is selected + provenance recorded) → record the SHA.
-5. Commit + push `results/` + `state/` to the metrics repo (**push failure is non-fatal**).
+4. Per changed branch: worktree at that commit → `pip install -e "$WT[<extras>]"` → run its tests →
+   run the perf engine (`run_nightly.py`, `lib_root=$WT`). The engine auto-detects sharding capability
+   **per geometry** and measures an unported geometry single-device (n=1) — so `main` (no sharding) and
+   `prerelease` (parallel only) are tracked cleanly alongside the dev branch.
+5. Commit + push `results/` + `state/` (**push failure is non-fatal** — retried next run).
 6. Exit non-zero **only** on a hard-gate perf regression → the cron/slurm mail is a real alert.
 
-No per-node paths are baked in — only URLs + `$WORK_DIR` (under `$HOME` or `$SCRATCH`).
+The published dashboard rebuilds itself separately: a GitHub Action regenerates it from the pushed
+YAML and deploys to Pages (see the repo README), so the nightly only needs to push data.
 
 ## One-time setup
 
-**Both platforms**
-1. Clone the metrics repo somewhere stable (this is the bootstrap/entrypoint clone).
-2. Create the dedicated env: `conda create -n mbirjax_regression python=3.12` (the wrapper installs
-   the rest each run). **Do not reuse your dev env** — the per-branch editable installs churn it.
-3. Author/edit the harness in the mbirjax tree, then `bash dev_scripts/regression/deploy_to_metrics.sh`
-   → review → commit + push the metrics clone. The nightly only sees **pushed** harness changes.
-4. Edit `tooling/regression/regression.env`: `TRACKED_BRANCHES`, `POLL_SCHEDULE`, `NOTIFY`, `WORK_DIR`.
+1. Clone the metrics repo somewhere stable (the bootstrap/entrypoint clone).
+2. Create the dedicated env: `conda create -n mbirjax_regression python=3.11` (the wrapper installs the
+   rest each run). **Don't reuse your dev `mbirjax` env** — the per-branch editable installs churn it.
+3. Set the run knobs in `action_scripts/run_configs.env` (`TRACKED_BRANCHES`, `INSTALL_EXTRAS_*`,
+   `CONDA_PYTHON`) and the infra in `regression.env` (`POLL_SCHEDULE`, `NOTIFY`, `WORK_DIR`,
+   `PREAMBLE_FILE`, `TOKEN_FILE`). The nightly pulls the repo before each run, so committed+pushed edits
+   propagate automatically.
+4. For the unattended push, create a fine-grained PAT with write access to `mbirjax_metrics` only via
+   `action_scripts/create_token.sh` (see `create_token_instructions.md`); point `TOKEN_FILE` at it.
 
-**Mac (launchd)**
-```
-bash tooling/regression/enable_nightly.sh     # fills + loads the launchd agent (runs at next wake if asleep)
-bash tooling/regression/disable_nightly.sh    # unload + remove
-```
+**Schedule it**
+- macOS: `action_scripts/enable_nightly.sh` (loads a launchd agent) / `disable_nightly.sh`.
+- Cluster: scrontab + `nightly_regression.slurm` — pending (enable/disable stub this for now).
 
-**Cluster (scrontab) — P6, not yet written**
-- Copy `cluster_preamble.sh.example` to a real path; set `PREAMBLE_FILE` to it (it `module load`s
-  conda/cuda/cudnn and exports `HTTPS_PROXY`/`HTTP_PROXY` — git needs the proxy from a compute node).
-- Put a fine-grained PAT (write access to `mbirjax_metrics` only) in a `chmod 600` file; set `TOKEN_FILE`.
-- `nightly_regression.slurm` + an `#SCRON` entry will invoke `run_regression.sh` (still TODO).
-
-## Validate before trusting it (Mac dry-run)
+## Verify before scheduling
 ```
-# with the dedicated env created and the harness deployed+pushed:
-ENABLED=1  bash tooling/regression/run_regression.sh
+action_scripts/run_one_night.sh     # one manual pass: clone -> test -> measure -> push
 ```
-Watch it: fresh-clone metrics → re-exec → (ls-remote) one changed branch → worktree → install →
-tests → engine → push. Confirm a `results/<plat>/<branch>/regression_<plat>_<date>.yaml` appears and
-the `state/<plat>/<branch>` SHA updates. A second immediate run should report "no tracked branch
-changed" (fire-on-change working).
+Confirm a `results/<plat>/<branch>/regression_<plat>_<...>.yaml` appears and `state/<plat>/<branch>`
+updates; a second immediate run should report no changed branch (fire-on-change working).
 
-## Knobs (`regression.env`)
-`ENABLED` (kill-switch) · `TRACKED_BRANCHES` · `POLL_SCHEDULE` · `METRICS_URL`/`MBIRJAX_URL` ·
-`WORK_DIR` · `INSTALL_EXTRAS_{cpu,gpu}` (`cuda12,test` on GPU; `test` on CPU) · `CONDA_ENV` ·
-`HARNESS_DEPS` · `RUN_TESTS`/`TEST_CPU_DEVICES` · `PREAMBLE_FILE` · `TOKEN_FILE` · `NOTIFY`.
+## Knobs
+- **`action_scripts/run_configs.env`** (the ones you edit): `TRACKED_BRANCHES`,
+  `INSTALL_EXTRAS_{cpu,gpu}` (`cuda12,test` GPU / `test` CPU), `CONDA_PYTHON`.
+- **`regression.env`** (infra): `ENABLED` (kill-switch — prefer enable/disable_nightly) · `POLL_SCHEDULE`
+  · `METRICS_URL`/`MBIRJAX_URL` · `WORK_DIR` · `CONDA_ENV` · `HARNESS_DEPS` · `RUN_TESTS` /
+  `TEST_CPU_DEVICES` · `PREAMBLE_FILE` · `TOKEN_FILE` · `NOTIFY`.
 
 ## Notes / current limits
-- `enable_nightly.sh` supports a **daily** `POLL_SCHEDULE` (`M H * * *`); richer cron specs would need
-  more `StartCalendarInterval` entries.
-- Per-branch **test** results are logged but **not yet gated/diffed** (the perf engine is the alert
-  path); test diffing is a later increment.
-- `scaling_common` imports matplotlib at module level (hence `HARNESS_DEPS`); making that import lazy
-  would drop the dependency for the (non-plotting) nightly — optional cleanup.
-- Golden/`main_baseline` are read from `metrics/golden/` via `REG_GOLDEN_DIR`; capture/refresh them
-  with `capture_golden.py` / `capture_main_baseline.py` (a deliberate, human-triggered step).
+- `enable_nightly.sh` supports a **daily** `POLL_SCHEDULE` (`M H * * *`) on macOS; richer specs need
+  more launchd entries. Cluster scheduling (scrontab + slurm) is not yet written.
+- Per-branch **test** results are logged but **not gated/diffed** (the perf engine is the alert path).
+- Golden / `main_baseline` are read from `golden/` via `REG_GOLDEN_DIR`; refresh with `capture_golden.py`
+  / `capture_main_baseline.py` (a deliberate, human-triggered step). The longer-term plan is to replace
+  these snapshots with the tracked `main` / `prerelease` runs.
