@@ -1,0 +1,27 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [161 items]
+
+...................................ss.......s........................... [ 44%]
+........................................................................ [ 89%]
+.................                                                        [100%]
+=============================== warnings summary ===============================
+tests/geometries/test_fbp_fdk.py::TestFBPReconstruction::test_fdk_helical_cone
+tests/geometries/test_vcd.py::TestVCD::test_vcd_helical_cone
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/cone_beam.py:1046: UserWarning: Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.
+    warnings.warn('Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.')
+
+tests/sharding/test_padding.py: 4 warnings
+tests/sharding/test_vcd_sharded.py: 9 warnings
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/tomography_model.py:2453: UserWarning: 
+  Unable to determine sinogram background. This may affect regularization.
+  
+    warnings.warn('\nUnable to determine sinogram background. This may affect regularization.\n')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========== 158 passed, 3 skipped, 15 warnings in 276.85s (0:04:36) ============
