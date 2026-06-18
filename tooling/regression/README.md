@@ -80,8 +80,8 @@ updates; a second immediate run should report no changed branch (fire-on-change 
 ## Notes / current limits
 - `enable_nightly.sh` on macOS supports a **daily** `POLL_SCHEDULE` (`M H * * *`); richer specs need
   more launchd entries. On the cluster the full `POLL_SCHEDULE` cron expression is passed straight to
-  `scrontab`. The cluster job uses QoS `standby` by default (idle-cycle, no allocation charge,
-  preemptible, shorter walltime cap) — set `SLURM_QOS=normal` in `run_configs.env` for priority.
+  `scrontab`. The cluster job uses QoS `normal` (the `ai` H100 partition rejects `standby`); most of
+  the cost is the actual measurement sweeps, since fire-on-change exits in seconds otherwise.
 - Per-branch **test** results are logged but **not gated/diffed** (the perf engine is the alert path).
 - The gate compares each run only against **this branch's own previous run** (commit-over-commit).
   Cross-branch comparison (vs `main`/`prerelease`) and best-ever drift are surfaced on the dashboard,

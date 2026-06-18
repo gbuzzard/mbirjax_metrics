@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -A bouman
 #SBATCH -p ai
-#SBATCH -q standby
+#SBATCH -q normal
 #SBATCH -N 1
 #SBATCH --gpus-per-node=4
 #SBATCH -n 56

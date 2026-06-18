@@ -260,7 +260,7 @@ function renderTiles() {
     `<div class="tile" data-click="false">
        <div class="lbl">run shown</div>
        <div class="when">${commitMinute(cur)}</div>
-       <div class="sub">${state.branch} · ${state.platform.toUpperCase()} · ${cur.commit}${cur.dirty ? " · dirty" : ""}${nRuns > 1 ? " · pick in history" : ""}</div>
+       <div class="sub"><b>${state.branch}</b> · <b>${state.platform.toUpperCase()}</b> · ${cur.commit}${cur.dirty ? " · dirty" : ""}${nRuns > 1 ? " · pick in history" : ""}</div>
      </div>`;
   box.innerHTML = health.map((t) =>
     `<div class="tile ${t.click ? "click" : ""} ${state.openTile === t.id ? "open" : ""}" data-id="${t.id}" data-click="${!!t.click}">
@@ -633,7 +633,7 @@ function init() {
   const repo = M.repo_url
     ? `<a class="repolink" href="${M.repo_url}" target="_blank" rel="noopener">${M.repo_name}</a>`
     : M.repo_name;
-  $("gen").innerHTML = `generated ${M.generated_utc} · ${repo}`;
+  $("gen").innerHTML = `generated ${M.generated} · ${repo}`;
   $("footer").innerHTML = `${M.runs.length} run(s) · platforms ${M.platforms.join(", ")} · branches ${M.branches.join(", ")} · regenerate with <code>action_scripts/build_dashboard.sh</code>`;
   if (!M.runs.length) { $("tiles").innerHTML = "<p class='muted'>No runs found under results/.</p>"; return; }
 

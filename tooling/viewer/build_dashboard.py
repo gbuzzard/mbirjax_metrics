@@ -68,6 +68,17 @@ def _repo_url() -> str | None:
     return url[:-4] if url.endswith(".git") else url
 
 
+def _generated_stamp() -> str:
+    """Build time in US Eastern — EST or EDT per the date (%Z resolves it).  This is correct wherever
+    the build runs (local or the UTC Pages runner), since now(tz) gives that zone's wall clock.  Falls
+    back to UTC if the system has no tz database."""
+    try:
+        from zoneinfo import ZoneInfo
+        return _dt.datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d %H:%M %Z")
+    except Exception:
+        return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
 # --------------------------------------------------------------------------- #
 # Parsing helpers                                                             #
 # --------------------------------------------------------------------------- #
@@ -223,7 +234,7 @@ def collect_data() -> dict:
 
     runs.sort(key=lambda r: (r["platform"], r["branch"], r["date"]))
     return {
-        "generated_utc": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated": _generated_stamp(),
         "repo_name": REPO_ROOT.name,
         "repo_url": _repo_url(),
         "platforms": sorted(platforms),

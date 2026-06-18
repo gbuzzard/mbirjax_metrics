@@ -13,8 +13,39 @@ for you), and each keeps the terminal open on a nonzero exit instead of closing 
 | `create_token.sh` | One-time setup of the fine-grained GitHub PAT used for the unattended push. See `create_token_instructions.md`. |
 
 **`run_configs.env`** — the run-time knobs you edit: `TRACKED_BRANCHES`, `INSTALL_EXTRAS_cpu/gpu`,
-`CONDA_PYTHON`. The harness sources it (via `tooling/regression/regression.env`); edits propagate to
-the nightly automatically (it pulls the metrics repo before each run). Harness infrastructure
-(URLs, paths, credentials, schedule, the `ENABLED` kill-switch) stays in `regression.env`.
+`CONDA_PYTHON`, and the cluster `SLURM_*` knobs (account/partition/QoS/GPUs/cores/walltime). The
+harness sources it (via `tooling/regression/regression.env`); edits propagate to the nightly
+automatically (it pulls the metrics repo before each run). Harness infrastructure (URLs, paths,
+credentials, schedule, the `ENABLED` kill-switch) stays in `regression.env`.
+
+## Cluster (Gautschi) one-time setup
+
+The nightly schedules itself on Gautschi via a SLURM `scrontab` block. Once, on a Gautschi login node:
+
+1. **Clone** the metrics repo to a stable location — the standing entry point. (Each run fresh-clones
+   its own working copy under `WORK_DIR`, so this checkout only holds the wrapper.)
+   ```
+   git clone https://github.com/gbuzzard/mbirjax_metrics ~/mbirjax_metrics && cd ~/mbirjax_metrics
+   ```
+2. **Preamble** — copy the template to the path `regression.env` expects (`PREAMBLE_FILE`); it
+   `module load`s conda + cuda and exports the RCAC proxy so compute nodes can reach GitHub/PyPI:
+   ```
+   cp tooling/regression/cluster_preamble.sh.example "$HOME/load_conda_cuda.sh"
+   ```
+3. **Push token** — the fine-grained GitHub PAT for the unattended push:
+   ```
+   action_scripts/create_token.sh        # writes ~/.config/mbirjax/metrics_credentials (chmod 600)
+   ```
+4. **Tune** `run_configs.env` if needed (the `SLURM_*` knobs: account `bouman`, partition `ai`, QoS
+   `normal`, 4 GPUs, walltime). The dedicated `mbirjax_regression` conda env is auto-created on first run.
+5. **Smoke-test, then schedule** — from an interactive GPU session
+   (`sinteractive -A bouman -N1 -n56 --gpus-per-node=4 -p ai -t 2:00:00`):
+   ```
+   REG_SMOKE=1 bash tooling/regression/run_regression.sh   # ~1-2 min plumbing check (no push)
+   action_scripts/run_one_night.sh                          # one real pass (measures + pushes)
+   action_scripts/enable_nightly.sh                         # install the scrontab schedule
+   ```
+   `disable_nightly.sh` removes it; `scrontab -l` and `squeue --me` inspect it. To pre-flight the
+   SLURM directives without running, `sbatch --test-only tooling/regression/nightly_regression.slurm`.
 
 See `tooling/viewer/README.md` (dashboard) and `tooling/regression/README.md` (nightly) for details.
