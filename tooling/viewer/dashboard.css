@@ -39,9 +39,11 @@ section { margin: 26px 0; }
 .tile .val { font-size: 24px; font-weight: 500; margin-top: 2px; }
 .tile .val.bad { color: var(--fail); }
 .tile .sub { font-size: 12px; color: var(--muted); }
-/* per-platform value rows (the first three tiles show cpu + gpu side by side) */
-.tile .pvs { display: flex; gap: 18px; margin-top: 4px; }
-.tile .pv { font-size: 12px; color: var(--muted); }
+/* per-platform value rows (the first three tiles show cpu + gpu side by side, centered,
+   with a vertical divider between them) */
+.tile .pvs { display: flex; margin-top: 4px; }
+.tile .pv { flex: 1; text-align: center; padding: 0 6px; font-size: 12px; color: var(--muted); }
+.tile .pv + .pv { border-left: 1px solid var(--border); }
 .tile .pv b { display: block; font-size: 22px; font-weight: 500; color: var(--text); }
 .tile .pv b.bad { color: var(--fail); }
 .tile .pv.none b { color: var(--muted); font-weight: 400; }

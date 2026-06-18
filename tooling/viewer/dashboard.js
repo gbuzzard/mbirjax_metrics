@@ -169,6 +169,16 @@ function linePlot(el, xs, specs, o) {
     if (lx + tip.offsetWidth > el.clientWidth) lx = Math.max(0, ob.left - eb.left + cl - tip.offsetWidth - 14);
     tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + ct + 8) + "px";
   }];
+  // Linked x-zoom: when one plot in a sync group zooms (or resets) its x-scale, mirror the range to
+  // the others.  Propagate ONLY when a peer's range actually differs, so the cascade converges
+  // instead of looping (uPlot commits setScale on rAF, so a sync flag wouldn't span the callbacks).
+  if (o.syncX) { const group = o.syncX;
+    hooks.setScale = [(u, key) => {
+      if (key !== "x") return;
+      const mn = u.scales.x.min, mx = u.scales.x.max;
+      group.forEach((p) => { if (p !== u && (p.scales.x.min !== mn || p.scales.x.max !== mx)) p.setScale("x", { min: mn, max: mx }); });
+    }];
+  }
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
     scales: { x: xScale, y: { distr: o.yLog ? 3 : 1 } },
@@ -177,12 +187,13 @@ function linePlot(el, xs, specs, o) {
     // time-series history panels.  Double-click resets.  (The fixed-array x-range that previously
     // hard-clamped the scale is gone — see xPad — so the drag actually takes now.)
     cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime } },
-    hooks: hooks.setCursor ? hooks : undefined,
+    hooks: (hooks.setCursor || hooks.setScale) ? hooks : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
   el.innerHTML = "";
   try { el._u = new uPlot(opts, data, el); } catch (e) { el.innerHTML = "<p class='muted'>chart error: " + e.message + "</p>"; return null; }
   if (tip) el.appendChild(tip);
+  if (o.syncX) o.syncX.push(el._u);
   // Optional: a plain click (vs a drag, which zooms) selects the nearest point.
   if (o.onPick) {
     const over = el.querySelector(".u-over");
@@ -430,7 +441,7 @@ function renderScaling() {
   const timeFails = ndevs.map((nd, ci) => {
     const fi = sizes.map((s, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
     const yy = interpFails(xvol, timeCurves[ci].ys, fi, true, true, timeIdeal.length ? timeIdeal[0].ys : null);
-    return yy ? { label: "failed", color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
+    return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
   linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
@@ -444,7 +455,7 @@ function renderScaling() {
   const memFails = ndevs.map((nd, ci) => {
     const fi = sizes.map((s, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
     const yy = interpFails(xvol, memCurves[ci].ys, fi, true, true, memIdeal.length ? memIdeal[0].ys : null);
-    return yy ? { label: "failed", color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
+    return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const memSpecs = [...memFails, ...(gM ? [gM] : []), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
   linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
@@ -458,7 +469,7 @@ function renderScaling() {
   const speedFails = sizes.map((s, ci) => {
     const fi = ndevs.map((nd, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
     const yy = interpFails(ndevs, speedCurves[ci].ys, fi, false, false, speedIdeal);
-    return yy ? { label: "failed", color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
+    return yy ? { label: s, color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const speedSpecs = [...speedFails, ...speedCurves, { label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: speedIdeal }];
   linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices", tooltip: devTip });
@@ -470,7 +481,7 @@ function renderScaling() {
   const shardFails = sizes.map((s, ci) => {
     const fi = ndevs.map((nd, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
     const yy = interpFails(ndevs, shardCurves[ci].ys, fi, false, false, ndevs.map(() => 2));
-    return yy ? { label: "failed", color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
+    return yy ? { label: s, color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const shardSpecs = [...shardFails, ...shardCurves, { label: "ideal 2×", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: ndevs.map(() => 2) }];
   linePlot($("pShard"), ndevs, shardSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip });
@@ -588,7 +599,10 @@ function renderHistory() {
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
       + (y != null ? `<br><span class="tdim">${spec.label}</span> ${fmtNum(y)}` : "");
   };
-  const opts = (yl) => ({ xTime: true, xRange: xr, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip });
+  // All three history plots share one x (commit time): a sync group links their zoom so dragging
+  // any one re-ranges all three to the same window (and a double-click reset clears all three).
+  const histGroup = [];
+  const opts = (yl) => ({ xTime: true, xRange: xr, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
   linePlot($("hVcd"), xs, specsFor("vcd"), { width: $("hVcd").clientWidth || 320, ...opts("min") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB") });
   const gateSpecs = [];
@@ -597,7 +611,7 @@ function renderHistory() {
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gate : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip });
+  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   $("hist-legend").innerHTML =
