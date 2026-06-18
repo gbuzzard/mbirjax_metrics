@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Install + start the scheduled nightly regression (forwards to tooling/regression/enable_nightly.sh).
-# Platform-aware: macOS launchd works now; the cluster (scrontab + nightly_regression.slurm) is
-# pending the slurm script.  Safe whether run with bash/./ or sourced; keeps the terminal open on a
-# nonzero exit.
+# Platform-aware: macOS uses launchd; the cluster (Gautschi) uses a managed SLURM scrontab block.
+# Safe whether run with bash/./ or sourced; keeps the terminal open on a nonzero exit.
 if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
 (
   trap 'rc=$?; if [ "$rc" -ne 0 ]; then

@@ -4,8 +4,8 @@ A standing, **fire-on-change** check: it watches a few mbirjax branches and, whe
 measures every geometry × op × size × device-count (min time + peak memory + a tolerant correctness
 fingerprint), diffs against that branch's own previous run, and flags regressions.  (Cross-branch
 context — vs `main`/`prerelease` — and best-ever drift are shown on the dashboard, not gated here.)
-Runs on a Mac via launchd (working) and, eventually, on the cluster via scrontab + slurm (pending the
-slurm script).
+Runs on a Mac via launchd and on Purdue's Gautschi cluster via a SLURM `scrontab` entry — both
+installed/removed by `enable_nightly.sh` / `disable_nightly.sh`.
 
 ## Layout (canonical home: this repo)
 
@@ -15,7 +15,8 @@ action_scripts/          top-level entry points + run_configs.env (the run knobs
 tooling/scaling_tests/   engine: scaling_common.py, performance_tracking.py, run_nightly.py,
                          run_performance_local.py
 tooling/regression/      this wrapper: run_regression.sh, regression.env, enable/disable_nightly.sh,
-                         com.mbirjax.regression.plist, cluster_preamble.sh.example, README.md
+                         com.mbirjax.regression.plist (macOS), nightly_regression.slurm +
+                         cluster_preamble.sh.example (cluster), README.md
 results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + records_<plat>.yaml
                          (best-ever) + tests_*.txt
 state/<plat>/<branch>    last MEASURED commit per branch (fire-on-change)
@@ -52,9 +53,15 @@ YAML and deploys to Pages (see the repo README), so the nightly only needs to pu
 4. For the unattended push, create a fine-grained PAT with write access to `mbirjax_metrics` only via
    `action_scripts/create_token.sh` (see `create_token_instructions.md`); point `TOKEN_FILE` at it.
 
-**Schedule it**
-- macOS: `action_scripts/enable_nightly.sh` (loads a launchd agent) / `disable_nightly.sh`.
-- Cluster: scrontab + `nightly_regression.slurm` — pending (enable/disable stub this for now).
+**Schedule it** — `action_scripts/enable_nightly.sh` / `disable_nightly.sh` (platform-aware):
+- macOS: loads/removes a launchd agent.
+- Cluster (Gautschi): writes/removes a managed `scrontab` block — a daily batch job submitted with
+  the `SLURM_*` options from `run_configs.env` (account/partition/QoS/GPUs/walltime) that runs the
+  wrapper. One-time cluster prep first: copy the preamble
+  (`cp tooling/regression/cluster_preamble.sh.example "$HOME/load_conda_cuda.sh"`) and create the
+  push token (`action_scripts/create_token.sh`). Smoke-test before scheduling, either by running
+  `tooling/regression/run_regression.sh` in an interactive GPU session, or `sbatch
+  tooling/regression/nightly_regression.slurm` from your standing checkout.
 
 ## Verify before scheduling
 ```
@@ -71,8 +78,10 @@ updates; a second immediate run should report no changed branch (fire-on-change 
   `TEST_CPU_DEVICES` · `PREAMBLE_FILE` · `TOKEN_FILE` · `NOTIFY`.
 
 ## Notes / current limits
-- `enable_nightly.sh` supports a **daily** `POLL_SCHEDULE` (`M H * * *`) on macOS; richer specs need
-  more launchd entries. Cluster scheduling (scrontab + slurm) is not yet written.
+- `enable_nightly.sh` on macOS supports a **daily** `POLL_SCHEDULE` (`M H * * *`); richer specs need
+  more launchd entries. On the cluster the full `POLL_SCHEDULE` cron expression is passed straight to
+  `scrontab`. The cluster job uses QoS `standby` by default (idle-cycle, no allocation charge,
+  preemptible, shorter walltime cap) — set `SLURM_QOS=normal` in `run_configs.env` for priority.
 - Per-branch **test** results are logged but **not gated/diffed** (the perf engine is the alert path).
 - The gate compares each run only against **this branch's own previous run** (commit-over-commit).
   Cross-branch comparison (vs `main`/`prerelease`) and best-ever drift are surfaced on the dashboard,

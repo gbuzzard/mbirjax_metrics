@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stop the scheduled nightly regression (forwards to tooling/regression/disable_nightly.sh).
-# Platform-aware: macOS launchd works now; the cluster path is pending the slurm script.
+# Platform-aware: macOS removes the launchd agent; the cluster removes the managed scrontab block.
 # Safe whether run with bash/./ or sourced; keeps the terminal open on a nonzero exit.
 if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
 (

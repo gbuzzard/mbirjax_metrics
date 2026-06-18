@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # enable_nightly.sh — install + start the scheduled nightly regression.  Platform-aware:
-#   macOS         -> launchd agent (filled from com.mbirjax.regression.plist).  Works now.
-#   Linux/cluster -> scrontab + nightly_regression.slurm.  NOT YET — pending the slurm script.
+#   macOS         -> launchd agent (filled from com.mbirjax.regression.plist).
+#   Linux/cluster -> a managed scrontab block: a daily batch job (SLURM_* opts from run_configs.env)
+#                    running the wrapper.  Re-run after editing run_configs.env to apply changes.
 #
 # Run it from the regression/ dir (in the metrics clone for the real install, or here during dev).
 # On macOS it fills the plist from regression.env (schedule + wrapper path + a conda PATH) and loads
@@ -17,10 +18,30 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/regression.env"
 
 if [ "$(uname -s)" != "Darwin" ]; then
-  echo "enable_nightly: scheduled runs on $(uname -s) are not implemented yet."
-  echo "  macOS uses launchd (this path); the cluster will use scrontab + nightly_regression.slurm,"
-  echo "  which is still to be written.  For now, trigger a pass by hand: action_scripts/run_one_night.sh"
-  exit 1
+  # ── Linux / cluster (SLURM scrontab) ────────────────────────────────────────────────────────
+  # Install a managed scrontab block: a daily batch job (on POLL_SCHEDULE, with the SLURM_* options
+  # from run_configs.env) that runs the wrapper.  fire-on-change makes most nights a seconds-long
+  # no-op; a tracked branch that moved triggers the real sweep.
+  command -v scrontab >/dev/null 2>&1 || {
+    echo "ERROR: scrontab not found — this cluster's Slurm lacks the cron feature."; exit 1; }
+  WRAPPER="$HERE/run_regression.sh"
+  [ -f "$WRAPPER" ] || { echo "ERROR: wrapper not found at $WRAPPER"; exit 1; }
+  LOGDIR="$WORK_DIR"; mkdir -p "$LOGDIR"
+  B="# mbirjax-nightly-BEGIN"; E="# mbirjax-nightly-END"   # markers for the managed block
+  OPTS="-A ${SLURM_ACCOUNT} -p ${SLURM_PARTITION} -q ${SLURM_QOS} -N1"
+  OPTS="$OPTS --gpus-per-node=${SLURM_GPUS_PER_NODE} -n ${SLURM_NTASKS} -t ${SLURM_WALLTIME}"
+  OPTS="$OPTS -J mbirjax-nightly --mail-user=${NOTIFY} --mail-type=FAIL -o ${LOGDIR}/nightly-%j.log"
+  BLOCK="$(printf '%s\n#SCRON %s\n%s bash %s\n%s' "$B" "$OPTS" "$POLL_SCHEDULE" "$WRAPPER" "$E")"
+  # Drop any existing managed block, then append the fresh one (leaving the user's other entries).
+  CUR="$(scrontab -l 2>/dev/null | sed "/$B/,/$E/d")" || CUR=""
+  { [ -n "$CUR" ] && printf '%s\n' "$CUR"; printf '%s\n' "$BLOCK"; } | scrontab -
+  echo "Installed scrontab nightly:"
+  echo "  schedule: $POLL_SCHEDULE   account: $SLURM_ACCOUNT   $SLURM_PARTITION/$SLURM_QOS   ${SLURM_GPUS_PER_NODE} GPU   t=$SLURM_WALLTIME"
+  echo "  wrapper:  $WRAPPER"
+  echo "  logs:     $LOGDIR/nightly-<jobid>.log"
+  echo "  inspect:  scrontab -l   |   squeue --me"
+  echo "  (ENABLED=$ENABLED in regression.env is the in-wrapper kill-switch; this controls the schedule.)"
+  exit 0
 fi
 
 # ── macOS / launchd ───────────────────────────────────────────────────────────────────────────
