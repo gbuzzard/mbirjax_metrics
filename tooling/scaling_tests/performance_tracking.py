@@ -444,13 +444,44 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, out_file
 
 
 # ── Worker entry (internal; the orchestrator builds argv) ─────────────────────
+def _probe_sharding_by_geom():
+    """Per-GEOMETRY sharding capability of the library under test.
+
+    True  = the geometry's projector supports the placement/sharded path (model._supports_sharding()),
+            so it can be swept across multiple devices;
+    False = single-device only (e.g. cone on prerelease, which raises on a multi-device request; or
+            anything on pre-sharding main, which has no sharding API at all);
+    None  = couldn't determine (probe failed) -> the orchestrator does NOT restrict.
+
+    The orchestrator uses this to sweep each geometry only at the device counts it actually supports.
+    """
+    import mbirjax
+    ang = np.linspace(0, np.pi, 16, endpoint=False)
+    builders = {
+        "parallel": lambda: mbirjax.ParallelBeamModel((16, 8, 8), ang),
+        "cone": lambda: mbirjax.ConeBeamModel((16, 8, 8), ang,
+                                              source_detector_dist=32.0, source_iso_dist=16.0),
+    }
+    out = {}
+    for name, mk in builders.items():
+        try:
+            m = mk()
+            ss = getattr(m, "_supports_sharding", None)
+            out[name] = bool(ss()) if callable(ss) else hasattr(m, "configure_devices")
+        except Exception:   # noqa: BLE001 — a capability probe must never abort setup
+            out[name] = None
+    return out
+
+
 def worker_setup(out_file):
-    """Report platform + device count/label (no cross-version baseline yet)."""
+    """Report platform + device count/label + per-geometry sharding capability."""
     import mbirjax  # noqa: F401  device-setup-first
     plat, max_dev = sc.detect_platform()
     dev_label = sc.device_label()
     corr = {"check": "no correctness fingerprint yet", "baseline_present": False}
     result = sc.build_setup_result(plat, max_dev, dev_label, corr)
+    result["sharding_by_geom"] = _probe_sharding_by_geom()
+    print(f"[setup] sharding_by_geom={result['sharding_by_geom']}")
     sc.write_worker_result(out_file, result)
 
 
@@ -498,9 +529,29 @@ def _git_provenance(root):
         except Exception:
             return None
     return {"git_commit": _g(["rev-parse", "HEAD"]),
+            # committer date in strict ISO-8601, so the dashboard can place a run
+            # on the timeline at the commit's time rather than the collection time
+            # (lets older prerelease checkouts be added as past baselines).
+            "git_commit_date": _g(["show", "-s", "--format=%cI", "HEAD"]),
             "git_branch": _g(["rev-parse", "--abbrev-ref", "HEAD"]),
             "mbirjax_version": sc.pyproject_version(root),
             "git_dirty": bool(_g(["status", "--porcelain"]))}
+
+
+def _file_tag(prov, fallback_date):
+    """Filename tag = ``<commit-UTC-timestamp>_<sha8>``, so each run file is unique per commit and
+    sorts chronologically by COMMIT time (not collection time).  Falls back to the collection date
+    if commit info is absent (e.g. provenance lookup failed)."""
+    import datetime as _dt
+    sha = (prov.get("git_commit") or "")[:8]
+    stamp = fallback_date
+    cd = prov.get("git_commit_date")
+    if cd:
+        try:
+            stamp = _dt.datetime.fromisoformat(cd).astimezone(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        except Exception:
+            stamp = fallback_date
+    return f"{stamp}_{sha}" if sha else stamp
 
 
 # ── Record book (best-ever per cell/metric + the commit that set it) ───────────
@@ -563,15 +614,22 @@ def _cell_status(c):
 
 
 def _expected_cells(result):
-    """The (geom|op|size|n_dev) keys this run's config was supposed to attempt."""
+    """The (geom|op|size|n_dev) keys this run's config was supposed to attempt.
+
+    Restricted per geometry by sharding_by_geom: a geometry that can't shard is only expected at
+    n=1, so the gate doesn't flag its (legitimately unmeasured) multi-device cells as 'absent'.
+    """
     cfg = result.get("config", {})
     plat = result["platform"]
     sizes = [sc.size_label(s) for s in cfg.get("sizes", {}).get(plat, [])]
+    dc = result.get("device_counts", [])
+    cap = result.get("sharding_by_geom", {})
     keys = set()
     for g in cfg.get("geometries", []):
+        g_dc = [1] if cap.get(g) is False else dc
         for op in cfg.get("ops", []):
             for s in sizes:
-                for n in result.get("device_counts", []):
+                for n in g_dc:
                     keys.add(f"{g}|{op}|{s}|{n}")
     return keys
 
@@ -700,16 +758,18 @@ def gate_run(result, references, config):
             "hard": hard, "soft": soft, "compared_to": [lab for lab, _ in refs]}
 
 
-def _find_prior(out_dir, plat, today_date):
-    """Most-recent prior dated file in out_dir (excluding today's), or None.
+def _find_prior(out_dir, plat, current_tag):
+    """Most-recent run file STRICTLY BEFORE current_tag (by name), or None.
 
-    Filenames embed the date/timestamp, so a lexicographic sort is chronological.
+    Filenames embed the commit-time tag, so a lexicographic sort is chronological by COMMIT time;
+    the prior is therefore the immediately-preceding commit's run (not just 'yesterday's file').
     """
     import glob
-    today_file = os.path.join(out_dir, f"regression_{plat}_{today_date}.yaml")
-    files = sorted(f for f in glob.glob(os.path.join(out_dir, f"regression_{plat}_*.yaml"))
-                   if f != today_file)
-    return files[-1] if files else None
+    cur_name = f"regression_{plat}_{current_tag}.yaml"
+    befores = sorted(n for n in (os.path.basename(f)
+                     for f in glob.glob(os.path.join(out_dir, f"regression_{plat}_*.yaml")))
+                     if n < cur_name)
+    return os.path.join(out_dir, befores[-1]) if befores else None
 
 
 def _print_gate(g):
@@ -796,6 +856,7 @@ def run(config):
     if config.inline:
         plat, max_dev = _inline_setup(config)
         dev_label = sc.device_label()
+        shard_by_geom = _probe_sharding_by_geom()
     else:
         worker_env = sc.build_worker_env(lib_root=config.lib_root or None)
         # Bound the CPU virtual-device count by THIS sweep (config.device_counts), not by
@@ -809,12 +870,19 @@ def run(config):
             print(f"  ERROR: setup worker produced no result (rc={rc}); aborting.")
             return None
         plat, max_dev, dev_label, _corr, _mpath = sc.print_setup_banner(setup)
+        shard_by_geom = setup.get("sharding_by_geom", {})
 
     sizes = config.sizes[plat]
     size_labels = [sc.size_label(s) for s in sizes]
     device_counts = [n for n in config.device_counts if n <= max_dev]
+    # Per geometry: a projector that can't shard (cone on prerelease; anything on pre-sharding main)
+    # runs single-device only — a multi-device request RAISES.  So sweep each geometry only at the
+    # counts it supports (restrict to n=1 when capability is explicitly False; never restrict on an
+    # unknown/None probe).
+    def geom_device_counts(geom):
+        return [1] if shard_by_geom.get(geom) is False else device_counts
     print(f"  geometries: {config.geometries}   ops: {config.ops}")
-    print(f"  sizes: {size_labels}   device counts: {device_counts}")
+    print(f"  sizes: {size_labels}   device counts: {device_counts}   sharding_by_geom: {shard_by_geom}")
 
     if not config.inline:
         fd, cfg_path = tempfile.mkstemp(suffix=".yaml", prefix="perf_cfg_")
@@ -822,23 +890,25 @@ def run(config):
         sc.save_yaml(cfg_path, config.to_dict())
 
     cells = []
+    swept_counts = set()
     for geometry in config.geometries:
+        gdc = geom_device_counts(geometry)   # per-geometry device counts (n=1 only if it can't shard)
+        swept_counts.update(gdc)
         for op in config.ops:
             for label in size_labels:
-                print(f"\n=== {geometry} | {op} | {label} ===")
+                print(f"\n=== {geometry} | {op} | {label} @ n={gdc} ===")
                 if config.inline:
                     fd, tmp = tempfile.mkstemp(suffix=".yaml", prefix="perf_inline_")
                     os.close(fd)
                     try:
-                        res = measure_cell_group(config, geometry, op, label,
-                                                 device_counts, tmp)
+                        res = measure_cell_group(config, geometry, op, label, gdc, tmp)
                     finally:
                         if os.path.exists(tmp):
                             os.remove(tmp)
                 else:
                     args = ["--worker", "--mode", "measure", "--config", cfg_path,
                             "--geometry", geometry, "--op", op, "--size", label,
-                            "--device-counts", *[str(n) for n in device_counts]]
+                            "--device-counts", *[str(n) for n in gdc]]
                     res, _rc = sc.run_worker(script, args, extra_env=worker_env)
                 if not res:
                     print(f"  (no result for {geometry}/{op}/{label})")
@@ -859,6 +929,7 @@ def run(config):
         os.remove(cfg_path)
 
     prov = _git_provenance(config.lib_root or sc.beta_root())   # provenance of the LIBRARY under test
+    file_tag = _file_tag(prov, config.date)   # commit-time tag for the filename + prior selection
 
     # Update the cumulative record book (best per cell/metric + the commit that set it).  It lives
     # in out_dir, so nightly (results/regression/) and manual (results/manual/<tag>/) runs keep
@@ -873,8 +944,9 @@ def run(config):
 
     result = {
         "kind": "regression", "date": config.date, "platform": plat,
+        "sharding_by_geom": shard_by_geom,
         "device_label": dev_label, **prov,
-        "config": config.to_dict(), "device_counts": device_counts, "cells": cells,
+        "config": config.to_dict(), "device_counts": sorted(swept_counts), "cells": cells,
     }
 
     # Diff + gate: compare against the most-recent prior dated file (and golden, if configured),
@@ -891,7 +963,7 @@ def run(config):
     if config.compare_to_prior or golden_path:
         refs = []
         if config.compare_to_prior:
-            pp = _find_prior(config.out_dir, plat, config.date)
+            pp = _find_prior(config.out_dir, plat, file_tag)
             if pp:
                 refs.append((f"prior:{os.path.basename(pp)}", sc.load_yaml(pp)))
         if golden_path and os.path.exists(golden_path):
@@ -909,7 +981,7 @@ def run(config):
         vs_main = main_perf_notes(result, sc.load_yaml(mb_path) or {})
         result["vs_main"] = {"baseline": os.path.basename(mb_path), "notes": vs_main}
 
-    out_path = os.path.join(config.out_dir, f"regression_{plat}_{config.date}.yaml")
+    out_path = os.path.join(config.out_dir, f"regression_{plat}_{file_tag}.yaml")
     sc.save_yaml(out_path, result)
     _print_summary(cells)
     if new_lines:

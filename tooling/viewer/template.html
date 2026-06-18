@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mbirjax metrics</title>
+<style>/*{{UPLOT_CSS}}*/</style>
+<style>/*{{DASHBOARD_CSS}}*/</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title-row">
+      <h1>mbirjax metrics</h1>
+      <span id="gen" class="muted"></span>
+    </div>
+    <div class="controls">
+      <label>platform <select id="platform"></select></label>
+      <label>branch <select id="branch"></select></label>
+    </div>
+  </header>
+
+  <div id="tiles" class="tiles"></div>
+  <div id="detail"></div>
+
+  <section>
+    <div class="sec-head"><h2>History</h2><span class="muted">both platforms · click a point to show that run · drag to zoom a date range · double-click to reset</span></div>
+    <div id="hist-legend" class="legend"></div>
+    <div class="panels hist">
+      <div class="panel"><div class="pcap">VCD time at largest size (n=1)</div><div id="hVcd" class="chart"></div></div>
+      <div class="panel"><div class="pcap">peak memory at largest size (n=1)</div><div id="hMem" class="chart"></div></div>
+      <div class="panel"><div class="pcap">hard-gate regressions</div><div id="hGate" class="chart"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Scaling</h2>
+      <span id="sv-meta" class="muted"></span>
+    </div>
+    <div class="controls wrap">
+      <label>op <select id="op"></select></label>
+      <label>compare against <select id="ref">
+        <option value="none">none</option>
+        <option value="golden">baseline</option>
+        <option value="main">main</option>
+        <option value="best">best-ever</option>
+      </select></label>
+      <span class="seg" id="view-seg"></span>
+    </div>
+    <div id="sv-plot">
+      <div id="sv-legend" class="legend"></div>
+      <div class="panels">
+        <div class="panel"><div class="pcap" id="capTime">time vs size</div><div id="pTime" class="chart"></div></div>
+        <div class="panel"><div class="pcap" id="capMem">memory vs size</div><div id="pMem" class="chart"></div></div>
+      </div>
+      <div id="sv-legend2" class="legend" style="margin-top:16px;"></div>
+      <div class="panels">
+        <div class="panel"><div class="pcap" id="capSpeed">speedup vs devices</div><div id="pSpeed" class="chart"></div></div>
+        <div class="panel"><div class="pcap" id="capShard">per-device memory ÷ sino shard</div><div id="pShard" class="chart"></div></div>
+      </div>
+    </div>
+    <div id="sv-table" style="display:none;"></div>
+  </section>
+
+  <footer class="muted" id="footer"></footer>
+</div>
+
+<script>/*{{UPLOT_JS}}*/</script>
+<script>/*{{DATA}}*/</script>
+<script>/*{{DASHBOARD_JS}}*/</script>
+</body>
+</html>

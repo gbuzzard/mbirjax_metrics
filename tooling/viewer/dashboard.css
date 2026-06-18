@@ -1,0 +1,91 @@
+/* Light mode only — the plots read best on white (Greg's call), so we do not
+   follow the OS dark-mode preference here. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff; --surface: #f7f7f5; --surface2: #efefea;
+  --text: #1f1f1d; --muted: #6b6b66; --border: #e2e2dc;
+  --accent: #185fa5; --accent-bg: #e6f1fb;
+  --ok: #3b6d11; --warn: #854f0b; --fail: #a32d2d;
+  --fail-bg: #fcebeb; --warn-bg: #faeeda;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+#app { max-width: 1080px; margin: 0 auto; padding: 24px 20px 64px; }
+
+h1 { font-size: 22px; font-weight: 500; margin: 0; }
+h2 { font-size: 17px; font-weight: 500; margin: 0; }
+.muted { color: var(--muted); font-size: 13px; }
+code { font-family: var(--mono); }
+
+header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 18px; }
+.title-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.controls { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.controls.wrap { flex-wrap: wrap; gap: 10px 16px; }
+.controls label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+select { font-family: inherit; font-size: 13px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+section { margin: 26px 0; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border-radius: 10px; padding: 12px 14px; border: 1px solid transparent; cursor: default; }
+.tile.click { cursor: pointer; }
+.tile.click:hover { border-color: var(--border); }
+.tile.open { border-color: var(--accent); }
+.tile .lbl { font-size: 12px; color: var(--muted); }
+.tile .val { font-size: 24px; font-weight: 500; margin-top: 2px; }
+.tile .val.bad { color: var(--fail); }
+.tile .sub { font-size: 12px; color: var(--muted); }
+
+#detail { margin-top: 12px; }
+.detail-box { background: var(--surface); border-radius: 10px; padding: 12px 14px; }
+.detail-box h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; }
+.detail-box ul { list-style: none; margin: 0; padding: 0; }
+.detail-box li { font-family: var(--mono); font-size: 12px; padding: 5px 8px; border-radius: 6px;
+  margin-bottom: 4px; background: var(--bg); }
+.detail-box li.bad { background: var(--fail-bg); color: var(--fail); }
+.detail-box .basis { color: var(--accent); }
+.detail-box p { margin: 6px 0; font-size: 13px; }
+.detail-box .runpicks { display: flex; flex-wrap: wrap; gap: 8px; }
+.detail-box button.runpick { font: inherit; font-size: 13px; font-family: var(--mono); padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; }
+.detail-box button.runpick:hover { border-color: var(--accent); }
+.detail-box button.runpick.on { border-color: var(--accent); color: var(--accent); }
+
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12px; color: var(--muted); background: var(--surface);
+  border: 0; border-right: 1px solid var(--border); padding: 5px 11px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent); color: #fff; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.legend .grp { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.legend .k { display: inline-flex; align-items: center; gap: 5px; }
+.legend .sw { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend .ring { width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid var(--fail); display: inline-block; }
+
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
+.panels.hist { grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .panels, .panels.hist { grid-template-columns: 1fr; } }
+.panel { min-width: 0; }
+.pcap { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.chart { width: 100%; }
+
+table.grid { border-collapse: collapse; font-size: 13px; width: 100%; margin-bottom: 14px; }
+table.grid caption { text-align: left; font-size: 13px; color: var(--muted); padding-bottom: 4px; }
+table.grid th, table.grid td { border: 1px solid var(--border); padding: 6px 9px; text-align: right; }
+table.grid th { color: var(--muted); font-weight: 400; background: var(--surface); }
+table.grid td.l { text-align: left; font-family: var(--mono); }
+table.grid td.num { font-family: var(--mono); }
+.up { color: var(--fail); } .dn { color: var(--ok); }
+.fail-cell { background: var(--warn-bg); color: var(--warn); font-family: var(--mono); }
+
+footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--border); }
+.u-wrap { position: relative; }
+/* Hide the cursor cross-hairs until the pointer is actually over a plot
+   (otherwise uPlot parks them at the top-left corner on first render). */
+.uplot .u-cursor-x, .uplot .u-cursor-y { display: none; }
+.uplot:hover .u-cursor-x, .uplot:hover .u-cursor-y { display: block; }
