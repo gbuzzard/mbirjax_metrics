@@ -1,10 +1,18 @@
 # Plan — retire `golden`/`main_baseline`, move to tracked references
 
-**Status:** decisions resolved 2026-06-18; implementing. Phases 1–2 of the Option-A migration are
-done (per-geometry single-device fallback; `main` + `prerelease` added to `TRACKED_BRANCHES`).
-This covers the remaining **Phase 3** (dashboard references from tracked runs), **Phase 4** (engine
-+ repo cleanup / deletion), and a small independent **Phase 0** (harness UX: regression ≠ failure).
-Scratch doc — relocate to the sharding plans dir or delete once the migration lands.
+**Status: COMPLETE (2026-06-18).** All phases landed and verified: Phase 0 (harness UX), Phase 1–2
+(per-geometry single-device + tracking `main`/`prerelease`), Phase 3 (dashboard refs from tracked
+runs), Phase 4 (engine + repo cleanup / deletion). `golden`/`main_baseline`/`vs_main` and the
+dormant array systems are gone from all code; the gate compares each run against its own prior run
+only; cross-branch + best-ever overlays are derived from the tracked runs on the dashboard. The only
+remaining golden mentions are in historical `results/*.yaml` (valid past measurements, left as-is)
+and this plan doc. **This doc can be archived/deleted.** One follow-up footnote below.
+
+> **Footnote (data hygiene, optional):** the existing `main`/`prerelease` run YAMLs were measured
+> *against golden* and carry a `gate: fail` verdict (the old false alarm) + `vs_main` blocks. Their
+> timing/memory data is valid, but the gate verdict is stale. Re-measuring those branches (a new
+> commit, or clearing their `state/` entry) yields a clean prior-only verdict (first run → `warn`).
+> Until then the dashboard's hard-gate history shows those old spikes.
 
 **Resolved decisions (2026-06-18):** A → **option 1** (prior-run hard gate; best-ever as the
 visible drift check). B → **option 1** (vs-main is a dashboard overlay only; engine reads no
@@ -256,8 +264,8 @@ constant (the Phase-3 rework already stopped calling them; Phase 4 deletes the d
 - [x] Phase 3: rebuild + verify overlays (cpu main/prerelease/prior, headless Chrome) — done 2026-06-18
 - [ ] Phase 3: (n/a) build_dashboard.py overlays — unnecessary; runs already carry the cells
 - [ ] Phase 3: re-verify on gpu once gpu main/prerelease runs land (same code path)
-- [ ] Phase 4: engine golden/main_baseline removal (+ optional soft best-ever gate)
-- [ ] Phase 4: scaling_common/run_nightly/run_regression.sh REG_GOLDEN_DIR removal
-- [ ] Phase 4: delete capture_*.py, golden/, backfill_commit_dates.py
-- [ ] Phase 4: docs reworded
-- [ ] Phase 4: run_one_night green + grep clean
+- [x] Phase 4: engine golden/main_baseline removal — done (prior-only gate; no soft best-ever gate added)
+- [x] Phase 4: scaling_common/run_nightly/run_regression.sh REG_GOLDEN_DIR removal — done
+- [x] Phase 4: delete capture_*.py, golden/, backfill_commit_dates.py + dormant save/load_baseline — done
+- [x] Phase 4: docs reworded (root + regression + viewer READMEs, add_run.sh, regression.env) — done
+- [x] Phase 4: py_compile + cold-start gate (→ warn) + dashboard rebuild + grep-clean — verified 2026-06-18

@@ -11,8 +11,8 @@
 #
 # Either way it checks out the chosen commit into a throwaway git worktree (your working tree is
 # untouched), runs the engine against it, and writes results/<plat>/<branch>/regression_<plat>_<commit
-# time>_<sha8>.yaml — so the run lands on the dashboard timeline at its COMMIT time.  No golden gate
-# is applied (a baseline isn't a pass/fail checkpoint), and a nonzero exit keeps the terminal open.
+# time>_<sha8>.yaml — so the run lands on the dashboard timeline at its COMMIT time.  No gate is
+# applied (a backfilled run is reference data, not a pass/fail checkpoint), and a nonzero exit keeps the terminal open.
 
 if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
 
@@ -43,7 +43,7 @@ Usage:
 
 It checks out the commit into a throwaway worktree (your working tree is untouched), measures it,
 and writes results/<plat>/<branch>/regression_<plat>_<commit-time>_<sha8>.yaml — placing the run on
-the timeline at its COMMIT time.  No golden gate is applied (a baseline isn't a pass/fail checkpoint).
+the timeline at its COMMIT time.  No gate is applied (a backfilled run isn't a pass/fail checkpoint).
 EOF
   }
   if [ "$#" -eq 0 ]; then usage; exit 0; fi
@@ -88,7 +88,7 @@ EOF
   echo "add_run: $PLAT · branch=$BRANCH · commit=$SHA · src=$SRC"
   echo "         -> $OUT"
 
-  # REG_GATE=0: a baseline is reference data, not a pass/fail checkpoint (no nonzero exit, no golden
+  # REG_GATE=0: a backfilled run is reference data, not a pass/fail checkpoint (no nonzero exit, no
   # gate).  The engine still records a day-over-day note vs the prior commit's run, if any.
   REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_RUN_TAG="$BRANCH" REG_GATE=0 \
     python "$REPO/tooling/scaling_tests/run_nightly.py"

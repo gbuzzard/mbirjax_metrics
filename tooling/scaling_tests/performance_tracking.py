@@ -94,12 +94,9 @@ class Config:
     # diff / gate
     gate: bool = True               # set the process exit code on a HARD regression
     compare_to_prior: bool = True   # compare against the most-recent prior dated file in out_dir
-    golden_path: str = ""           # explicit golden file (empty -> resolve from golden_dir, if set)
-    golden_dir: str = ""            # base dir for golden_<plat>.yaml + main_baseline_<plat>.yaml
-                                    # (e.g. the metrics repo's golden/).  "" -> script-relative
-                                    # RESULTS_DIR/golden and NO auto golden gate (historical behavior)
-    main_baseline_path: str = ""    # "" -> auto-discover <golden_dir>/main_baseline_<plat>.yaml
-                                    # for SOFT "vs main (1 device)" relative-perf notes (not gated)
+                                    # (this branch's own previous commit) — the sole gate reference.
+                                    # Cross-branch comparison (vs main/prerelease) + best-ever drift
+                                    # are surfaced on the dashboard, not gated here.
     mem_hard_pct: float = 8.0       # memory growth threshold (%); HARD on GPU, soft on CPU
     speedup_warn_pct: float = 15.0  # speedup-ratio drop WARN threshold (%); soft on all platforms
     time_soft_pct: float = 25.0     # absolute-time WARN threshold (%)
@@ -252,7 +249,7 @@ def _crop_to_true_shape(arr, true_shape):
 
     At a non-dividing count an op may return the padded device form (e.g. 49->50 views,
     41->42 slices).  The fingerprint must be on the TRUE shape so it is comparable across
-    device counts / vs golden.  Returns ``(cropped, padding_zero)`` where padding_zero is:
+    device counts and runs.  Returns ``(cropped, padding_zero)`` where padding_zero is:
       - None  if arr is not padded (shape already == true_shape),
       - True/False whether the padded OVERHANG is exactly 0 (a constructed-zero invariant; a
         non-zero overhang is a real padding-leak bug, surfaced rather than hidden).
@@ -396,9 +393,8 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, out_file
         # captures it as a failure and continues the descent, since it is not an OOM), while `back`
         # and `direct_filter` already tolerate padding and return the padded DEVICE form (e.g.
         # 49->50 views, 41->42 slices).  No allowlist: the gate fires only on a CHANGE in cell
-        # status vs the prior day / golden, so a persistent known failure stays a visible wart
-        # without alarming, and the fix surfaces as a fail->ok improvement (prompting a deliberate
-        # golden re-capture).
+        # status vs the prior run, so a persistent known failure stays a visible wart
+        # without alarming, and the fix surfaces as a fail->ok improvement.
         path_by_n[n] = path_info(model, op, devs, num_pixels, num_slices)
         # Pre-place big host inputs on this config's device form OUTSIDE the timing loop.
         if op == "direct_filter":
@@ -597,7 +593,7 @@ def update_records(records, cells, commit, date):
     return new_lines, n_baselines
 
 
-# ── Diff + gate (compare a run vs prior / golden; classify; set exit code) ─────
+# ── Diff + gate (compare a run vs its prior run; classify; set exit code) ──────
 def _cell_key(c):
     return f"{c['geometry']}|{c['op']}|{c['size']}|{c['n_devices']}"
 
@@ -723,7 +719,7 @@ def _compare_cell(key, t, r, lab, plat, expected, oom_gos, config, hard, soft):
         hard.append(f"[{lab}] {key} REGRESSED: was ok, now fails ({str(t.get('error',''))[:50]})")
         return
     if ts == "ok" and rs == "failed":
-        soft.append(f"[{lab}] {key} improved: was failing, now ok (consider re-baselining golden)")
+        soft.append(f"[{lab}] {key} improved: was failing, now ok")
         return
     if ts != "ok" or rs != "ok":   # skip<->fail combos, or unchanged fail/skip (quiet)
         if ts != rs:
@@ -743,7 +739,7 @@ def gate_run(result, references, config):
     refs = [(lab, r) for lab, r in references if r]
     if not refs:
         return {"result": "warn", "hard": [], "compared_to": [],
-                "soft": ["no prior or golden to compare against (cold start) — nothing gated"]}
+                "soft": ["no prior run to compare against (cold start) — nothing gated"]}
     plat = result.get("platform", "")
     expected = _expected_cells(result)
     oom_gos = {(c["geometry"], c["op"], c["size"])
@@ -782,33 +778,6 @@ def _print_gate(g):
         print("  warn  " + s)
     if not g.get("hard") and not g.get("soft"):
         print("  no changes vs reference")
-
-
-def main_perf_notes(result, main_baseline):
-    """SOFT, never-gated 'vs main (1 device)' relative-performance notes.
-
-    Compares this run's n=1 cells against the main-branch 1-device baseline (captured by
-    capture_main_baseline.py) — the pre-sharding reference — so we can see whether the sharding
-    machinery added overhead at a single device.  Each delta shows the value vs main with both
-    absolute and percentage difference.  Returns a list of note strings (informational only).
-    """
-    mb = {_cell_key(c): c for c in main_baseline.get("cells", [])
-          if c.get("n_devices") == 1 and not c.get("failed") and not c.get("skipped")}
-    notes = []
-    for c in result.get("cells", []):
-        if c.get("n_devices") != 1 or c.get("failed") or c.get("skipped"):
-            continue
-        m = mb.get(_cell_key(c))
-        if not m:
-            continue
-        parts = []
-        if c.get("min_ms") and m.get("min_ms"):
-            parts.append("time " + _fmt_delta(c["min_ms"], m["min_ms"], " ms"))
-        if c.get("mem_mb") and m.get("mem_mb"):
-            parts.append("mem " + _fmt_delta(c["mem_mb"], m["mem_mb"], " MB"))
-        if parts:
-            notes.append(f"{c['geometry']}|{c['op']}|{c['size']}  " + "  ".join(parts))
-    return notes
 
 
 def _print_summary(cells):
@@ -949,37 +918,19 @@ def run(config):
         "config": config.to_dict(), "device_counts": sorted(swept_counts), "cells": cells,
     }
 
-    # Diff + gate: compare against the most-recent prior dated file (and golden, if configured),
-    # classify per the §10/§10a rules, and stash the gate dict in the YAML.  Done before the write
-    # so the dated file records its own verdict; the exit code is set by main() from result.gate.
-    # golden_dir (e.g. the metrics repo's golden/) overrides the script-relative default for BOTH the
-    # golden gate and the vs-main baseline; plat is resolved here so the files carry the platform
-    # suffix.  Empty -> historical behavior (RESULTS_DIR/golden; golden gate only if golden_path set).
-    golden_base = config.golden_dir or os.path.join(sc.RESULTS_DIR, "golden")
-    golden_path = config.golden_path or (
-        os.path.join(golden_base, f"golden_{plat}.yaml") if config.golden_dir else "")
-
+    # Diff + gate: compare against this branch's most-recent prior run (the immediately-preceding
+    # commit's dated file in out_dir), classify per the §10/§10a rules, and stash the gate dict in
+    # the YAML.  Done before the write so the dated file records its own verdict; the exit code is
+    # set by main() from result.gate.  Prior-run is the SOLE gate reference — cross-branch
+    # comparison (vs main/prerelease) and best-ever drift are surfaced on the dashboard, not gated.
     gate_dict = None
-    if config.compare_to_prior or golden_path:
+    if config.compare_to_prior:
         refs = []
-        if config.compare_to_prior:
-            pp = _find_prior(config.out_dir, plat, file_tag)
-            if pp:
-                refs.append((f"prior:{os.path.basename(pp)}", sc.load_yaml(pp)))
-        if golden_path and os.path.exists(golden_path):
-            refs.append(("golden", sc.load_yaml(golden_path)))
+        pp = _find_prior(config.out_dir, plat, file_tag)
+        if pp:
+            refs.append((f"prior:{os.path.basename(pp)}", sc.load_yaml(pp)))
         gate_dict = gate_run(result, refs, config)
         result["gate"] = gate_dict
-
-    # Relative-performance note vs the main-branch 1-device baseline (auto-discovered under
-    # golden_base).  SOFT and never gated — shows whether the sharding machinery added 1-device
-    # overhead vs released main.  Only n=1 cells are compared (main has no sharding).
-    mb_path = (config.main_baseline_path
-               or os.path.join(golden_base, f"main_baseline_{plat}.yaml"))
-    vs_main = []
-    if os.path.exists(mb_path):
-        vs_main = main_perf_notes(result, sc.load_yaml(mb_path) or {})
-        result["vs_main"] = {"baseline": os.path.basename(mb_path), "notes": vs_main}
 
     out_path = os.path.join(config.out_dir, f"regression_{plat}_{file_tag}.yaml")
     sc.save_yaml(out_path, result)
@@ -992,73 +943,10 @@ def run(config):
         print(f"\n  established {n_baselines} baseline record(s) (first run for these cells)")
     if gate_dict:
         _print_gate(gate_dict)
-    if vs_main:
-        print("\n  Relative to main (1 device) — informational:")
-        for n in vs_main:
-            print("    " + n)
     print(f"\nOutput written to: {out_path}")
     print(f"Record book:       {records_path}")
     print("Done.")
     return result
-
-
-# ── Golden capture (the reference the gate compares against) ───────────────────
-def _merge_golden(existing, fresh, only):
-    """Selective refresh: replace the captured (geometry, op) cells, keep the rest of the golden.
-
-    Existing metadata is preserved; a ``refresh_log`` entry records what was recaptured, when, and
-    at which commit — the deliberate-baseline-change audit trail."""
-    fresh_gos = {(c["geometry"], c["op"]) for c in fresh.get("cells", [])}
-    kept = [c for c in (existing.get("cells") or []) if (c["geometry"], c["op"]) not in fresh_gos]
-    merged = dict(existing)
-    merged["kind"] = "golden"
-    merged["cells"] = kept + fresh.get("cells", [])
-    merged.setdefault("refresh_log", []).append(
-        {"date": fresh.get("date"), "commit": fresh.get("git_commit"), "only": list(only)})
-    return merged
-
-
-def capture_golden(config, golden_dir, only=None):
-    """Capture (or selectively refresh) the golden reference, written to golden_<plat>.yaml.
-
-    Runs the sweep with the gate + prior-comparison OFF (the golden IS the reference, not a tracked
-    run).  ``only`` (a list of geometry and/or op names) limits the capture to a subset and MERGES
-    it into the existing golden — additive refresh for a newly-ported geometry or an intentional
-    baseline change, leaving the other cells untouched; None -> full capture (overwrite).  The
-    capture run's dated/records files go to a throwaway temp dir.  (The representative .npy
-    deep-diff array + the push to mbirjax_metrics are the operational layer, deferred.)
-    """
-    import tempfile
-    import shutil
-    cap = Config.from_dict(config.to_dict())
-    cap.gate = False
-    cap.compare_to_prior = False
-    cap.golden_path = ""
-    cap.date = "golden"
-    cap.out_dir = tempfile.mkdtemp(prefix="golden_capture_")
-    if only:
-        geoms = [g for g in cap.geometries if g in only]
-        ops = [o for o in cap.ops if o in only]
-        if geoms:
-            cap.geometries = geoms
-        if ops:
-            cap.ops = ops
-    try:
-        result = run(cap)
-    finally:
-        shutil.rmtree(cap.out_dir, ignore_errors=True)
-    if result is None:
-        return None
-    result["kind"] = "golden"
-    os.makedirs(golden_dir, exist_ok=True)
-    golden_path = os.path.join(golden_dir, f"golden_{result['platform']}.yaml")
-    if only and os.path.exists(golden_path):
-        sc.save_yaml(golden_path, _merge_golden(sc.load_yaml(golden_path) or {}, result, only))
-        print(f"\nGolden REFRESHED ({','.join(only)}): {golden_path}")
-    else:
-        sc.save_yaml(golden_path, result)
-        print(f"\nGolden captured: {golden_path}")
-    return golden_path
 
 
 def main():

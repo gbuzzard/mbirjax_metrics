@@ -8,10 +8,11 @@ and a vendored copy of the uPlot charting library — into a single static
 needs no server, and makes no network calls.
 
 What it reads (all already produced by the nightly engine):
-  results/<plat>/<branch>/regression_<plat>_<date>.yaml   the per-run cells + gate (+ vs_main on GPU)
+  results/<plat>/<branch>/regression_<plat>_<date>.yaml   the per-run cells + gate
   results/<plat>/<branch>/records_<plat>.yaml             best-ever per cell+metric (records panel)
   results/<plat>/<branch>/tests_<plat>_<date>.txt         pytest summary line
-  golden/golden_<plat>.yaml                               drift reference (golden-vs-current diff)
+The "compare against" overlays (main / prerelease / prior run / best-ever) are all derived from the
+runs above — there is no separate reference file.
 
 Run it on demand to refresh the page::
 
@@ -27,6 +28,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -48,13 +50,27 @@ ONLY_BRANCHES: list[str] | None = None        # e.g. ["greg/conebeam_sharding"] 
 _FP_KEYS = ("sum", "mean", "l2norm", "min", "max")
 
 
+def _repo_url() -> str | None:
+    """Browsable URL of this repo's `origin` remote (for the title link), or None if unavailable.
+
+    Normalises both forms git emits: ``git@github.com:org/repo.git`` and
+    ``https://github.com/org/repo.git`` -> ``https://github.com/org/repo``.
+    """
+    try:
+        url = subprocess.run(["git", "-C", str(REPO_ROOT), "remote", "get-url", "origin"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except Exception:
+        return None
+    if not url:
+        return None
+    if url.startswith("git@"):                       # git@host:org/repo(.git)
+        url = "https://" + url[4:].replace(":", "/", 1)
+    return url[:-4] if url.endswith(".git") else url
+
+
 # --------------------------------------------------------------------------- #
 # Parsing helpers                                                             #
 # --------------------------------------------------------------------------- #
-def _cell_key(geom: str, op: str, size: str, ndev) -> str:
-    return f"{geom}|{op}|{size}|{ndev}"
-
-
 def _slim_fingerprint(fp: dict | None) -> dict | None:
     """Keep the interpretable scalar summary; drop the raw sample list."""
     if not fp:
@@ -68,7 +84,7 @@ def _slim_fingerprint(fp: dict | None) -> dict | None:
 
 
 def _slim_cell(c: dict) -> dict:
-    """Reduce a raw regression/golden cell to the fields the page needs."""
+    """Reduce a raw regression cell to the fields the page needs."""
     return {
         "geom": c.get("geometry"),
         "op": c.get("op"),
@@ -122,8 +138,8 @@ def _parse_gate_hard(items) -> list[dict]:
     """Split each hard-gate string into {basis, cell, text}.
 
     The engine prefixes each entry with its comparison basis, e.g.
-    ``[golden] cone|back|512x448x384|1 memory ...`` — so the dashboard can show
-    "compared against golden" and mark the offending cell on the plot.
+    ``[prior:regression_gpu_...yaml] cone|back|512x448x384|1 memory ...`` — so the dashboard can
+    show what it was compared against and mark the offending cell on the plot.
     """
     out = []
     for s in items or []:
@@ -172,40 +188,11 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
     }
 
 
-def _parse_baseline(path: Path) -> dict | None:
-    """Parse a cell-keyed reference (golden_<plat>.yaml or main_baseline_<plat>.yaml).
-
-    Both files carry the same ``cells:`` schema; golden has the full
-    size×device grid on the current branch, main_baseline has single-device
-    (n=1) cells from ``main``.  The dashboard overlays either as a reference.
-    """
-    if not path.exists():
-        return None
-    doc = yaml.safe_load(path.read_text()) or {}
-    cells = {}
-    for c in doc.get("cells") or []:
-        key = _cell_key(c.get("geometry"), c.get("op"), c.get("size"), c.get("n_devices"))
-        cells[key] = {
-            "min_ms": c.get("min_ms"),
-            "mem_mb": c.get("mem_mb"),
-            "fp": _slim_fingerprint(c.get("fingerprint")),
-        }
-    return {
-        "branch": doc.get("git_branch") or doc.get("branch"),
-        "commit": (doc.get("git_commit") or "")[:10],
-        "date": doc.get("date"),
-        "commit_date": doc.get("git_commit_date"),  # ISO commit time (None on older captures)
-        "version": doc.get("mbirjax_version"),
-        "cells": cells,
-    }
-
-
 # --------------------------------------------------------------------------- #
 # Discovery                                                                   #
 # --------------------------------------------------------------------------- #
 def collect_data() -> dict:
     results_dir = REPO_ROOT / "results"
-    golden_dir = REPO_ROOT / "golden"
 
     runs: list[dict] = []
     records: dict[str, dict] = {}
@@ -234,25 +221,15 @@ def collect_data() -> dict:
                 branch_name = runs[-1]["branch"] if runs else branch_dir.replace("_", "/")
                 records[f"{platform}|{branch_name}"] = yaml.safe_load(rec_path.read_text()) or {}
 
-    golden, main = {}, {}
-    for plat in sorted(platforms):
-        g = _parse_baseline(golden_dir / f"golden_{plat}.yaml")
-        if g:
-            golden[plat] = g
-        mb = _parse_baseline(golden_dir / f"main_baseline_{plat}.yaml")
-        if mb:
-            main[plat] = mb
-
     runs.sort(key=lambda r: (r["platform"], r["branch"], r["date"]))
     return {
         "generated_utc": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "repo_name": REPO_ROOT.name,
+        "repo_url": _repo_url(),
         "platforms": sorted(platforms),
         "branches": sorted(branches),
         "runs": runs,
-        "main": main,
         "records": records,
-        "golden": golden,
     }
 
 

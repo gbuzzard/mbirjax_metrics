@@ -2,7 +2,8 @@
 
 A standing, **fire-on-change** check: it watches a few mbirjax branches and, whenever one moves,
 measures every geometry × op × size × device-count (min time + peak memory + a tolerant correctness
-fingerprint), diffs against that branch's previous run + the golden reference, and flags regressions.
+fingerprint), diffs against that branch's own previous run, and flags regressions.  (Cross-branch
+context — vs `main`/`prerelease` — and best-ever drift are shown on the dashboard, not gated here.)
 Runs on a Mac via launchd (working) and, eventually, on the cluster via scrontab + slurm (pending the
 slurm script).
 
@@ -12,12 +13,11 @@ The harness and data live entirely in `mbirjax_metrics` — **edit them here dir
 ```
 action_scripts/          top-level entry points + run_configs.env (the run knobs); see its README
 tooling/scaling_tests/   engine: scaling_common.py, performance_tracking.py, run_nightly.py,
-                         capture_golden.py, capture_main_baseline.py, run_performance_local.py,
-                         backfill_commit_dates.py
+                         run_performance_local.py
 tooling/regression/      this wrapper: run_regression.sh, regression.env, enable/disable_nightly.sh,
                          com.mbirjax.regression.plist, cluster_preamble.sh.example, README.md
-golden/                  golden_<plat>.yaml, main_baseline_<plat>.yaml, <geom>_<op>.npy
-results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + tests_*.txt
+results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + records_<plat>.yaml
+                         (best-ever) + tests_*.txt
 state/<plat>/<branch>    last MEASURED commit per branch (fire-on-change)
 ```
 `mbirjax` itself is only the **library under test**: the nightly fresh-clones it and makes a throwaway
@@ -74,6 +74,6 @@ updates; a second immediate run should report no changed branch (fire-on-change 
 - `enable_nightly.sh` supports a **daily** `POLL_SCHEDULE` (`M H * * *`) on macOS; richer specs need
   more launchd entries. Cluster scheduling (scrontab + slurm) is not yet written.
 - Per-branch **test** results are logged but **not gated/diffed** (the perf engine is the alert path).
-- Golden / `main_baseline` are read from `golden/` via `REG_GOLDEN_DIR`; refresh with `capture_golden.py`
-  / `capture_main_baseline.py` (a deliberate, human-triggered step). The longer-term plan is to replace
-  these snapshots with the tracked `main` / `prerelease` runs.
+- The gate compares each run only against **this branch's own previous run** (commit-over-commit).
+  Cross-branch comparison (vs `main`/`prerelease`) and best-ever drift are surfaced on the dashboard,
+  derived from the tracked runs themselves — there are no hand-captured reference snapshots.

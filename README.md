@@ -34,10 +34,9 @@ The only dependency for building the dashboard is PyYAML, which the `mbirjax` en
     emits a single self-contained `dashboard/index.html` (no server, no network).
 - **`results/<platform>/<branch>/`** — the **time series**: one
   `regression_<plat>_<commit-time>_<sha8>.yaml` per measured commit (named and sorted by *commit*
-  time), plus a `records_<plat>.yaml` best-ever book and the pytest log.
-- **`golden/`** — reference snapshots the gate compares against: the per-branch `golden_<plat>.yaml`
-  drift/accept reference, the `main_baseline_<plat>.yaml` released-`main` reference, and small
-  `.npy` cross-version deep-diff arrays.
+  time), plus a `records_<plat>.yaml` best-ever book and the pytest log.  The gate compares each run
+  against this branch's own previous run; cross-branch context (vs `main`/`prerelease`) and
+  best-ever drift are shown on the dashboard, derived from these same runs (no separate reference).
 - **`state/`** — per-platform fire-on-change bookkeeping (the last-measured sha per branch).
 - **`dashboard/`** — the generated `index.html` (gitignored; regenerate with `build_dashboard.sh`).
 

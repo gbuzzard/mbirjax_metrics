@@ -58,12 +58,10 @@ import matplotlib.pyplot as plt
 # ── Paths ───────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(_HERE, "results")
-BASELINES_DIR = os.path.join(_HERE, "baselines")
 
 
 def _ensure_dirs():
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    os.makedirs(BASELINES_DIR, exist_ok=True)
 
 
 # ── Which mbirjax am I running? ───────────────────────────────────────────────
@@ -244,25 +242,6 @@ def beta_root():
     """
     return os.path.abspath(os.path.join(os.path.dirname(__file__),
                                         os.pardir, os.pardir, os.pardir))
-
-
-def golden_dir(script_file):
-    """Resolve where golden/baseline files are written, by WHERE the caller runs from.
-
-    * ``REG_GOLDEN_DIR`` (env) wins (the nightly wrapper sets it).
-    * Deployed in the metrics repo (``<metrics>/tooling/scaling_tests/<script>``) -> ``<metrics>/golden/``
-      -- a TRACKED location: run capture there, then review + push the metrics repo.
-    * The mbirjax checkout (``experiments/sharding/scaling_tests/<script>``) -> local
-      ``results/golden/`` -- scratch (gitignored in mbirjax), so a dev capture never touches metrics.
-    Pass the caller's ``__file__``.
-    """
-    env = os.environ.get("REG_GOLDEN_DIR")
-    if env:
-        return env
-    here = os.path.dirname(os.path.abspath(script_file))
-    if os.path.basename(os.path.dirname(here)) == "tooling":
-        return os.path.abspath(os.path.join(here, os.pardir, os.pardir, "golden"))
-    return os.path.join(RESULTS_DIR, "golden")
 
 
 def build_worker_env(mem_fraction=0.9, preallocate=True, lib_root=None):
@@ -743,56 +722,6 @@ def _to_plain(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     return obj
-
-
-# ── Baselines (reference output: array → .npy, metadata → .yaml) ──────────────
-def save_baseline(op_name, array, meta):
-    """Store a single reference output for op_name.
-
-    The numeric array goes to ``<op>.npy`` (compact, exact binary); human-
-    readable metadata (capture platform, prerelease path, size, seed, shape,
-    dtype, timing) goes to ``<op>.yaml``.  There is ONE baseline per op, not one
-    per platform: every beta run (CPU or GPU) compares against this same
-    reference, so a significant CPU/GPU divergence shows up as a real difference
-    instead of being hidden by per-platform self-comparison.  The capture
-    platform is kept in the metadata so cross-platform comparisons are labeled.
-
-    Args:
-        op_name (str): operation name, used for the file stem.
-        array: the reference output (JAX or numpy); stored at its own dtype.
-        meta (dict): metadata to record alongside (platform, seed, size, ...).
-
-    Returns:
-        (npy_path, yaml_path)
-    """
-    _ensure_dirs()
-    arr = np.asarray(array)
-    npy_path = os.path.join(BASELINES_DIR, f"{op_name}.npy")
-    yaml_path = os.path.join(BASELINES_DIR, f"{op_name}.yaml")
-    np.save(npy_path, arr)
-    full = {**meta,
-            "npy_file": os.path.basename(npy_path),
-            "output_shape": list(arr.shape),
-            "output_dtype": str(arr.dtype)}
-    save_yaml(yaml_path, full)
-    print(f"  wrote baseline array {npy_path}  shape={arr.shape} dtype={arr.dtype}")
-    return npy_path, yaml_path
-
-
-def load_baseline(op_name):
-    """Load the reference output saved by save_baseline.
-
-    Returns:
-        (array, meta): array is a numpy ndarray, meta is the YAML metadata dict.
-        Returns (None, None) if either file is missing.
-    """
-    npy_path = os.path.join(BASELINES_DIR, f"{op_name}.npy")
-    yaml_path = os.path.join(BASELINES_DIR, f"{op_name}.yaml")
-    if not (os.path.exists(npy_path) and os.path.exists(yaml_path)):
-        return None, None
-    meta = load_yaml(yaml_path)
-    arr = np.load(npy_path)
-    return arr, meta
 
 
 # ── Plotting ──────────────────────────────────────────────────────────────────

@@ -190,12 +190,12 @@ for i in "${!CHANGED_BR[@]}"; do
     log "$BR: tests done."
   fi
 
-  # Perf engine (fixed harness; lib_root=$WT selects the library + provenance; golden + vs-main
-  # baseline come from the metrics repo's golden/).  run_nightly.py prints to stdout, so the engine
-  # output shows live on a manual run (and lands in the cron/slurm log unattended).
+  # Perf engine (fixed harness; lib_root=$WT selects the library + provenance).  The gate compares
+  # each run against this branch's own prior run; cross-branch + best-ever drift are shown on the
+  # dashboard.  run_nightly.py prints to stdout, so the engine output shows live on a manual run
+  # (and lands in the cron/slurm log unattended).
   log "$BR: running perf engine (output follows)..."
   if REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
-       REG_GOLDEN_DIR="$METRICS_REPO/golden" \
        python "$HARNESS_DIR/scaling_tests/run_nightly.py"; then
     log "$BR: engine ok."
   else

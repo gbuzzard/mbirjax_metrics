@@ -629,7 +629,11 @@ function onPlatform() {
   state.openTile = null; state.runDate = null; renderAll();
 }
 function init() {
-  $("gen").textContent = `generated ${M.generated_utc} · ${M.repo_name}`;
+  // The repo name at the end of the header line links to the repo (plain text if the URL is unknown).
+  const repo = M.repo_url
+    ? `<a class="repolink" href="${M.repo_url}" target="_blank" rel="noopener">${M.repo_name}</a>`
+    : M.repo_name;
+  $("gen").innerHTML = `generated ${M.generated_utc} · ${repo}`;
   $("footer").innerHTML = `${M.runs.length} run(s) · platforms ${M.platforms.join(", ")} · branches ${M.branches.join(", ")} · regenerate with <code>action_scripts/build_dashboard.sh</code>`;
   if (!M.runs.length) { $("tiles").innerHTML = "<p class='muted'>No runs found under results/.</p>"; return; }
 

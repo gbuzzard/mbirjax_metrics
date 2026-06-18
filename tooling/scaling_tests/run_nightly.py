@@ -45,9 +45,6 @@ def main():
     run_tag = os.environ.get("REG_RUN_TAG")
     if run_tag:
         overrides["run_tag"] = run_tag
-    golden_dir = os.environ.get("REG_GOLDEN_DIR")   # e.g. <metrics>/golden -> golden gate + vs-main
-    if golden_dir:
-        overrides["golden_dir"] = golden_dir
 
     if os.environ.get("REG_SMOKE") == "1":
         # Fast plumbing smoke (NOT a real measurement): a trivial 1-cell sweep to shake out the

@@ -16,6 +16,9 @@ body { margin: 0; background: var(--bg); color: var(--text);
 #app { max-width: 1080px; margin: 0 auto; padding: 24px 20px 64px; }
 
 h1 { font-size: 22px; font-weight: 500; margin: 0; }
+/* repo link at the end of the header line — clearly a link: blue + underline, highlight on hover */
+.repolink { color: var(--accent); text-decoration: underline; border-radius: 3px; padding: 0 2px; }
+.repolink:hover { background: var(--accent-bg); }
 h2 { font-size: 17px; font-weight: 500; margin: 0; }
 .muted { color: var(--muted); font-size: 13px; }
 code { font-family: var(--mono); }

@@ -27,8 +27,9 @@ what's committed. Knobs live in the CONFIG block at the top of `build_dashboard.
 | `results/<plat>/<branch>/regression_<plat>_<date>.yaml` | per-run cells, gate, time series |
 | `results/<plat>/<branch>/records_<plat>.yaml` | best-ever record book ("best-ever" reference) |
 | `results/<plat>/<branch>/tests_<plat>_<date>.txt` | pytest counts + failing node-ids |
-| `golden/golden_<plat>.yaml` | the drift reference ("golden") |
-| `golden/main_baseline_<plat>.yaml` | the released single-device baseline ("main") |
+
+The "compare against" overlays (main / prerelease / prior run / best-ever) are all derived from the
+run files above — there are no separate reference snapshots.
 
 ## The views
 
@@ -37,8 +38,8 @@ what's committed. Knobs live in the CONFIG block at the top of `build_dashboard.
   failing test node-ids, or failed/OOM cells).
 - **Scaling** (centerpiece, one op at a time) — four log-scaled panels: time vs size (minutes),
   memory vs size (GB), speedup vs devices, and per-device memory ÷ sino shard, each with an ideal
-  reference. A "compare against" selector (none / golden / main / best-ever) overlays that one
-  reference and drives the table's red/green (colored only when |Δ| ≥ 1%); hard-gate cells are marked
+  reference. A "compare against" selector (none / main / prerelease / prior run / best-ever) overlays
+  that reference and drives the table's red/green (colored only when |Δ| ≥ 1%); hard-gate cells are marked
   with a red ring. A plot/table toggle shows the raw numbers (GB; time in s or min).
 - **History** — three headline aggregates over time (VCD time and peak memory at the largest size,
   and the hard-gate regression count), with branches overlaid; drag a chart to zoom a date range.
