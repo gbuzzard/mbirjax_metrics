@@ -118,14 +118,20 @@ function linePlot(el, xs, specs, o) {
   const series = [{}, ...S.map((s) => ({
     stroke: s.color, width: s.width == null ? 2 : s.width, dash: s.dash || undefined,
     spanGaps: true,  // bridge null cells (e.g. a failed non-dividing size) so the curve stays connected
-    points: { show: true, size: s.psize == null ? 5 : s.psize, stroke: s.ring || s.color,
+    // psize 0 means "no markers" (e.g. the ideal line) — hide them via show:false.  Passing
+    // size:0 makes uPlot compute a NEGATIVE arc radius and throw mid-draw, which aborted every
+    // redraw and silently broke drag-zoom (the zoom's commit redraw never finished).
+    points: { show: s.psize !== 0, size: s.psize == null ? 5 : s.psize, stroke: s.ring || s.color,
       fill: s.fillPoints ? s.color : ((s.pointsOnly || s.hollow) ? bg : s.color), width: s.pw == null ? 1 : s.pw },
     ...(s.pointsOnly ? { paths: () => null } : {}),
   }))];
   const xAxis = { scale: "x", stroke: axc, grid: { stroke: grc, width: 1 }, ticks: { stroke: grc, size: 4 },
     font: "11px " + (cs.fontFamily || "sans-serif") };
-  if (o.xSplits) { xAxis.splits = () => o.xSplits; xAxis.filter = (u, sp) => sp; } // keep ALL custom
-  // ticks (uPlot's default log filter would otherwise drop non-power-of-10 ones, e.g. the 512³ tick)
+  // Custom ticks at the measured sizes/devices — but RANGE-AWARE: only the ticks inside the current
+  // scale window.  (A fixed full list would keep out-of-range ticks after a zoom and fight uPlot's
+  // ranging, which blocked drag-zoom.)  filter keeps all of them (uPlot's default log filter would
+  // otherwise drop the non-power-of-10 ones, e.g. the 512³ tick).
+  if (o.xSplits) { xAxis.splits = (u, ai, mn, mx) => o.xSplits.filter((v) => v >= mn && v <= mx); xAxis.filter = (u, sp) => sp; }
   if (o.xLabels) { xAxis.values = (u, sp) => sp.map((v) => o.xLabels[v] != null ? o.xLabels[v] : ""); }
   if (o.xLabelText) xAxis.label = o.xLabelText;
   const yAxis = { scale: "y", stroke: axc, grid: { stroke: grc, width: 1 }, ticks: { stroke: grc, size: 4 },
@@ -149,26 +155,29 @@ function linePlot(el, xs, specs, o) {
   // Optional hover tooltip: o.tooltip(spec, idx) -> HTML string (or null to hide).
   let tip = null;
   if (o.tooltip) { tip = document.createElement("div"); tip.className = "u-tip"; }
+  const hooks = {};
+  if (o.tooltip) hooks.setCursor = [(u) => {
+    const idx = u.cursor.idx, cl = u.cursor.left, ct = u.cursor.top;
+    // hide while off-plot or mid drag-zoom
+    if (idx == null || cl == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
+    const si = nearestSeries(u, idx, 30), oi = idx - padOff;
+    const html = (si > 0 && oi >= 0 && oi < xs.length) ? o.tooltip(specs[si - 1], oi) : null;
+    if (!html) { tip.style.display = "none"; return; }
+    tip.innerHTML = html; tip.style.display = "block";
+    const ob = u.over.getBoundingClientRect(), eb = el.getBoundingClientRect();
+    let lx = ob.left - eb.left + cl + 14;
+    if (lx + tip.offsetWidth > el.clientWidth) lx = Math.max(0, ob.left - eb.left + cl - tip.offsetWidth - 14);
+    tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + ct + 8) + "px";
+  }];
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
     scales: { x: xScale, y: { distr: o.yLog ? 3 : 1 } },
     series, axes: [xAxis, yAxis], legend: { show: false },
-    // drag a region to zoom (both axes on the scaling panels, x-only on the
-    // time-series history panels); double-click resets.
+    // drag a region to zoom (uPlot built-in): 2-D box zoom on the scaling panels, x-only on the
+    // time-series history panels.  Double-click resets.  (The fixed-array x-range that previously
+    // hard-clamped the scale is gone — see xPad — so the drag actually takes now.)
     cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime } },
-    hooks: o.tooltip ? { setCursor: [(u) => {
-      const idx = u.cursor.idx, cl = u.cursor.left, ct = u.cursor.top;
-      // hide while off-plot or mid drag-zoom
-      if (idx == null || cl == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
-      const si = nearestSeries(u, idx, 30), oi = idx - padOff;
-      const html = (si > 0 && oi >= 0 && oi < xs.length) ? o.tooltip(specs[si - 1], oi) : null;
-      if (!html) { tip.style.display = "none"; return; }
-      tip.innerHTML = html; tip.style.display = "block";
-      const ob = u.over.getBoundingClientRect(), eb = el.getBoundingClientRect();
-      let lx = ob.left - eb.left + cl + 14;
-      if (lx + tip.offsetWidth > el.clientWidth) lx = Math.max(0, ob.left - eb.left + cl - tip.offsetWidth - 14);
-      tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + ct + 8) + "px";
-    }] } : undefined,
+    hooks: hooks.setCursor ? hooks : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
   el.innerHTML = "";
