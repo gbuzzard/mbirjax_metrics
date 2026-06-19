@@ -152,12 +152,18 @@ function linePlot(el, xs, specs, o) {
   const axc = (cs.getPropertyValue("--muted").trim() || "#888");
   const grc = (cs.getPropertyValue("--border").trim() || "#ddd");
   const bg = (cs.getPropertyValue("--bg").trim() || "#fff");
-  // Optional data-domain padding (o.xPad): extend the x-domain by a multiplicative factor on each
-  // end with null y's, so the extreme ticks/labels don't clip at the panel edge — WITHOUT pinning a
-  // fixed scale range, which would hard-clamp the scale and block drag-zoom (#6).  Auto-range keeps
-  // zoom working (a prepended pad column shifts the data index by padOff, undone for the callbacks).
-  const padOff = (o.xPad && xs.length > 1) ? 1 : 0;
-  const X = padOff ? [xs[0] / o.xPad, ...xs, xs[xs.length - 1] * o.xPad] : xs;
+  // Optional data-domain padding: extend the x-domain on each end with a null-y column, so the
+  // extreme points/ticks aren't jammed against the panel edge — WITHOUT pinning a fixed scale range,
+  // which would hard-clamp the scale and block drag-zoom (#6).  Auto-range keeps zoom working (the
+  // prepended pad column shifts the data index by padOff, undone for the tooltip/click callbacks).
+  //   o.xPad    — multiplicative factor (log axes, e.g. the scaling size axis)
+  //   o.xPadAdd — additive amount in x-units (linear axes, e.g. 5% of the span on the time-history
+  //               axis, so the first/last run isn't on the boundary where a click misses — the
+  //               tooltip's 30px grab still finds it, but u.cursor.idx comes back null right at the edge).
+  const padOff = ((o.xPad || o.xPadAdd) && xs.length > 1) ? 1 : 0;
+  const xLo = o.xPadAdd ? xs[0] - o.xPadAdd : xs[0] / o.xPad;
+  const xHi = o.xPadAdd ? xs[xs.length - 1] + o.xPadAdd : xs[xs.length - 1] * o.xPad;
+  const X = padOff ? [xLo, ...xs, xHi] : xs;
   const S = padOff ? specs.map((s) => ({ ...s, ys: [null, ...s.ys, null] })) : specs;
   const data = [X, ...S.map((s) => s.ys)];
   const series = [{}, ...S.map((s) => ({
@@ -683,7 +689,11 @@ function renderHistory() {
     return [...markers, ...out];
   };
   // With a single point, uPlot's auto time-range sprawls across years; pin a ±12h window.
-  const xr = xs.length < 2 ? [xs[0] - 43200, xs[0] + 43200] : null;
+  const DAY = 86400;
+  const xr = xs.length < 2 ? [xs[0] - DAY / 2, xs[0] + DAY / 2] : null;
+  // Pad the time domain by 5% of its span on each end so the first/last run isn't on the boundary
+  // (where a click misses) — proportional, so it scales as the history grows instead of a fixed day.
+  const xpad = xs.length > 1 ? (xs[xs.length - 1] - xs[0]) * 0.05 : 0;
   // hover tooltip: the same identity as the "run shown" tile (branch · platform · commit date+time).
   const histTip = (spec, idx) => {
     const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === spec._xs[idx]);
@@ -705,7 +715,7 @@ function renderHistory() {
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
   const histGroup = [];
-  const opts = (yl) => ({ xTime: true, xRange: xr, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
+  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
   linePlot($("hVcd"), xs, specsFor("vcd"), { width: $("hVcd").clientWidth || 320, ...opts("min") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB") });
   const gateSpecs = [];
@@ -714,7 +724,7 @@ function renderHistory() {
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gate : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup });
+  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   $("hist-legend").innerHTML =
