@@ -28,7 +28,7 @@ const GEOM_ORDER = ["parallel", "cone"];
 const IDEAL_EXP = { direct_filter: 1, forward: 1, back: 1, vcd_nonconst: 4 / 3 };
 const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back: "voxels", vcd_nonconst: "voxels · views" };
 
-const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runDate: null, histN: 1 };
+const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1 };
 
 // Displayed name for each reference (internal key -> label).  References are now derived from the
 // tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
@@ -40,26 +40,31 @@ const cellKey = (c) => `${c.geom}|${c.op}|${c.size}|${c.ndev}`;
 const sizeVol = (s) => s.split("x").reduce((p, n) => p * (+n || 1), 1);
 const runsFor = (p, b) => M.runs.filter((r) => r.platform === p && r.branch === b).sort((a, b2) => a.date.localeCompare(b2.date));
 const latestRun = (p, b) => { const r = runsFor(p, b); return r.length ? r[r.length - 1] : null; };
-// The run currently being viewed: the one the user picked (state.runDate), else latest.
+// The run currently being viewed: the one the user picked (state.runKey), else latest.
 function currentRun() {
   const rs = runsFor(state.platform, state.branch);
   if (!rs.length) return null;
-  if (state.runDate) { const m = rs.find((r) => r.date === state.runDate); if (m) return m; }
+  if (state.runKey) { const m = rs.find((r) => runKey(r) === state.runKey); if (m) return m; }
   return rs[rs.length - 1];
 }
 // A run's position in time: the commit's date when recorded, else the collection
 // date.  Lets older prerelease checkouts sit at their real point on the timeline.
 const runTime = (r) => (r.commit_date ? Date.parse(r.commit_date) / 1000 : dateToUnix(r.date));
+// Unique handle for a picked run.  The collection `date` (YYYYMMDD) is NOT unique — two commits
+// measured the same day share it — so a click resolved by date alone returned the earlier-committed
+// run even though the tooltip (which keys on commit time) named the one clicked.  Key on the commit
+// too: commit-sha # collection-date # commit-time disambiguates same-day commits and re-measures.
+const runKey = (r) => (r.commit_full || r.commit || "?") + "#" + (r.date || "") + "#" + (r.commit_date || "");
 const runDateLabel = (r) => (r.commit_date ? r.commit_date.slice(0, 10) : dateLabel(r.date));
 // Commit date AND time, to the minute (e.g. "2026-06-17 23:00") — the unambiguous run stamp.
 // ISO is "YYYY-MM-DDTHH:MM:SS±zz"; slice to the minute and swap the T for a space.
 const commitMinute = (r) => (r.commit_date ? r.commit_date.slice(0, 16).replace("T", " ") : (r.date ? dateLabel(r.date) : "?"));
 // The run shown for a given platform on the currently-selected branch: honour an explicitly
-// picked run (state.runDate) only on the active platform; otherwise the latest for that platform.
+// picked run (state.runKey) only on the active platform; otherwise the latest for that platform.
 function runOnPlat(plat) {
   const rs = runsFor(plat, state.branch);
   if (!rs.length) return null;
-  if (plat === state.platform && state.runDate) { const m = rs.find((r) => r.date === state.runDate); if (m) return m; }
+  if (plat === state.platform && state.runKey) { const m = rs.find((r) => runKey(r) === state.runKey); if (m) return m; }
   return rs[rs.length - 1];
 }
 // The run backing the active reference overlay: the tracked main/prerelease tip, or this branch's
@@ -676,7 +681,7 @@ function pickRun(spec, idx) {
   const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === t);
   if (!r) return;
   state.platform = spec.meta.platform; state.branch = spec.meta.branch;
-  state.runDate = r.date; state.openTile = null;
+  state.runKey = runKey(r); state.openTile = null;
   fillSelect("platform", M.platforms, state.platform);
   fillSelect("branch", branchesFor(state.platform), state.branch);
   // Re-render only the run-dependent views; leave the History plots untouched so their current
@@ -771,7 +776,7 @@ function onPlatform() {
   const bs = branchesFor(state.platform);
   if (!bs.includes(state.branch)) state.branch = bs[0];
   fillSelect("branch", bs, state.branch);
-  state.openTile = null; state.runDate = null; renderAll();
+  state.openTile = null; state.runKey = null; renderAll();
 }
 function init() {
   // The repo name at the end of the header line links to the repo (plain text if the URL is unknown).
@@ -788,7 +793,7 @@ function init() {
   fillSelect("branch", branchesFor(state.platform), state.branch);
 
   $("platform").onchange = onPlatform;
-  $("branch").onchange = () => { state.branch = $("branch").value; state.openTile = null; state.runDate = null; renderAll(); };
+  $("branch").onchange = () => { state.branch = $("branch").value; state.openTile = null; state.runKey = null; renderAll(); };
   $("op").onchange = () => { state.go = $("op").value; renderScaling(); };
   $("ref").value = state.ref;
   $("ref").onchange = () => { state.ref = $("ref").value; renderScaling(); };
