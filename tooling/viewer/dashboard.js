@@ -196,11 +196,21 @@ function linePlot(el, xs, specs, o) {
   // range — the scale is exactly its data extent (or the zoom selection), no power-of-10 rounding.
   // (It's a function, not a fixed array, so it still zooms/resets — unlike the old hard-clamp.)
   const tightLog = (u, mn, mx) => [mn, mx];
+  // Pad a scale by `frac` of its span on each end — log-space for log scales, linear otherwise — to
+  // give the panel a little breathing room at the edges (applies to the initial view and to zooms).
+  const padRange = (frac, isLog) => (u, mn, mx) => {
+    if (mn == null || mx == null || mn === mx) return [mn, mx];
+    if (isLog) { const a = Math.log10(mn), b = Math.log10(mx), p = (b - a) * frac; return [Math.pow(10, a - p), Math.pow(10, b + p)]; }
+    const p = (mx - mn) * frac; return [mn - p, mx + p];
+  };
   const xScale = { distr: o.xLog ? 3 : 1, time: !!o.xTime };
   if (o.xRange) xScale.range = o.xRange;
+  else if (o.padAll != null) xScale.range = padRange(o.padAll, o.xLog);
   else if (o.tightLog && o.xLog) xScale.range = tightLog;
   const yScale = { distr: o.yLog ? 3 : 1 };
-  if (o.tightLog && o.yLog) yScale.range = tightLog;
+  if (o.yPad != null) yScale.range = padRange(o.yPad, o.yLog);
+  else if (o.padAll != null) yScale.range = padRange(o.padAll, o.yLog);
+  else if (o.tightLog && o.yLog) yScale.range = tightLog;
   // Nearest drawn series at the cursor's x-index (shared by the click-to-pick and hover-tooltip
   // handlers): the series whose y at idx is closest (in px) to the cursor, within a px threshold.
   const nearestSeries = (u, idx, maxPx) => {
@@ -528,7 +538,7 @@ function renderScaling() {
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
-  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
+  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
@@ -542,7 +552,7 @@ function renderScaling() {
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const memSpecs = [...memFails, ...(gM ? [gM] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "mem_mb", 1024), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
-  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
+  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
   const w2 = $("pSpeed").clientWidth || 460;
@@ -556,7 +566,7 @@ function renderScaling() {
     return yy ? { label: s, color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const speedSpecs = [...speedFails, ...speedCurves, { label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: speedIdeal }];
-  linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices", tooltip: devTip });
+  linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices", tooltip: devTip });
 
   // --- per-device memory ÷ sino shard (one curve per size; ideal 2x) ---
   const shardCurves = sizes.map((s, i) => ({ label: s, color: SIZEC[i % SIZEC.length],
@@ -568,7 +578,7 @@ function renderScaling() {
     return yy ? { label: s, color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const shardSpecs = [...shardFails, ...shardCurves, { label: "ideal 2×", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: ndevs.map(() => 2) }];
-  linePlot($("pShard"), ndevs, shardSpecs, { width: w2, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip });
+  linePlot($("pShard"), ndevs, shardSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip });
 
   renderScalingLegend(ndevs, sizes);
 }
