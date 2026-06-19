@@ -198,10 +198,21 @@ function linePlot(el, xs, specs, o) {
   const tightLog = (u, mn, mx) => [mn, mx];
   // Pad a scale by `frac` of its span on each end — log-space for log scales, linear otherwise — to
   // give the panel a little breathing room at the edges (applies to the initial view and to zooms).
+  // A ZERO-span input (e.g. a single-device CPU run whose speedup is always 1× -> min==max) must NOT
+  // be returned as-is: uPlot's tick splitter then loops forever building an array (RangeError /
+  // multi-second hang).  Open such a range up to a small non-zero window instead.
   const padRange = (frac, isLog) => (u, mn, mx) => {
-    if (mn == null || mx == null || mn === mx) return [mn, mx];
-    if (isLog) { const a = Math.log10(mn), b = Math.log10(mx), p = (b - a) * frac; return [Math.pow(10, a - p), Math.pow(10, b + p)]; }
-    const p = (mx - mn) * frac; return [mn - p, mx + p];
+    if (mn == null || mx == null) return [mn, mx];
+    if (isLog) {
+      if (!(mn > 0) || !(mx > 0)) return [mn, mx];           // non-positive: leave it to uPlot
+      let a = Math.log10(mn), b = Math.log10(mx);
+      if (b - a < 1e-9) { a -= 0.5; b += 0.5; } else { const p = (b - a) * frac; a -= p; b += p; }
+      return [Math.pow(10, a), Math.pow(10, b)];
+    }
+    let lo = mn, hi = mx;
+    if (hi - lo < 1e-12) { const d = Math.abs(lo) * 0.1 || 1; lo -= d; hi += d; }
+    else { const p = (hi - lo) * frac; lo -= p; hi += p; }
+    return [lo, hi];
   };
   const xScale = { distr: o.xLog ? 3 : 1, time: !!o.xTime };
   if (o.xRange) xScale.range = o.xRange;
