@@ -190,8 +190,17 @@ function linePlot(el, xs, specs, o) {
   if (o.yLog) yAxis.values = (u, sp) => sp.map(logFmt);
   else if (o.yfmt) yAxis.values = (u, sp) => sp.map((v) => v == null ? "" : o.yfmt(v));
   if (o.yLabelText) yAxis.label = o.yLabelText;
+  // uPlot's default log range snaps min/max OUT to the enclosing powers of 10.  On a drag-zoom that
+  // expands the selection back out (a ~1-decade pick on the size axis snaps to the full 1e7..1e10
+  // view), so you never get the region you dragged.  o.tightLog gives the log scales an identity
+  // range — the scale is exactly its data extent (or the zoom selection), no power-of-10 rounding.
+  // (It's a function, not a fixed array, so it still zooms/resets — unlike the old hard-clamp.)
+  const tightLog = (u, mn, mx) => [mn, mx];
   const xScale = { distr: o.xLog ? 3 : 1, time: !!o.xTime };
   if (o.xRange) xScale.range = o.xRange;
+  else if (o.tightLog && o.xLog) xScale.range = tightLog;
+  const yScale = { distr: o.yLog ? 3 : 1 };
+  if (o.tightLog && o.yLog) yScale.range = tightLog;
   // Nearest drawn series at the cursor's x-index (shared by the click-to-pick and hover-tooltip
   // handlers): the series whose y at idx is closest (in px) to the cursor, within a px threshold.
   const nearestSeries = (u, idx, maxPx) => {
@@ -232,7 +241,7 @@ function linePlot(el, xs, specs, o) {
   }
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
-    scales: { x: xScale, y: { distr: o.yLog ? 3 : 1 } },
+    scales: { x: xScale, y: yScale },
     series, axes: [xAxis, yAxis], legend: { show: false },
     // drag a region to zoom (uPlot built-in): 2-D box zoom on the scaling panels, x-only on the
     // time-series history panels.  Double-click resets.  (The fixed-array x-range that previously
@@ -519,7 +528,7 @@ function renderScaling() {
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
-  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
+  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
@@ -533,7 +542,7 @@ function renderScaling() {
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const memSpecs = [...memFails, ...(gM ? [gM] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "mem_mb", 1024), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
-  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
+  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
   const w2 = $("pSpeed").clientWidth || 460;
