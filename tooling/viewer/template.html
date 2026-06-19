@@ -21,10 +21,11 @@
 
   <section>
     <div class="sec-head"><h2>History</h2><span class="muted">both platforms · click a point to show that run · drag to zoom a date range · double-click to reset</span></div>
+    <div class="controls"><label>devices <select id="histN"></select></label></div>
     <div id="hist-legend" class="legend"></div>
     <div class="panels hist">
-      <div class="panel"><div class="pcap">VCD time at largest size (n=1)</div><div id="hVcd" class="chart"></div></div>
-      <div class="panel"><div class="pcap">peak memory at largest size (n=1)</div><div id="hMem" class="chart"></div></div>
+      <div class="panel"><div class="pcap" id="hCapVcd">VCD time at largest size (n=1)</div><div id="hVcd" class="chart"></div></div>
+      <div class="panel"><div class="pcap" id="hCapMem">peak memory at largest size (n=1)</div><div id="hMem" class="chart"></div></div>
       <div class="panel"><div class="pcap">hard-gate regressions</div><div id="hGate" class="chart"></div></div>
     </div>
   </section>

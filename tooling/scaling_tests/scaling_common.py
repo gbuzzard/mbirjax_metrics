@@ -29,6 +29,7 @@ import os
 import gc
 import sys
 import time
+import threading
 import resource
 import tempfile
 import traceback
@@ -375,14 +376,19 @@ def run_measure_loop(size_label, device_counts, out_file, build_and_time,
         write_worker_result(out_file, {"size": size_label, "mem_kind": mem_kind,
                                        "rows": rows, "failures": failures})
 
+    gpu_present = bool(sample_gpu_state())   # poll GPU clocks/temps DURING each timed run on a GPU node
+
     for n in desc:
         devs = pick_devices(n)
         if devs is None:
             print(f"  n_devices={n}: not enough devices, skipping")
             continue
+        sampler = _GpuSampler().start() if gpu_present else None
         try:
             timed = build_and_time(n, devs)
         except Exception as e:   # noqa: BLE001 — harness: never abort the sweep
+            if sampler:
+                sampler.stop()
             msg = str(e).replace("\n", " ")
             tb = traceback.format_exc()
             oom = is_oom(tb)   # classify from the FULL stack, not just str(e)
@@ -401,10 +407,12 @@ def run_measure_loop(size_label, device_counts, out_file, build_and_time,
                       f"need more per-device memory and would also OOM")
                 break
             continue
+        if sampler:
+            sampler.stop()
         if timed is None:   # op signalled "skip this device count"
             continue
         stats, mem_mb, mem_kind = timed
-        gpu_state = sample_gpu_state()
+        gpu_state = (sampler.worst() if sampler else []) or sample_gpu_state()
         hot = throttled_gpus(gpu_state)
         rows.append({"n_devices": n, **stats, "mem_mb": mem_mb,
                      "gpu_state": gpu_state, "throttled": bool(hot)})
@@ -412,8 +420,7 @@ def run_measure_loop(size_label, device_counts, out_file, build_and_time,
               f"mean={stats['mean_ms']:9.1f} ms  mem={mem_mb:8.1f} MB ({mem_kind})")
         if hot:
             print("  !! THROTTLING — this timing is UNRELIABLE: "
-                  + ", ".join(f"GPU{g['index']}={g['sm_mhz']}MHz@{g['temp_c']}C"
-                              for g in hot))
+                  + ", ".join(_fmt_hot_gpu(g) for g in hot))
         _publish()
         gc.collect()   # release this config's device buffers before the next
     _publish()
@@ -485,43 +492,157 @@ def gpu_topology():
     return out
 
 
-def sample_gpu_state():
-    """Per-GPU SM clock (MHz) and temperature (C) via nvidia-smi.
+# nvidia-smi query fields, richest-first (fall back to the minimal set on drivers that lack the
+# extras).  The extras matter because tomographic projection is MEMORY-bandwidth-bound: the limiter
+# is the HBM / memory clock (clocks.mem) and HBM temperature (temperature.memory), NOT the SM clock
+# — a card can hold full SM clock while its memory throttles and the kernel slows ~2x, so a bare
+# SM-clock reading looks fine.  The throttle-reason flags name the cause outright.
+_GPU_FIELDS_FULL = ("index,clocks.sm,clocks.mem,temperature.gpu,temperature.memory,"
+                    "clocks_throttle_reasons.hw_thermal_slowdown,"
+                    "clocks_throttle_reasons.sw_thermal_slowdown,"
+                    "clocks_throttle_reasons.hw_power_brake_slowdown,"
+                    "clocks_throttle_reasons.sw_power_cap")
+_GPU_FIELDS_MIN = "index,clocks.sm,temperature.gpu"
+_THROTTLE_NAMES = ("hw_thermal", "sw_thermal", "hw_power_brake", "sw_power_cap")
 
-    A throttled card under load shows a collapsed SM clock at high temperature
-    (e.g. 345 MHz @ 86 C vs a healthy 1980 MHz @ 40 C), which silently caps
-    multi-device scaling.  Sampling this with each measurement lets a bad card
-    auto-flag itself in the result instead of masquerading as a code regression.
-    Returns a list of ``{index, sm_mhz, temp_c}`` (one per GPU), or ``[]`` when
-    nvidia-smi is unavailable (CPU runs).
-    """
+
+def _gi(s):
+    """Parse an nvidia-smi integer field; None for '[N/A]' / '[Not Supported]' / blank."""
     try:
-        r = subprocess.run(
-            ["nvidia-smi", "--query-gpu=index,clocks.sm,temperature.gpu",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=10)
-        if r.returncode != 0:
+        return int(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def sample_gpu_state():
+    """Per-GPU clocks (SM + memory, MHz), temps (core + HBM, C), and active throttle reasons, via
+    nvidia-smi.  Returns a list of dicts (one per GPU), or ``[]`` when nvidia-smi is unavailable
+    (CPU runs).  Falls back to the SM-clock-only query on drivers that lack the richer fields.
+
+    Why the extras: tomography is HBM-bandwidth-bound, so a hot card can keep full SM clock while its
+    MEMORY clock throttles and the kernel slows — the SM clock alone hides it.  ``throttle`` lists any
+    active hw/sw thermal or power-cap reason, which names the cause instead of leaving us to guess.
+    """
+    for fields in (_GPU_FIELDS_FULL, _GPU_FIELDS_MIN):
+        try:
+            r = subprocess.run(["nvidia-smi", "--query-gpu=" + fields,
+                                "--format=csv,noheader,nounits"],
+                               capture_output=True, text=True, timeout=10)
+        except Exception:           # nvidia-smi missing / CPU node — best effort
             return []
+        if r.returncode != 0:       # a field unsupported on this driver -> try the minimal set
+            continue
+        full = fields is _GPU_FIELDS_FULL
         out = []
         for line in r.stdout.strip().splitlines():
-            parts = [p.strip() for p in line.split(",")]
-            if len(parts) >= 3:
-                out.append({"index": int(parts[0]), "sm_mhz": int(parts[1]),
-                            "temp_c": int(parts[2])})
-        return out
-    except Exception:   # nvidia-smi missing / CPU node — best effort
-        return []
+            p = [x.strip() for x in line.split(",")]
+            if len(p) < 3:
+                continue
+            g = {"index": _gi(p[0]), "sm_mhz": _gi(p[1])}
+            if full and len(p) >= 9:
+                g["mem_mhz"] = _gi(p[2]); g["temp_c"] = _gi(p[3]); g["mem_temp_c"] = _gi(p[4])
+                g["throttle"] = [nm for nm, v in zip(_THROTTLE_NAMES, p[5:9]) if v.lower() == "active"]
+            else:                   # minimal query: index, sm_mhz, temp_c
+                g["temp_c"] = _gi(p[2])
+            out.append(g)
+        if out:
+            return out
+    return []
 
 
-def throttled_gpus(state, clock_below=1500, temp_above=80):
-    """GPUs in ``state`` that look thermally throttled (low SM clock + high temp).
+def throttled_gpus(state, temp_hot=85, mem_temp_hot=95):
+    """GPUs in ``state`` that look thermally/power throttled or thermally stressed.
 
-    The clock+temp pair discriminates throttling from a normal idle low-clock:
-    an idle card is also low-clock but COOL, while a throttling card is low-clock
-    and HOT.  Returns the sublist of throttled GPU dicts.
+    Flags a GPU if nvidia-smi reports ANY active thermal/power throttle reason, OR its core temp is
+    >= ``temp_hot``, OR its HBM temp is >= ``mem_temp_hot``.  Temperature is the reliable signal: a
+    single SM-clock snapshot taken after the kernels recover misses the throttle dips, and a hot card
+    may throttle its MEMORY clock while the SM clock stays high.  Returns the suspect GPU dicts.
     """
-    return [g for g in state
-            if g["sm_mhz"] < clock_below and g["temp_c"] > temp_above]
+    out = []
+    for g in state:
+        t, mt = g.get("temp_c"), g.get("mem_temp_c")
+        if (g.get("throttle")
+                or (t is not None and t >= temp_hot)
+                or (mt is not None and mt >= mem_temp_hot)):
+            out.append(g)
+    return out
+
+
+def _fmt_hot_gpu(g):
+    """One-line summary of a suspect GPU for the worker log."""
+    s = f"GPU{g.get('index')} {g.get('temp_c')}C"
+    if g.get("mem_temp_c") is not None:
+        s += f" (HBM {g['mem_temp_c']}C)"
+    s += f" sm={g.get('sm_mhz')}MHz"
+    if g.get("mem_mhz") is not None:
+        s += f" mem={g['mem_mhz']}MHz"
+    if g.get("throttle"):
+        s += f" [{','.join(g['throttle'])}]"
+    return s
+
+
+def _worst_gpu_state(samples):
+    """Per-GPU worst case across a list of samples (each sample = a list of GPU dicts): MIN clocks,
+    MAX temps, and the union of throttle reasons ever seen.  A single post-run snapshot misses the
+    throttling (the clock recovers the instant the kernel ends), so we poll DURING the work and keep
+    the worst."""
+    if not samples:
+        return []
+    agg = {}
+    for snap in samples:
+        for g in snap:
+            i = g.get("index")
+            d = agg.get(i)
+            if d is None:
+                d = agg[i] = {"index": i, "sm_mhz": None, "mem_mhz": None,
+                              "temp_c": None, "mem_temp_c": None, "_thr": set()}
+            for k in ("sm_mhz", "mem_mhz"):     # keep the MINIMUM clock seen
+                v = g.get(k)
+                if v is not None:
+                    d[k] = v if d[k] is None else min(d[k], v)
+            for k in ("temp_c", "mem_temp_c"):  # keep the MAXIMUM temp seen
+                v = g.get(k)
+                if v is not None:
+                    d[k] = v if d[k] is None else max(d[k], v)
+            d["_thr"].update(g.get("throttle") or [])
+    out = []
+    for i in sorted(agg, key=lambda x: (x is None, x)):
+        d = agg[i]; thr = sorted(d.pop("_thr"))
+        if thr:
+            d["throttle"] = thr
+        out.append(d)
+    return out
+
+
+class _GpuSampler:
+    """Background poller: while a timed region runs, sample the GPU state every ``interval`` seconds
+    and keep the per-GPU worst (see _worst_gpu_state).  start() before the work, stop() after, read
+    worst().  The aggregate is [] on CPU nodes (sample_gpu_state returns [])."""
+    def __init__(self, interval=1.0):
+        self.interval = interval
+        self._stop = threading.Event()
+        self._samples = []
+        self._thread = None
+
+    def start(self):
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        return self
+
+    def _run(self):
+        while not self._stop.is_set():
+            s = sample_gpu_state()
+            if s:
+                self._samples.append(s)
+            self._stop.wait(self.interval)
+
+    def stop(self):
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=3)
+
+    def worst(self):
+        return _worst_gpu_state(self._samples)
 
 
 def default_device_counts(max_devices):

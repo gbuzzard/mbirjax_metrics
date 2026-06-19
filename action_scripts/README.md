@@ -10,6 +10,7 @@ for you), and each keeps the terminal open on a nonzero exit instead of closing 
 | `add_run.sh` | Measure a **specific mbirjax commit** and add it to the tracked time series — e.g. to seed an older prerelease run onto the timeline. `--local` measures the branch checked out in your current mbirjax repo (no uncommitted changes); `<ref>` measures a branch/tag/sha from `MBIRJAX_REPO` (default `../mbirjax`); no args prints help. Checks out into a throwaway worktree (your tree is untouched). |
 | `run_one_night.sh` | Run **one nightly pass** by hand — the faithful single invocation of the harness (`tooling/regression/run_regression.sh`): for each tracked branch whose remote tip moved, clone it, run the tests + the perf engine, write results, and push. Use it to verify the pipeline before enabling the scheduled nightly. |
 | `enable_nightly.sh` / `disable_nightly.sh` | Start / stop the **scheduled** nightly. Platform-aware: macOS uses a launchd agent; Gautschi uses a managed SLURM `scrontab` block (resources from `run_configs.env`'s `SLURM_*` knobs). Wrap `tooling/regression/{enable,disable}_nightly.sh`. |
+| `status_nightly.sh` | **Is the nightly on, and what has it done?** Read-only check of both layers that must hold — the schedule (launchd agent / `scrontab` block) **and** the `ENABLED` kill-switch — with a one-line verdict (✅ will run · ⏸ paused via `ENABLED=0` · ❌ not scheduled), then the **last wake** time and a **tile-style summary of recent runs** (commit · platform · branch · sha, configs/failed, gate hits, tests failed, thermal flag). Wraps `tooling/regression/status_nightly.sh`. |
 | `create_token.sh` | One-time setup of the fine-grained GitHub PAT used for the unattended push. See `create_token_instructions.md`. |
 
 **`run_configs.env`** — the run-time knobs you edit: `TRACKED_BRANCHES`, `INSTALL_EXTRAS_cpu/gpu`,
@@ -45,6 +46,7 @@ From a shell where `conda` is on your PATH:
    REG_SMOKE=1 bash tooling/regression/run_regression.sh   # ~1-2 min plumbing check (no push)
    action_scripts/run_one_night.sh                          # one real pass (measures + pushes)
    action_scripts/enable_nightly.sh                         # load the launchd agent (daily at POLL_SCHEDULE)
+   action_scripts/status_nightly.sh                         # confirm it's on (schedule + ENABLED)
    ```
    `disable_nightly.sh` unloads it; logs land in `~/.mbirjax/regression/launchd.{out,err}.log`.
 
@@ -74,8 +76,9 @@ On a Gautschi login node:
    REG_SMOKE=1 bash tooling/regression/run_regression.sh   # ~1-2 min plumbing check (no push)
    action_scripts/run_one_night.sh                          # one real pass (measures + pushes)
    action_scripts/enable_nightly.sh                         # install the scrontab schedule
+   action_scripts/status_nightly.sh                         # confirm it's on (schedule + ENABLED)
    ```
-   `disable_nightly.sh` removes it; `scrontab -l` and `squeue --me` inspect it. To pre-flight the
-   SLURM directives without running, `sbatch --test-only tooling/regression/nightly_regression.slurm`.
+   `disable_nightly.sh` removes it; `status_nightly.sh` (or `scrontab -l` / `squeue --me`) inspect it.
+   To pre-flight the SLURM directives without running, `sbatch --test-only tooling/regression/nightly_regression.slurm`.
 
 See `tooling/viewer/README.md` (dashboard) and `tooling/regression/README.md` (nightly) for details.

@@ -94,6 +94,30 @@ def _slim_fingerprint(fp: dict | None) -> dict | None:
     return out
 
 
+def _slim_gpu_state(gs) -> list | None:
+    """Per-GPU clocks/temps/throttle for the page — but ONLY for cells worth flagging (any GPU at or
+    over a warm threshold, or a throttle reason active); cool cells carry nothing, keeping the
+    embedded JSON lean.  Short keys: i=index, t=core°C, mt=HBM°C, sm=SM MHz, mem=mem MHz, thr=reasons.
+    (A hot GPU drags the slowest-device-gated multi-GPU timing, so this is what tells a thermal
+    slowdown apart from a real regression.)"""
+    if not gs:
+        return None
+    if not any((g.get("temp_c") or 0) >= 80 or (g.get("mem_temp_c") or 0) >= 90 or g.get("throttle")
+               for g in gs):
+        return None
+    out = []
+    for g in gs:
+        d = {"i": g.get("index"), "t": g.get("temp_c"), "sm": g.get("sm_mhz")}
+        if g.get("mem_temp_c") is not None:
+            d["mt"] = g["mem_temp_c"]
+        if g.get("mem_mhz") is not None:
+            d["mem"] = g["mem_mhz"]
+        if g.get("throttle"):
+            d["thr"] = g["throttle"]
+        out.append(d)
+    return out
+
+
 def _slim_cell(c: dict) -> dict:
     """Reduce a raw regression cell to the fields the page needs."""
     return {
@@ -106,6 +130,7 @@ def _slim_cell(c: dict) -> dict:
         "speedup": c.get("speedup"),
         "is_sharded": c.get("is_sharded"),
         "throttled": c.get("throttled"),
+        "gpu": _slim_gpu_state(c.get("gpu_state")),
         "failed": bool(c.get("failed", False)),
         "oom": bool(c.get("oom", False)),
         "error": c.get("error"),

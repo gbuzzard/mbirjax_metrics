@@ -13,6 +13,8 @@ const SIZEC = ["#378ADD", "#1D9E75", "#D85A30", "#7F77DD", "#BA7517"]; // by siz
 const GEOMC = { cone: "#D85A30", parallel: "#378ADD" };               // by geometry
 const PLATC = { gpu: "#185fa5", cpu: "#BA7517" };                     // history: by platform
 const IDEAL = "#9b9b94", FAILC = "#E24B4A", REFC = "#1f1f1d"; // ideal=grey, gate=red, reference=near-black
+const THROTC = "#E8950C";                                    // amber: a GPU ran hot / throttled (timing unreliable)
+const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" if a GPU core>=85C / HBM>=95C / any throttle reason
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
 
@@ -26,7 +28,7 @@ const GEOM_ORDER = ["parallel", "cone"];
 const IDEAL_EXP = { direct_filter: 1, forward: 1, back: 1, vcd_nonconst: 4 / 3 };
 const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back: "voxels", vcd_nonconst: "voxels · views" };
 
-const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runDate: null };
+const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runDate: null, histN: 1 };
 
 // Displayed name for each reference (internal key -> label).  References are now derived from the
 // tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
@@ -81,6 +83,49 @@ function refProvenance() {
 }
 const branchesFor = (p) => uniq(M.runs.filter((r) => r.platform === p).map((r) => r.branch)).sort();
 const findCell = (run, key) => run.cells.find((c) => cellKey(c) === key) || null;
+// CAUSAL signal: the driver actually clamped clocks (a clocks_throttle_reasons.* fired during the
+// cell).  This is what degrades a measured time — distinct from merely running hot.  (Only the new
+// engine records throttle reasons, so this stays empty on runs measured before that landed.)
+function cellThrottled(c) {
+  return !!(c && c.gpu && c.gpu.some((g) => g.thr && g.thr.length));
+}
+// A cell worth flagging because a GPU ran hot OR throttled during it.  Re-derived client-side from
+// the per-GPU temps (c.gpu, present only for flagged cells) so OLD runs measured before the throttle
+// detector was tightened still light up — plus the engine's own `throttled` flag.  Superset of
+// cellThrottled: "hot" (temperature) is advisory; "throttled" (clocks clamped) is causal.
+function cellHot(c) {
+  if (!c) return false;
+  if (c.throttled || cellThrottled(c)) return true;
+  return !!(c.gpu && c.gpu.some((g) => (g.t || 0) >= HOT_C || (g.mt || 0) >= HOT_HBM));
+}
+// "which GPU, how hot, why" for the tooltip (the hottest GPU on the cell).
+function hotGpuStr(c) {
+  const gs = c && c.gpu;
+  if (!gs || !gs.length) return c && c.throttled ? "throttled" : "";
+  const w = gs.reduce((a, b) => ((b.t || 0) > (a.t || 0) ? b : a), gs[0]);
+  let s = `GPU${w.i} ${w.t}°C`;
+  if (w.mt != null) s += ` · HBM ${w.mt}°C`;
+  if (w.sm != null) s += ` · sm ${w.sm}` + (w.mem != null ? `/mem ${w.mem}` : "") + " MHz";
+  if (w.thr) s += ` · ${w.thr.join(", ")}`;
+  return s;
+}
+// Tooltip warning text: lead with the state word so "hot" (advisory) reads distinctly from
+// "throttled" (the driver clamped clocks, so the time is suspect).
+function hotWarn(c) { return (cellThrottled(c) ? "throttled" : "hot") + " · " + hotGpuStr(c); }
+// Run-level thermal summary for the "run shown" tile: the worst severity present (throttled beats
+// hot), the device counts (n) it hit, and the peak core temp — null when the run was thermally fine.
+function runThermal(run) {
+  const acc = { throttled: { devs: new Set(), t: 0 }, hot: { devs: new Set(), t: 0 } };
+  (run.cells || []).forEach((c) => {
+    const sev = cellThrottled(c) ? "throttled" : (cellHot(c) ? "hot" : null);
+    if (!sev) return;
+    if (c.ndev != null) acc[sev].devs.add(c.ndev);
+    const pk = Math.max(0, ...((c.gpu || []).map((g) => g.t || 0)));
+    if (pk > acc[sev].t) acc[sev].t = pk;
+  });
+  const sev = acc.throttled.devs.size ? "throttled" : (acc.hot.devs.size ? "hot" : null);
+  return sev ? { sev, ndevs: [...acc[sev].devs].sort((a, b) => a - b), peak: acc[sev].t } : null;
+}
 const dateToUnix = (d) => Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8)) / 1000;
 const dateLabel = (d) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
 
@@ -256,11 +301,18 @@ function renderTiles() {
       click: anyBad((m) => m.testsFailed > 0), sub: anyBad((m) => m.testsFailed > 0) ? "failures — click" : "none failing" },
   ];
   const nRuns = runsFor(state.platform, state.branch).length;
+  // Thermal advisory/causal flag for the shown run: tint the tile + a ⚠ badge with the affected n's.
+  const therm = runThermal(cur);
+  const warnTile = therm ? ` warn-${therm.sev}` : "";
+  const warnLine = therm
+    ? `<div class="warnflag ${therm.sev}">⚠ ${therm.sev === "throttled" ? "throttled" : "ran hot"} · n=${therm.ndevs.join(", ")}${therm.peak ? ` · up to ${therm.peak}°C` : ""}</div>`
+    : "";
   const runTile =
-    `<div class="tile" data-click="false">
+    `<div class="tile${warnTile}" data-click="false">
        <div class="lbl">run shown</div>
        <div class="when">${commitMinute(cur)}</div>
        <div class="sub"><b>${state.branch}</b> · <b>${state.platform.toUpperCase()}</b> · ${cur.commit}${cur.dirty ? " · dirty" : ""}${nRuns > 1 ? " · pick in history" : ""}</div>
+       ${warnLine}
      </div>`;
   box.innerHTML = health.map((t) =>
     `<div class="tile ${t.click ? "click" : ""} ${state.openTile === t.id ? "open" : ""}" data-id="${t.id}" data-click="${!!t.click}">
@@ -378,6 +430,23 @@ function gateSeries(run, geom, op, sizes, metricWord, div) {
   });
   return ys.some((y) => y != null) ? { label: "gate fail", color: FAILC, ys, pointsOnly: true, psize: 9, pw: 3 } : null;
 }
+// Thermal markers on cells whose timing may be suspect — two tiers per device curve: a filled amber
+// disc where the driver actually throttled (causal), a hollow amber ring where a GPU merely ran hot
+// (advisory).  (A hot GPU gates the slowest-device multi-GPU timing, so a 2x jump with no code change
+// is usually this, not a regression.)
+function throttleSeries(run, geom, op, sizes, ndevs, field, div) {
+  const out = [];
+  ndevs.forEach((nd) => {
+    const cells = sizes.map((s) => findCell(run, geom + "|" + op + "|" + s + "|" + nd));
+    const val = (c) => (c && !c.failed && c[field] != null) ? c[field] / div : null;
+    // confirmed throttle (clocks clamped) -> filled amber disc; ran hot only -> hollow amber ring
+    const thr = cells.map((c) => (c && cellThrottled(c)) ? val(c) : null);
+    const hot = cells.map((c) => (c && cellHot(c) && !cellThrottled(c)) ? val(c) : null);
+    if (thr.some((y) => y != null)) out.push({ label: "throttled n=" + nd, color: THROTC, ys: thr, pointsOnly: true, fillPoints: true, psize: 12, pw: 2.5 });
+    if (hot.some((y) => y != null)) out.push({ label: "hot n=" + nd, color: THROTC, ys: hot, pointsOnly: true, hollow: true, psize: 14, pw: 2.5 });
+  });
+  return out;
+}
 
 function renderScaling() {
   const run = currentRun();
@@ -407,7 +476,7 @@ function renderScaling() {
   const cellLine = (c) => `<span class="tdim">time</span> ${c.min_ms != null ? (c.min_ms / 1000).toFixed(2) + " s" : "—"}`
     + `<br><span class="tdim">peak mem</span> ${fmtGB(c.mem_mb)}`
     + (c.speedup != null ? `<br><span class="tdim">speedup</span> ${c.speedup.toFixed(2)}×` : "")
-    + (c.throttled ? `<br><span class="bad">throttled</span>` : "");
+    + (cellHot(c) ? `<br><span class="thr">⚠ ${hotWarn(c)}</span>` : "");
   const sizeTip = (fb) => (spec, idx) => {
     const size = sizes[idx], m = /n=(\d+)/.exec(spec.label || "");
     if (!m || spec.color === REFC) { const y = spec.ys[idx]; return y == null ? null : `<b>${geom} · ${op}</b> · ${size}<br>${spec.label}: ${fb(y)}`; }
@@ -443,7 +512,7 @@ function renderScaling() {
     const yy = interpFails(xvol, timeCurves[ci].ys, fi, true, true, timeIdeal.length ? timeIdeal[0].ys : null);
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
-  const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
+  const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
   linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
@@ -457,7 +526,7 @@ function renderScaling() {
     const yy = interpFails(xvol, memCurves[ci].ys, fi, true, true, memIdeal.length ? memIdeal[0].ys : null);
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
-  const memSpecs = [...memFails, ...(gM ? [gM] : []), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
+  const memSpecs = [...memFails, ...(gM ? [gM] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "mem_mb", 1024), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
   linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
@@ -502,7 +571,7 @@ function renderScalingLegend(ndevs, sizes) {
   // the second legend sits above speedup & shard (size curves).
   $("sv-legend").innerHTML =
     `<span class="grp">${devs}</span>` +
-    `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed config")}<span class="k"><span class="ring"></span>gate fail</span>${refNote}</span>`;
+    `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed config")}<span class="k"><span class="ring"></span>gate fail</span><span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span><span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>${refNote}</span>`;
   $("sv-legend2").innerHTML =
     `<span class="grp">${szs}</span>` +
     `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed config")}</span>`;
@@ -547,15 +616,21 @@ function renderScalingTable(run, geom, op) {
 }
 
 // ---- history strip -----------------------------------------------------------
-function aggregate(run) {
+// VCD time + peak memory at the largest size, for device count `n` (gate count is n-independent).
+function aggregate(run, n) {
   const focus = Math.max(...run.cells.map((c) => sizeVol(c.size)));
   const focusSize = run.cells.map((c) => c.size).find((s) => sizeVol(s) === focus);
-  const out = { vcd: {}, mem: {}, gate: run.gate.hard.length };
+  // Keep the source cell behind each point (vcdCell/memCell) so the history can flag GPU
+  // throttling — the amber ring + tooltip warning — exactly as the scaling panels do.
+  const out = { vcd: {}, mem: {}, vcdCell: {}, memCell: {}, gate: run.gate.hard.length };
   GEOM_ORDER.forEach((gm) => {
-    const vc = run.cells.find((c) => c.geom === gm && c.op === "vcd_nonconst" && c.size === focusSize && c.ndev === 1 && !c.failed);
+    const vc = run.cells.find((c) => c.geom === gm && c.op === "vcd_nonconst" && c.size === focusSize && c.ndev === n && !c.failed);
     out.vcd[gm] = vc && vc.min_ms != null ? vc.min_ms / 60000 : null;
-    const mems = run.cells.filter((c) => c.geom === gm && c.size === focusSize && c.ndev === 1 && !c.failed && c.mem_mb != null).map((c) => c.mem_mb);
-    out.mem[gm] = mems.length ? Math.max(...mems) / 1024 : null;
+    out.vcdCell[gm] = vc || null;
+    const mems = run.cells.filter((c) => c.geom === gm && c.size === focusSize && c.ndev === n && !c.failed && c.mem_mb != null);
+    const mc = mems.length ? mems.reduce((a, b) => (b.mem_mb > a.mem_mb ? b : a)) : null;
+    out.mem[gm] = mc ? mc.mem_mb / 1024 : null;
+    out.memCell[gm] = mc;
   });
   return out;
 }
@@ -568,25 +643,44 @@ function pickRun(spec, idx) {
   state.runDate = r.date; state.openTile = null;
   fillSelect("platform", M.platforms, state.platform);
   fillSelect("branch", branchesFor(state.platform), state.branch);
-  renderAll();
+  // Re-render only the run-dependent views; leave the History plots untouched so their current
+  // zoom survives the pick (the timeline is the same regardless of which run is selected).
+  renderTiles(); renderDetail(); syncGoSelect(); renderScaling();
 }
 function renderHistory() {
   // The history spans BOTH platforms and all branches; x is commit time
   // (falls back to collection date for older runs).
   const xs = uniq(M.runs.map(runTime)).sort((a, b) => a - b);
+  const n = state.histN;
+  $("hCapVcd").textContent = `VCD time at largest size (n=${n})`;
+  $("hCapMem").textContent = `peak memory at largest size (n=${n})`;
   const aggByPB = {};  // "platform|branch" -> runTime -> aggregate
-  M.runs.forEach((r) => { const key = r.platform + "|" + r.branch; (aggByPB[key] = aggByPB[key] || {})[runTime(r)] = aggregate(r); });
+  M.runs.forEach((r) => { const key = r.platform + "|" + r.branch; (aggByPB[key] = aggByPB[key] || {})[runTime(r)] = aggregate(r, n); });
 
   // colour = platform, line-style = geometry (cone solid, parallel dashed).
+  const cellField = (pick) => (pick === "vcd" ? "vcdCell" : "memCell");
   const specsFor = (pick) => {
-    const out = [];
+    const out = [], markers = [];
     M.platforms.forEach((plat) => M.branches.forEach((b) => GEOM_ORDER.forEach((gm) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       const ys = xs.map((t) => { const a = agg[t]; return a && a[pick][gm] != null ? a[pick][gm] : null; });
-      if (ys.some((y) => y != null)) out.push({ label: `${plat} ${gm}`, color: PLATC[plat] || IDEAL,
-        dash: gm === "parallel" ? [5, 3] : undefined, ys, _xs: xs, meta: { platform: plat, branch: b } });
+      if (!ys.some((y) => y != null)) return;
+      const meta = { platform: plat, branch: b, geom: gm, pick };
+      out.push({ label: `${plat} ${gm}`, color: PLATC[plat] || IDEAL,
+        dash: gm === "parallel" ? [5, 3] : undefined, ys, _xs: xs, meta });
+      // two-tier thermal markers, re-derived client-side like the scaling panels: a filled amber disc
+      // where the driver throttled (causal), a hollow amber ring where a GPU merely ran hot (advisory).
+      const valAt = (t) => { const a = agg[t]; return a ? a[pick][gm] : null; };
+      const cellAt = (t) => { const a = agg[t]; return a ? a[cellField(pick)][gm] : null; };
+      const thr = xs.map((t) => { const c = cellAt(t); return (c && cellThrottled(c)) ? valAt(t) : null; });
+      const hot = xs.map((t) => { const c = cellAt(t); return (c && cellHot(c) && !cellThrottled(c)) ? valAt(t) : null; });
+      if (thr.some((y) => y != null)) markers.push({ label: `throttled ${plat} ${gm}`, color: THROTC,
+        ys: thr, _xs: xs, meta, pointsOnly: true, fillPoints: true, psize: 12, pw: 2.5 });
+      if (hot.some((y) => y != null)) markers.push({ label: `hot ${plat} ${gm}`, color: THROTC,
+        ys: hot, _xs: xs, meta, pointsOnly: true, hollow: true, psize: 14, pw: 2.5 });
     })));
-    return out;
+    // markers FIRST -> lowest series index -> drawn on top and win the hover tie at a flagged point
+    return [...markers, ...out];
   };
   // With a single point, uPlot's auto time-range sprawls across years; pin a ±12h window.
   const xr = xs.length < 2 ? [xs[0] - 43200, xs[0] + 43200] : null;
@@ -594,10 +688,19 @@ function renderHistory() {
   const histTip = (spec, idx) => {
     const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === spec._xs[idx]);
     if (!r) return null;
-    const y = spec.ys[idx];
+    const y = spec.ys[idx], m = spec.meta;
+    // value line: a throttle-marker spec shares its run-line's identity, so show "<plat> <geom>"
+    // rather than its internal "throttled …" label.
+    const vlabel = m.geom ? `${m.platform} ${m.geom}` : spec.label;
+    let warn = "";
+    if (m.geom && m.pick) {
+      const a = (aggByPB[m.platform + "|" + m.branch] || {})[spec._xs[idx]];
+      const c = a ? a[cellField(m.pick)][m.geom] : null;
+      if (c && cellHot(c)) warn = `<br><span class="thr">⚠ ${hotWarn(c)}</span>`;
+    }
     return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
-      + (y != null ? `<br><span class="tdim">${spec.label}</span> ${fmtNum(y)}` : "");
+      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}` : "") + warn;
   };
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
@@ -616,7 +719,9 @@ function renderHistory() {
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   $("hist-legend").innerHTML =
     `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
-    `<span class="grp">${k("#888", "cone (solid)")}${k("#888", "parallel (dashed)", true)}</span>`;
+    `<span class="grp">${k("#888", "cone (solid)")}${k("#888", "parallel (dashed)", true)}` +
+    `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
+    `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span></span>`;
 }
 
 // ---- orchestration -----------------------------------------------------------
@@ -647,6 +752,11 @@ function init() {
   $("op").onchange = () => { state.go = $("op").value; renderScaling(); };
   $("ref").value = state.ref;
   $("ref").onchange = () => { state.ref = $("ref").value; renderScaling(); };
+  // History device-count selector (n): the union of device counts across all runs.
+  const histDevs = uniq(M.runs.flatMap((r) => r.cells.map((c) => c.ndev))).filter((n) => n != null).sort((a, b) => a - b);
+  if (!histDevs.includes(state.histN)) state.histN = histDevs[0];
+  fillSelect("histN", histDevs, state.histN);
+  $("histN").onchange = () => { state.histN = +$("histN").value; renderHistory(); };
   $("view-seg").innerHTML = `<button data-v="plot" class="on">plot</button><button data-v="table">table</button>`;
   $("view-seg").querySelectorAll("button").forEach((b) => b.onclick = () => {
     state.view = b.dataset.v; $("view-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); renderScaling();

@@ -14,7 +14,8 @@ The harness and data live entirely in `mbirjax_metrics` — **edit them here dir
 action_scripts/          top-level entry points + run_configs.env (the run knobs); see its README
 tooling/scaling_tests/   engine: scaling_common.py, performance_tracking.py, run_nightly.py,
                          run_performance_local.py
-tooling/regression/      this wrapper: run_regression.sh, regression.env, enable/disable_nightly.sh,
+tooling/regression/      this wrapper: run_regression.sh, regression.env,
+                         enable/disable/status_nightly.sh, recent_runs.py (status summary),
                          com.mbirjax.regression.plist (macOS), nightly_regression.slurm +
                          cluster_preamble.sh.example (cluster), README.md
 results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + records_<plat>.yaml
@@ -62,6 +63,20 @@ YAML and deploys to Pages (see the repo README), so the nightly only needs to pu
   push token (`action_scripts/create_token.sh`). Smoke-test before scheduling, either by running
   `tooling/regression/run_regression.sh` in an interactive GPU session, or `sbatch
   tooling/regression/nightly_regression.slurm` from your standing checkout.
+
+**Is it on? / what's it done?** — `tooling/regression/status_nightly.sh` (read-only) reports both
+layers that must hold for a nightly to run — the schedule (loaded launchd agent / installed
+`scrontab` block) **and** the `ENABLED` kill-switch in `regression.env` — with a one-line verdict
+(✅ will run · ⏸ scheduled but `ENABLED=0` · ❌ not scheduled). It then prints the **last wake** time
+(from the launchd / scrontab log) and a **tile-style summary of recent runs** — per run: commit
+date+time · platform · branch · sha, configs measured (+ failed), hard-gate hits, tests failed, and
+the thermal flag (ran hot / throttled · device counts · peak temp) — read from the persistent metrics
+clone the nightly writes to (`$WORK_DIR/metrics`), falling back to this checkout's `results/`. The
+summary (`recent_runs.py`) reuses the dashboard's own `build_dashboard.collect_data()` rather than
+re-parsing YAML — same parser, same record shape, run under the same `mbirjax`-env Python the
+dashboard build uses (or `MBIRJAX_STATUS_PYTHON`); only the small thermal rule mirrors `dashboard.js`.
+Without a PyYAML-capable Python it lists filenames only. On the cluster it also shows any nightly
+currently in `squeue`.
 
 ## Verify before scheduling
 ```
