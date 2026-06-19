@@ -272,7 +272,9 @@ function linePlot(el, xs, specs, o) {
     // drag a region to zoom (uPlot built-in): 2-D box zoom on the scaling panels, x-only on the
     // time-series history panels.  Double-click resets.  (The fixed-array x-range that previously
     // hard-clamped the scale is gone — see xPad — so the drag actually takes now.)
-    cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime } },
+    // drag.dist: a drag shorter than this (px) is NOT a zoom — it falls through to a plain click, so
+    // a click with a pixel or two of jitter still selects the point instead of zooming a sliver.
+    cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime, dist: 6 } },
     hooks: (hooks.setCursor || hooks.setScale) ? hooks : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
