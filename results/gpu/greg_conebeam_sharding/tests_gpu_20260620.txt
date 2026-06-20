@@ -1,0 +1,177 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_conebeam_sharding
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [175 items]
+
+................................................ss...................s.. [ 41%]
+.................uu..................................u.................. [ 80%]
+..................................                                       [100%]
+=================================== FAILURES ===================================
+_ TestPaddedSlicesCone.test_forward_inert_to_nonzero_recon_padding [circular] __
+[gw6] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_padding.TestPaddedSlicesCone testMethod=test_forward_inert_to_nonzero_recon_padding>
+
+    def test_forward_inert_to_nonzero_recon_padding(self):
+        """Inertness tested DIRECTLY: the forward result depends ONLY on the real slices, not
+        on the VALUES in the recon's padded slices (the stronger claim than 'the padding stays
+        zero').  Forward-project a device-form recon twice on the SAME sharded model -- once
+        zero-filled, once with the padded slices poisoned with a large constant -- and require
+        the results to be IDENTICAL (same model => same FP reorder, so the only possible
+        difference is the poison).  The poison reaches only cropped-away entries: cone crops the
+        padded slices before the kernel; parallel projects them solely to padded detector rows,
+        which the gather drops.  Exact equality is the right gate here -- it is a crop identity,
+        not a computed-float comparison."""
+        for variant in self.VARIANTS:
+            with self.subTest(self._label(variant)):
+                model0 = self._make_model(variant)
+                real_recon = self._recon_array(model0, seed=9)
+                real_slices = int(model0.get_params('recon_shape')[2])
+                ran = False
+                for n, model in self._sharded_models(variant):
+                    padded = model._shard_recon(real_recon)     # device form, zero-filled tail
+                    if padded.shape[-1] == real_slices:
+                        continue                                # this count did not pad
+                    clean = np.asarray(model.forward_project(padded))
+                    poisoned = padded.at[..., real_slices:].set(1.0e3)
+                    out = np.asarray(model.forward_project(poisoned))
+>                   np.testing.assert_array_equal(
+                        out, clean,
+                        err_msg=f"forward not inert to padded values {self._label(variant)} n_dev={n}")
+E                   AssertionError: 
+E                   Arrays are not equal
+E                   forward not inert to padded values circular n_dev=2
+E                   Mismatched elements: 1302 / 1792 (72.7%)
+E                   First 5 mismatches are at indices:
+E                    [0, 0, 1]: -1.033809781074524 (ACTUAL), -1.0338096618652344 (DESIRED)
+E                    [0, 0, 2]: -0.7052990794181824 (ACTUAL), -0.7052993178367615 (DESIRED)
+E                    [0, 0, 3]: -1.2816877365112305 (ACTUAL), -1.2816879749298096 (DESIRED)
+E                    [0, 0, 4]: -1.2078897953033447 (ACTUAL), -1.2078899145126343 (DESIRED)
+E                    [0, 0, 5]: 0.9042456150054932 (ACTUAL), 0.904245138168335 (DESIRED)
+E                   Max absolute difference among violations: 1.9073486e-06
+E                   Max relative difference among violations: 8.4207015e-05
+E                    ACTUAL: array([[[-3.944945e-01, -1.033810e+00, -7.052991e-01, ...,
+E                            -4.313870e-01,  1.001508e+00,  9.613383e-02],
+E                           [ 6.234327e-01, -3.866553e-01, -1.738110e+00, ...,...
+E                    DESIRED: array([[[-3.944945e-01, -1.033810e+00, -7.052993e-01, ...,
+E                            -4.313872e-01,  1.001508e+00,  9.613383e-02],
+E                           [ 6.234327e-01, -3.866553e-01, -1.738110e+00, ...,...
+
+../tests/sharding/test_padding.py:505: AssertionError
+__ TestPaddedSlicesCone.test_forward_inert_to_nonzero_recon_padding [helical] __
+[gw6] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_padding.TestPaddedSlicesCone testMethod=test_forward_inert_to_nonzero_recon_padding>
+
+    def test_forward_inert_to_nonzero_recon_padding(self):
+        """Inertness tested DIRECTLY: the forward result depends ONLY on the real slices, not
+        on the VALUES in the recon's padded slices (the stronger claim than 'the padding stays
+        zero').  Forward-project a device-form recon twice on the SAME sharded model -- once
+        zero-filled, once with the padded slices poisoned with a large constant -- and require
+        the results to be IDENTICAL (same model => same FP reorder, so the only possible
+        difference is the poison).  The poison reaches only cropped-away entries: cone crops the
+        padded slices before the kernel; parallel projects them solely to padded detector rows,
+        which the gather drops.  Exact equality is the right gate here -- it is a crop identity,
+        not a computed-float comparison."""
+        for variant in self.VARIANTS:
+            with self.subTest(self._label(variant)):
+                model0 = self._make_model(variant)
+                real_recon = self._recon_array(model0, seed=9)
+                real_slices = int(model0.get_params('recon_shape')[2])
+                ran = False
+                for n, model in self._sharded_models(variant):
+                    padded = model._shard_recon(real_recon)     # device form, zero-filled tail
+                    if padded.shape[-1] == real_slices:
+                        continue                                # this count did not pad
+                    clean = np.asarray(model.forward_project(padded))
+                    poisoned = padded.at[..., real_slices:].set(1.0e3)
+                    out = np.asarray(model.forward_project(poisoned))
+>                   np.testing.assert_array_equal(
+                        out, clean,
+                        err_msg=f"forward not inert to padded values {self._label(variant)} n_dev={n}")
+E                   AssertionError: 
+E                   Arrays are not equal
+E                   forward not inert to padded values helical n_dev=2
+E                   Mismatched elements: 1381 / 1792 (77.1%)
+E                   First 5 mismatches are at indices:
+E                    [0, 0, 1]: 4.07627010345459 (ACTUAL), 4.076269626617432 (DESIRED)
+E                    [0, 0, 2]: 0.7701059579849243 (ACTUAL), 0.7701058983802795 (DESIRED)
+E                    [0, 0, 3]: -0.34186339378356934 (ACTUAL), -0.3418635129928589 (DESIRED)
+E                    [0, 0, 4]: -1.0376962423324585 (ACTUAL), -1.0376964807510376 (DESIRED)
+E                    [0, 0, 6]: 1.5223848819732666 (ACTUAL), 1.5223850011825562 (DESIRED)
+E                   Max absolute difference among violations: 1.9073486e-06
+E                   Max relative difference among violations: 2.0592224e-05
+E                    ACTUAL: array([[[ 2.038061e-01,  4.076270e+00,  7.701060e-01, ...,
+E                            -2.579312e+00, -1.248691e+00, -1.384755e+00],
+E                           [ 3.560067e-01,  5.183240e-01, -1.133483e+00, ...,...
+E                    DESIRED: array([[[ 2.038061e-01,  4.076270e+00,  7.701059e-01, ...,
+E                            -2.579312e+00, -1.248691e+00, -1.384755e+00],
+E                           [ 3.560067e-01,  5.183242e-01, -1.133483e+00, ...,...
+
+../tests/sharding/test_padding.py:505: AssertionError
+_ TestPaddedSlicesParallel.test_forward_inert_to_nonzero_recon_padding [parallel] _
+[gw0] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_padding.TestPaddedSlicesParallel testMethod=test_forward_inert_to_nonzero_recon_padding>
+
+    def test_forward_inert_to_nonzero_recon_padding(self):
+        """Inertness tested DIRECTLY: the forward result depends ONLY on the real slices, not
+        on the VALUES in the recon's padded slices (the stronger claim than 'the padding stays
+        zero').  Forward-project a device-form recon twice on the SAME sharded model -- once
+        zero-filled, once with the padded slices poisoned with a large constant -- and require
+        the results to be IDENTICAL (same model => same FP reorder, so the only possible
+        difference is the poison).  The poison reaches only cropped-away entries: cone crops the
+        padded slices before the kernel; parallel projects them solely to padded detector rows,
+        which the gather drops.  Exact equality is the right gate here -- it is a crop identity,
+        not a computed-float comparison."""
+        for variant in self.VARIANTS:
+            with self.subTest(self._label(variant)):
+                model0 = self._make_model(variant)
+                real_recon = self._recon_array(model0, seed=9)
+                real_slices = int(model0.get_params('recon_shape')[2])
+                ran = False
+                for n, model in self._sharded_models(variant):
+                    padded = model._shard_recon(real_recon)     # device form, zero-filled tail
+                    if padded.shape[-1] == real_slices:
+                        continue                                # this count did not pad
+                    clean = np.asarray(model.forward_project(padded))
+                    poisoned = padded.at[..., real_slices:].set(1.0e3)
+                    out = np.asarray(model.forward_project(poisoned))
+>                   np.testing.assert_array_equal(
+                        out, clean,
+                        err_msg=f"forward not inert to padded values {self._label(variant)} n_dev={n}")
+E                   AssertionError: 
+E                   Arrays are not equal
+E                   forward not inert to padded values parallel n_dev=2
+E                   Mismatched elements: 1332 / 1792 (74.3%)
+E                   First 5 mismatches are at indices:
+E                    [0, 0, 1]: -0.7500100135803223 (ACTUAL), -0.7500096559524536 (DESIRED)
+E                    [0, 0, 2]: -3.6611733436584473 (ACTUAL), -3.661172866821289 (DESIRED)
+E                    [0, 0, 4]: -6.393148899078369 (ACTUAL), -6.393149375915527 (DESIRED)
+E                    [0, 0, 5]: 3.0968236923217773 (ACTUAL), 3.0968241691589355 (DESIRED)
+E                    [0, 0, 6]: -7.924790859222412 (ACTUAL), -7.924790382385254 (DESIRED)
+E                   Max absolute difference among violations: 3.8146973e-06
+E                   Max relative difference among violations: 0.001523
+E                    ACTUAL: array([[[ 0.000000e+00, -7.500100e-01, -3.661173e+00, ...,
+E                             2.195365e+00,  6.014771e-01,  0.000000e+00],
+E                           [ 0.000000e+00, -2.744022e-01, -5.864489e+00, ...,...
+E                    DESIRED: array([[[ 0.000000e+00, -7.500097e-01, -3.661173e+00, ...,
+E                             2.195365e+00,  6.014770e-01,  0.000000e+00],
+E                           [ 0.000000e+00, -2.744021e-01, -5.864490e+00, ...,...
+
+../tests/sharding/test_padding.py:505: AssertionError
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17: 10 warnings
+  /home/buzzard/.mbirjax/regression/lib_greg_conebeam_sharding/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SUBFAILED[circular] ../tests/sharding/test_padding.py::TestPaddedSlicesCone::test_forward_inert_to_nonzero_recon_padding
+SUBFAILED[helical] ../tests/sharding/test_padding.py::TestPaddedSlicesCone::test_forward_inert_to_nonzero_recon_padding
+SUBFAILED[parallel] ../tests/sharding/test_padding.py::TestPaddedSlicesParallel::test_forward_inert_to_nonzero_recon_padding
+====== 3 failed, 172 passed, 3 skipped, 10 warnings in 261.21s (0:04:21) =======
