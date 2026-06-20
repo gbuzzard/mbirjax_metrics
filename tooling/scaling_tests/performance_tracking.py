@@ -991,6 +991,11 @@ def run(config):
         os.remove(cfg_path)
 
     prov = _git_provenance(config.lib_root or sc.beta_root())   # provenance of the LIBRARY under test
+    # A worktree checkout of a specific ref (e.g. add_run) is DETACHED, so `rev-parse --abbrev-ref`
+    # returns "HEAD".  Prefer the run_tag (which the nightly / add_run set to the real branch name)
+    # in that case, so the run is labeled with its branch rather than "HEAD".
+    if prov.get("git_branch") in (None, "", "HEAD") and config.run_tag:
+        prov["git_branch"] = config.run_tag
     file_tag = _file_tag(prov, config.date)   # commit-time tag for the filename + prior selection
 
     # Update the cumulative record book (best per cell/metric + the commit that set it).  It lives

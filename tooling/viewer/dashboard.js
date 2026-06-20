@@ -47,7 +47,9 @@ const REF_LABEL = { main: "main", prerelease: "prerelease", prior: "prior run", 
 const uniq = (a) => [...new Set(a)];
 const cellKey = (c) => `${c.geom}|${c.op}|${c.size}|${c.ndev}`;
 const sizeVol = (s) => s.split("x").reduce((p, n) => p * (+n || 1), 1);
-const runsFor = (p, b) => M.runs.filter((r) => r.platform === p && r.branch === b).sort((a, b2) => a.date.localeCompare(b2.date));
+// Sort by COMMIT time (not collection date), so "latest" = the most recent COMMIT.  Otherwise an
+// add_run of an OLD commit (collected recently) would sort last and become the default run shown.
+const runsFor = (p, b) => M.runs.filter((r) => r.platform === p && r.branch === b).sort((a, b2) => runTime(a) - runTime(b2));
 const latestRun = (p, b) => { const r = runsFor(p, b); return r.length ? r[r.length - 1] : null; };
 // The run currently being viewed: the one the user picked (state.runKey), else latest.
 function currentRun() {
@@ -329,7 +331,10 @@ function platMetrics(plat) {
     cells: run.cells.filter((c) => !c.failed).length,
     cellsFailed: run.cells.filter((c) => c.failed).length,
     gate: run.gate.hard.length,
-    testsFailed: run.tests ? (run.tests.failures || []).length : 0,
+    // The authoritative count is the pytest SUMMARY's `failed` (what status_nightly uses).  The
+    // `failures` node-id LIST is only for the drill-down and can be empty if the log format hid the
+    // names (e.g. pytest-xdist without -ra), so counting it would under-report (showed 0 vs 3).
+    testsFailed: run.tests ? (run.tests.failed || 0) : 0,
     testsPassed: run.tests ? run.tests.passed : null };
 }
 function renderTiles() {
@@ -401,9 +406,10 @@ function renderDetail() {
         : `<p class="muted">no hard-gate hits (result: ${run.gate.result || "?"}).</p>`);
     }
     if (state.openTile === "tests") {
-      const f = (run.tests && run.tests.failures) || [];
+      const t = run.tests, f = (t && t.failures) || [];
       return head + (f.length ? `<ul>${f.map((x) => `<li class="bad">${x}</li>`).join("")}</ul>`
-        : `<p class="muted">${run.tests ? run.tests.passed + " passed, none failing" : "no test log"}.</p>`);
+        : (t && t.failed ? `<p class="bad">${t.failed} failing</p><p class="muted">(test names not captured in this log)</p>`
+        : `<p class="muted">${t ? t.passed + " passed, none failing" : "no test log"}.</p>`));
     }
     const f = run.cells.filter((c) => c.failed);  // "cells"
     return head + (f.length ? `<ul>${f.map((c) => `<li class="bad">${cellKey(c)}${c.oom ? " — OOM" : ""}${c.error ? " — " + c.error : ""}</li>`).join("")}</ul>`
