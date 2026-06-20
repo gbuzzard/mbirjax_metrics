@@ -36,6 +36,8 @@ orchestrator role stays JAX-free so a subprocess worker can read peak memory cle
 import os
 import sys
 import gc
+import io
+import contextlib
 import argparse
 import tempfile
 import dataclasses
@@ -55,8 +57,15 @@ import numpy as np
 @dataclass
 class Config:
     # sweep dimensions
-    geometries: list = field(default_factory=lambda: ["parallel", "cone"])
+    geometries: list = field(default_factory=lambda: ["parallel", "cone", "translation", "multiaxis_parallel"])
     ops: list = field(default_factory=lambda: ["direct_filter", "forward", "back", "vcd_nonconst"])
+    # Per-geometry op OVERRIDES (else `ops` is used).  translation/multiaxis only have geometry-SPECIFIC
+    # compute in the projectors + filter; their vcd recon is the qGGMRF outer loop shared with
+    # parallel/cone (tracked there), so measuring it would be redundant — drop vcd for those two.
+    geom_ops: dict = field(default_factory=lambda: {
+        "translation": ["direct_filter", "forward", "back"],
+        "multiaxis_parallel": ["direct_filter", "forward", "back"],
+    })
     device_counts: list = field(default_factory=lambda: [1, 2, 4])
     # SINOGRAM sizes (n_views, n_rows, n_channels) — ASYMMETRIC (all three differ) to surface
     # axis swaps; one DIVIDING + one NON-DIVIDING (all-odd) per platform to exercise padding;
@@ -64,6 +73,19 @@ class Config:
     sizes: dict = field(default_factory=lambda: {
         "cpu": [(128, 112, 96), (129, 113, 97), (200, 208, 160)],
         "gpu": [(512, 448, 384), (513, 449, 385), (1024, 1008, 992)],
+    })
+    # Per-geometry size OVERRIDES (else `sizes[plat]` is used).  The new translation/multiaxis
+    # geometries are sharding-baseline work: keep them SMALL (top out at 512 on GPU).  Translation's
+    # tuple is (n_views=15 fixed, n_det_rows, n_det_channels); make_model derives its recon from these.
+    geom_sizes: dict = field(default_factory=lambda: {
+        "multiaxis_parallel": {
+            "cpu": [(96, 80, 64), (128, 112, 96), (129, 113, 97)],
+            "gpu": [(256, 224, 192), (512, 448, 384), (513, 449, 385)],
+        },
+        "translation": {
+            "cpu": [(15, 64, 64), (15, 65, 65)],
+            "gpu": [(15, 256, 256), (15, 257, 257)],
+        },
     })
     # Sizes where every op runs trials=1 (capacity/memory check, not a timing ruler).
     single_trial_sizes: list = field(default_factory=lambda: ["1024x1008x992"])
@@ -81,6 +103,15 @@ class Config:
 
     # geometry / seeds
     cone_sdd_over_channels: float = 4.0
+    multiaxis_elevation_deg: float = 25.0   # out-of-plane tilt for MultiAxisParallelModel (demo value)
+    # Translation/TCT fixed geometry (from experiments/translation/TCT_generate_phantom.py, exp1).
+    # The detector (n_rows, n_channels) from the size tuple is the knob; n_views is fixed at num_x*num_z.
+    tct_sdd: float = 190000.0    # source->detector (ALU) — exp1 geometry (well-conditioned cone angle)
+    tct_sid: float = 70000.0     # source->iso (ALU); magnification = sdd/sid ~= 2.71
+    tct_delta_det: float = 75.0  # detector pixel pitch (ALU)
+    tct_num_x: int = 5           # x translations
+    tct_num_z: int = 3           # z translations  -> n_views = 15
+    tct_recon_rows: int = 40     # recon rows (axis perpendicular to detector) — fixed; cols/slices derived
     input_seed: int = 0
     measure_seed: int = 7
 
@@ -121,6 +152,12 @@ def make_model(config, geometry, size):
     (for cone it differs from the sinogram shape).  Representative cone geometry: magnification
     2 (source_detector_dist = cone_sdd_over_channels * channels, source_iso_dist = half that),
     matching the test-suite convention.
+
+    translation: n_views is FIXED at num_x*num_z (the size tuple's view count is ignored); the
+    detector (n_rows, n_channels) is the knob.  We scale the translation spacings with the detector
+    (at a fixed pixel pitch) so calc_tct_recon_params yields recon cols ~ n_channels, slices ~ n_rows,
+    with recon rows pinned to tct_recon_rows (the few-rows axis perpendicular to the detector).
+    multiaxis_parallel: like parallel but angles are (azimuth, elevation); recon matched to parallel.
     """
     import mbirjax
     n_views, n_rows, n_channels = size
@@ -132,8 +169,35 @@ def make_model(config, geometry, size):
         sid = sdd / 2.0
         model = mbirjax.ConeBeamModel((n_views, n_rows, n_channels), angles,
                                       source_detector_dist=sdd, source_iso_dist=sid)
+    elif geometry == "multiaxis_parallel":
+        azimuths = np.linspace(0, np.pi, n_views, endpoint=False)
+        elevation = np.full(n_views, np.deg2rad(config.multiaxis_elevation_deg), dtype=np.float64)
+        angles2 = np.column_stack([azimuths, elevation])
+        model = mbirjax.MultiAxisParallelModel((n_views, n_rows, n_channels), angles2)
+        # Match the parallel recon convention so the problem size is comparable to ParallelBeamModel.
+        pb = mbirjax.ParallelBeamModel((n_views, n_rows, n_channels), azimuths)
+        model.set_params(recon_shape=pb.get_params('recon_shape'))
+    elif geometry == "translation":
+        sdd, sid, delta_det = config.tct_sdd, config.tct_sid, config.tct_delta_det
+        num_x, num_z = config.tct_num_x, config.tct_num_z
+        delta_voxel = delta_det / (sdd / sid)   # isotropic in-plane voxel pitch at iso
+        # The recon (rows, cols, slices) is set DIRECTLY: rows fixed at tct_recon_rows, and cols<-channels,
+        # slices<-rows so it scales with the sino detector (the user's mapping).  ISOTROPIC voxels
+        # (aspect=1) keep the 40 rows well within the source (sid >> 40*delta_voxel).  The translation
+        # spacings span the recon FOV so the views actually move across the object.  We do NOT use
+        # calc_tct_recon_params here: its anisotropic TCT row pitch pushes 40 rows past a small source.
+        cols, slices = n_channels, n_rows
+        x_spacing = cols * delta_voxel / (num_x - 1)
+        z_spacing = slices * delta_voxel / (num_z - 1)
+        tv = mbirjax.gen_translation_vectors(num_x, num_z, x_spacing, z_spacing)
+        sino_shape = (int(tv.shape[0]), n_rows, n_channels)
+        model = mbirjax.TranslationModel(sino_shape, tv, source_detector_dist=sdd, source_iso_dist=sid)
+        model.set_params(delta_det_channel=delta_det, delta_det_row=delta_det)
+        model.set_params(delta_voxel=delta_voxel, voxel_row_aspect=1.0, voxel_slice_aspect=1.0)
+        model.set_params(recon_shape=(config.tct_recon_rows, cols, slices))
     else:
-        raise ValueError(f"unknown geometry {geometry!r} (expected 'parallel' or 'cone')")
+        raise ValueError(f"unknown geometry {geometry!r} "
+                         f"(expected parallel/cone/translation/multiaxis_parallel)")
     model.set_params(verbose=0)
     return model
 
@@ -453,15 +517,21 @@ def _probe_sharding_by_geom():
     """
     import mbirjax
     ang = np.linspace(0, np.pi, 16, endpoint=False)
+    ang2 = np.column_stack([ang, np.zeros_like(ang)])
+    tv16 = mbirjax.gen_translation_vectors(5, 3, 100.0, 100.0)   # 15 translations, tiny
     builders = {
         "parallel": lambda: mbirjax.ParallelBeamModel((16, 8, 8), ang),
         "cone": lambda: mbirjax.ConeBeamModel((16, 8, 8), ang,
                                               source_detector_dist=32.0, source_iso_dist=16.0),
+        "multiaxis_parallel": lambda: mbirjax.MultiAxisParallelModel((16, 8, 8), ang2),
+        "translation": lambda: mbirjax.TranslationModel((int(tv16.shape[0]), 8, 8), tv16,
+                                                        source_detector_dist=32.0, source_iso_dist=16.0),
     }
     out = {}
     for name, mk in builders.items():
         try:
-            m = mk()
+            with contextlib.redirect_stdout(io.StringIO()):   # hush construction notices (e.g. TCT
+                m = mk()                                       # geometry warnings on the tiny probe model)
             ss = getattr(m, "_supports_sharding", None)
             out[name] = bool(ss()) if callable(ss) else hasattr(m, "configure_devices")
         except Exception:   # noqa: BLE001 — a capability probe must never abort setup
@@ -617,13 +687,19 @@ def _expected_cells(result):
     """
     cfg = result.get("config", {})
     plat = result["platform"]
-    sizes = [sc.size_label(s) for s in cfg.get("sizes", {}).get(plat, [])]
+    geom_sizes = cfg.get("geom_sizes", {}) or {}
+    geom_ops = cfg.get("geom_ops", {}) or {}
+    default_sizes = cfg.get("sizes", {}).get(plat, [])
+    default_ops = cfg.get("ops", [])
     dc = result.get("device_counts", [])
     cap = result.get("sharding_by_geom", {})
     keys = set()
     for g in cfg.get("geometries", []):
+        gs = (geom_sizes.get(g, {}) or {}).get(plat) or default_sizes
+        sizes = [sc.size_label(s) for s in gs]   # per-geometry sizes (matches the orchestrator)
+        ops = geom_ops.get(g) or default_ops     # per-geometry ops (matches the orchestrator)
         g_dc = [1] if cap.get(g) is False else dc
-        for op in cfg.get("ops", []):
+        for op in ops:
             for s in sizes:
                 for n in g_dc:
                     keys.add(f"{g}|{op}|{s}|{n}")
@@ -841,17 +917,25 @@ def run(config):
         plat, max_dev, dev_label, _corr, _mpath = sc.print_setup_banner(setup)
         shard_by_geom = setup.get("sharding_by_geom", {})
 
-    sizes = config.sizes[plat]
-    size_labels = [sc.size_label(s) for s in sizes]
     device_counts = [n for n in config.device_counts if n <= max_dev]
-    # Per geometry: a projector that can't shard (cone on prerelease; anything on pre-sharding main)
-    # runs single-device only — a multi-device request RAISES.  So sweep each geometry only at the
-    # counts it supports (restrict to n=1 when capability is explicitly False; never restrict on an
-    # unknown/None probe).
+    # Per geometry: a projector that can't shard (cone on prerelease; anything on pre-sharding main;
+    # translation/multiaxis until their placement ports land) runs single-device only — a multi-device
+    # request RAISES.  So sweep each geometry only at the counts it supports (restrict to n=1 when
+    # capability is explicitly False; never restrict on an unknown/None probe).
     def geom_device_counts(geom):
         return [1] if shard_by_geom.get(geom) is False else device_counts
-    print(f"  geometries: {config.geometries}   ops: {config.ops}")
-    print(f"  sizes: {size_labels}   device counts: {device_counts}   sharding_by_geom: {shard_by_geom}")
+    # Per-geometry SIZES + OPS: geom_sizes[geom][plat] / geom_ops[geom] override the shared
+    # sizes[plat] / ops (the new translation/multiaxis geometries are kept small and skip vcd —
+    # see Config.geom_sizes / geom_ops).
+    def geom_size_labels(geom):
+        gs = (config.geom_sizes.get(geom, {}) or {}).get(plat) or config.sizes[plat]
+        return [sc.size_label(s) for s in gs]
+    def geom_ops_for(geom):
+        return config.geom_ops.get(geom) or config.ops
+    print(f"  geometries: {config.geometries}")
+    print(f"  device counts: {device_counts}   sharding_by_geom: {shard_by_geom}")
+    for g in config.geometries:
+        print(f"    {g}: ops={geom_ops_for(g)}  sizes={geom_size_labels(g)}")
 
     if not config.inline:
         fd, cfg_path = tempfile.mkstemp(suffix=".yaml", prefix="perf_cfg_")
@@ -863,7 +947,8 @@ def run(config):
     for geometry in config.geometries:
         gdc = geom_device_counts(geometry)   # per-geometry device counts (n=1 only if it can't shard)
         swept_counts.update(gdc)
-        for op in config.ops:
+        size_labels = geom_size_labels(geometry)   # per-geometry sizes
+        for op in geom_ops_for(geometry):          # per-geometry ops (new geometries skip vcd)
             for label in size_labels:
                 print(f"\n=== {geometry} | {op} | {label} @ n={gdc} ===")
                 if config.inline:

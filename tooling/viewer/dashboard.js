@@ -19,7 +19,16 @@ const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
 
 const OP_ORDER = ["direct_filter", "forward", "back", "vcd_nonconst"];
-const GEOM_ORDER = ["parallel", "cone"];
+const GEOM_ORDER = ["parallel", "cone", "translation", "multiaxis_parallel"];
+// History line-style by geometry (one solid + one dashed within each group); short legend labels.
+const GEOM_DASH = { cone: undefined, parallel: [5, 3], translation: undefined, multiaxis_parallel: [5, 3] };
+const GEOM_LABEL = { cone: "cone", parallel: "parallel", translation: "translation", multiaxis_parallel: "multiaxis" };
+// History geometry GROUPS: a toggle swaps the pair shown.  cone/parallel headline the vcd recon;
+// translation/multiaxis don't run vcd (only projectors + filter), so they headline back-projection.
+const HIST_GROUPS = [
+  { id: "cp", label: "cone + parallel", geoms: ["cone", "parallel"], op: "vcd_nonconst", opLabel: "VCD" },
+  { id: "tm", label: "translation + multiaxis", geoms: ["translation", "multiaxis_parallel"], op: "back", opLabel: "back-projection" },
+];
 
 // Expected (ideal) time-scaling per op, for the roughly cubical sweep shapes.
 // The x-axis is sinogram entries (∝ N³ for cubic), so cost ∝ N^k maps to x^(k/3):
@@ -28,7 +37,7 @@ const GEOM_ORDER = ["parallel", "cone"];
 const IDEAL_EXP = { direct_filter: 1, forward: 1, back: 1, vcd_nonconst: 4 / 3 };
 const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back: "voxels", vcd_nonconst: "voxels · views" };
 
-const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1 };
+const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp" };
 
 // Displayed name for each reference (internal key -> label).  References are now derived from the
 // tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
@@ -501,8 +510,11 @@ function renderScaling() {
   const { sizes, ndevs, at } = g;
   if (!sizes.length) { $("pTime").innerHTML = "<p class='muted'>no cells.</p>"; return; }
   const PLAT = (state.platform || "").toUpperCase();
-  $("capTime").textContent = `${PLAT}: time vs size · ideal ∝ ${IDEAL_BASIS[op] || "voxels"}`;
-  $("capMem").textContent = `${PLAT}: memory vs size · ideal ∝ voxels`;
+  // The ∝-voxels/views "ideal" reference doesn't hold for the translation geometry — suppress it
+  // (line + caption note) there; keep it for parallel/cone/multiaxis.
+  const showIdeal = geom !== "translation";
+  $("capTime").textContent = `${PLAT}: time vs size${showIdeal ? ` · ideal ∝ ${IDEAL_BASIS[op] || "voxels"}` : ""}`;
+  $("capMem").textContent = `${PLAT}: memory vs size${showIdeal ? " · ideal ∝ voxels" : ""}`;
   $("capSpeed").textContent = `${PLAT}: speedup vs devices`;
   $("capShard").textContent = `${PLAT}: per-device memory ÷ sino shard`;
   const xvol = sizes.map(sizeVol);
@@ -546,7 +558,7 @@ function renderScaling() {
   const texp = IDEAL_EXP[op] != null ? IDEAL_EXP[op] : 1;
   const timeCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
     ys: sizes.map((s) => { const c = at(s, nd); return c && !c.failed && c.min_ms != null ? c.min_ms / 60000 : null; }) }));
-  const timeIdeal = (aT && aT.min_ms != null) ? [{ label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0,
+  const timeIdeal = (showIdeal && aT && aT.min_ms != null) ? [{ label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0,
     ys: xvol.map((v) => (aT.min_ms / 60000) * Math.pow(v / aV, texp)) }] : [];
   const gT = gateSeries(run, geom, op, sizes, "time", 60000);
   // big red dots for failed configs, placed on the curve at the failing size
@@ -561,7 +573,7 @@ function renderScaling() {
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
     ys: sizes.map((s) => { const c = at(s, nd); return c && !c.failed && c.mem_mb != null ? c.mem_mb / 1024 : null; }) }));
-  const memIdeal = (aM && aM.mem_mb != null) ? [{ label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0,
+  const memIdeal = (showIdeal && aM && aM.mem_mb != null) ? [{ label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0,
     ys: xvol.map((v) => (aM.mem_mb / 1024) * (v / aV)) }] : [];
   const gM = gateSeries(run, geom, op, sizes, "memory", 1024);
   const memFails = ndevs.map((nd, ci) => {
@@ -598,9 +610,9 @@ function renderScaling() {
   const shardSpecs = [...shardFails, ...shardCurves, { label: "ideal 2×", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: ndevs.map(() => 2) }];
   linePlot($("pShard"), ndevs, shardSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip });
 
-  renderScalingLegend(ndevs, sizes);
+  renderScalingLegend(ndevs, sizes, showIdeal);
 }
-function renderScalingLegend(ndevs, sizes) {
+function renderScalingLegend(ndevs, sizes, showIdeal) {
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   // failed-config marker = curve-coloured centre with a red ring (centre shown
   // neutral here since the colour varies per curve)
@@ -614,7 +626,7 @@ function renderScalingLegend(ndevs, sizes) {
   // the second legend sits above speedup & shard (size curves).
   $("sv-legend").innerHTML =
     `<span class="grp">${devs}</span>` +
-    `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed config")}<span class="k"><span class="ring"></span>gate fail</span><span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span><span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>${refNote}</span>`;
+    `<span class="grp">${showIdeal ? k(IDEAL, "ideal", true) : ""}${ringDot("failed config")}<span class="k"><span class="ring"></span>gate fail</span><span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span><span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>${refNote}</span>`;
   $("sv-legend2").innerHTML =
     `<span class="grp">${szs}</span>` +
     `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed config")}</span>`;
@@ -659,17 +671,22 @@ function renderScalingTable(run, geom, op) {
 }
 
 // ---- history strip -----------------------------------------------------------
-// VCD time + peak memory at the largest size, for device count `n` (gate count is n-independent).
-function aggregate(run, n) {
-  const focus = Math.max(...run.cells.map((c) => sizeVol(c.size)));
-  const focusSize = run.cells.map((c) => c.size).find((s) => sizeVol(s) === focus);
-  // Keep the source cell behind each point (vcdCell/memCell) so the history can flag GPU
+// Headline-op time + peak memory at each geometry's LARGEST size, for device count `n` (gate count
+// is n-independent).  `geoms` is the active group; `timeOp` is its headline op (vcd for cone/parallel,
+// back for translation/multiaxis — they don't run vcd).  Sizes differ per geometry now, so the
+// "largest size" is computed PER geometry (a global max would miss the smaller new geometries).
+function aggregate(run, n, geoms, timeOp) {
+  // Keep the source cell behind each point (timeCell/memCell) so the history can flag GPU
   // throttling — the amber ring + tooltip warning — exactly as the scaling panels do.
-  const out = { vcd: {}, mem: {}, vcdCell: {}, memCell: {}, gate: run.gate.hard.length };
-  GEOM_ORDER.forEach((gm) => {
-    const vc = run.cells.find((c) => c.geom === gm && c.op === "vcd_nonconst" && c.size === focusSize && c.ndev === n && !c.failed);
-    out.vcd[gm] = vc && vc.min_ms != null ? vc.min_ms / 60000 : null;
-    out.vcdCell[gm] = vc || null;
+  const out = { time: {}, mem: {}, timeCell: {}, memCell: {}, gate: run.gate.hard.length };
+  geoms.forEach((gm) => {
+    const gmSizes = run.cells.filter((c) => c.geom === gm).map((c) => c.size);
+    if (!gmSizes.length) { out.time[gm] = out.mem[gm] = out.timeCell[gm] = out.memCell[gm] = null; return; }
+    const focus = Math.max(...gmSizes.map(sizeVol));
+    const focusSize = gmSizes.find((s) => sizeVol(s) === focus);
+    const tc = run.cells.find((c) => c.geom === gm && c.op === timeOp && c.size === focusSize && c.ndev === n && !c.failed);
+    out.time[gm] = tc && tc.min_ms != null ? tc.min_ms / 60000 : null;
+    out.timeCell[gm] = tc || null;
     const mems = run.cells.filter((c) => c.geom === gm && c.size === focusSize && c.ndev === n && !c.failed && c.mem_mb != null);
     const mc = mems.length ? mems.reduce((a, b) => (b.mem_mb > a.mem_mb ? b : a)) : null;
     out.mem[gm] = mc ? mc.mem_mb / 1024 : null;
@@ -695,22 +712,23 @@ function renderHistory() {
   // (falls back to collection date for older runs).
   const xs = uniq(M.runs.map(runTime)).sort((a, b) => a - b);
   const n = state.histN;
-  $("hCapVcd").textContent = `VCD time at largest size (n=${n})`;
+  const group = HIST_GROUPS.find((g) => g.id === state.histGroup) || HIST_GROUPS[0];
+  $("hCapVcd").textContent = `${group.opLabel} time at largest size (n=${n})`;
   $("hCapMem").textContent = `peak memory at largest size (n=${n})`;
-  const aggByPB = {};  // "platform|branch" -> runTime -> aggregate
-  M.runs.forEach((r) => { const key = r.platform + "|" + r.branch; (aggByPB[key] = aggByPB[key] || {})[runTime(r)] = aggregate(r, n); });
+  const aggByPB = {};  // "platform|branch" -> runTime -> aggregate (for the active geometry group)
+  M.runs.forEach((r) => { const key = r.platform + "|" + r.branch; (aggByPB[key] = aggByPB[key] || {})[runTime(r)] = aggregate(r, n, group.geoms, group.op); });
 
-  // colour = platform, line-style = geometry (cone solid, parallel dashed).
-  const cellField = (pick) => (pick === "vcd" ? "vcdCell" : "memCell");
+  // colour = platform, line-style = geometry (one solid + one dashed per group — see GEOM_DASH).
+  const cellField = (pick) => (pick === "time" ? "timeCell" : "memCell");
   const specsFor = (pick) => {
     const out = [], markers = [];
-    M.platforms.forEach((plat) => M.branches.forEach((b) => GEOM_ORDER.forEach((gm) => {
+    M.platforms.forEach((plat) => M.branches.forEach((b) => group.geoms.forEach((gm) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       const ys = xs.map((t) => { const a = agg[t]; return a && a[pick][gm] != null ? a[pick][gm] : null; });
       if (!ys.some((y) => y != null)) return;
       const meta = { platform: plat, branch: b, geom: gm, pick };
       out.push({ label: `${plat} ${gm}`, color: PLATC[plat] || IDEAL,
-        dash: gm === "parallel" ? [5, 3] : undefined, ys, _xs: xs, meta });
+        dash: GEOM_DASH[gm], ys, _xs: xs, meta });
       // two-tier thermal markers, re-derived client-side like the scaling panels: a filled amber disc
       // where the driver throttled (causal), a hollow amber ring where a GPU merely ran hot (advisory).
       const valAt = (t) => { const a = agg[t]; return a ? a[pick][gm] : null; };
@@ -753,7 +771,7 @@ function renderHistory() {
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
   const histGroup = [];
   const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
-  linePlot($("hVcd"), xs, specsFor("vcd"), { width: $("hVcd").clientWidth || 320, ...opts("min") });
+  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB") });
   const gateSpecs = [];
   M.platforms.forEach((plat) => M.branches.forEach((b) => {
@@ -766,9 +784,21 @@ function renderHistory() {
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   $("hist-legend").innerHTML =
     `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
-    `<span class="grp">${k("#888", "cone (solid)")}${k("#888", "parallel (dashed)", true)}` +
+    `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}` +
     `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
     `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span></span>`;
+}
+
+// Device-count choices for the History `n` selector = the counts present in the ACTIVE group's
+// geometries (cone/parallel have 1/2/4; translation/multiaxis are n=1 until sharding lands).  Clamps
+// state.histN into range so switching groups can't leave it on a count the new group lacks.
+function syncHistN() {
+  const group = HIST_GROUPS.find((g) => g.id === state.histGroup) || HIST_GROUPS[0];
+  const devs = uniq(M.runs.flatMap((r) => r.cells.filter((c) => group.geoms.includes(c.geom)).map((c) => c.ndev)))
+    .filter((x) => x != null).sort((a, b) => a - b);
+  if (!devs.length) devs.push(1);
+  if (!devs.includes(state.histN)) state.histN = devs[0];
+  fillSelect("histN", devs, state.histN);
 }
 
 // ---- orchestration -----------------------------------------------------------
@@ -799,10 +829,17 @@ function init() {
   $("op").onchange = () => { state.go = $("op").value; renderScaling(); };
   $("ref").value = state.ref;
   $("ref").onchange = () => { state.ref = $("ref").value; renderScaling(); };
-  // History device-count selector (n): the union of device counts across all runs.
-  const histDevs = uniq(M.runs.flatMap((r) => r.cells.map((c) => c.ndev))).filter((n) => n != null).sort((a, b) => a - b);
-  if (!histDevs.includes(state.histN)) state.histN = histDevs[0];
-  fillSelect("histN", histDevs, state.histN);
+  // History geometry-group toggle: swaps cone+parallel <-> translation+multiaxis (different headline op).
+  $("hist-group-seg").innerHTML = HIST_GROUPS.map((g) =>
+    `<button data-g="${g.id}" class="${g.id === state.histGroup ? "on" : ""}">${g.label}</button>`).join("");
+  $("hist-group-seg").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    state.histGroup = b.dataset.g;
+    $("hist-group-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    syncHistN(); renderHistory();
+  });
+  // History device-count selector (n): the device counts present in the ACTIVE group (the new
+  // geometries only have n=1 until sharding lands, so the choices shrink when that group is selected).
+  syncHistN();
   $("histN").onchange = () => { state.histN = +$("histN").value; renderHistory(); };
   $("view-seg").innerHTML = `<button data-v="plot" class="on">plot</button><button data-v="table">table</button>`;
   $("view-seg").querySelectorAll("button").forEach((b) => b.onclick = () => {
