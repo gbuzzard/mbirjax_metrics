@@ -246,14 +246,22 @@ def to_device(model, arr, kind):
 def run_filter(model, sino):
     """Timed op: the FBP/FDK filter, kept in the device (sharded) form.
 
-    ``output_sharded=True`` so we measure the FILTER, not a full-sinogram gather at exit (the
-    user-facing default gathers — a fixed cost that does not shard and flattens the scaling).
-    Falls back to the plain call on code predating the kwarg.
+    Calls ``model.direct_filter`` — but if THIS geometry didn't override it (an inherited
+    ``TomographyModel`` no-op STUB that just warns; e.g. a ``MultiAxisParallelModel`` exposing only
+    ``fbp_filter``, on library versions predating its ``direct_filter`` alias), call the geometry's
+    REAL filter (``fbp_filter`` / ``fdk_filter``) so we measure the actual filter on every branch
+    rather than recording a meaningless no-op.  ``output_sharded=True`` measures the FILTER, not a
+    full-sinogram gather at exit; the plain-call fallback handles code predating that kwarg.
     """
+    import mbirjax
+    fn = getattr(model, "direct_filter", None)
+    base = getattr(mbirjax.TomographyModel, "direct_filter", None)
+    if fn is None or (base is not None and getattr(type(model), "direct_filter", None) is base):
+        fn = getattr(model, "fbp_filter", None) or getattr(model, "fdk_filter", None) or fn
     try:
-        return model.direct_filter(sino, output_sharded=True)
+        return fn(sino, output_sharded=True)
     except TypeError:
-        return model.direct_filter(sino)
+        return fn(sino)
 
 
 def run_forward(model, cylinders, pixel_indices):
