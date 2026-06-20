@@ -88,6 +88,7 @@ section { margin: 26px 0; }
 .legend .sw { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
 .legend .ring { width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid var(--fail); display: inline-block; }
 .legend .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.legend .tri { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 11px solid var(--fail); display: inline-block; }
 
 .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
 .panels.hist { grid-template-columns: 1fr 1fr 1fr; gap: 14px; }

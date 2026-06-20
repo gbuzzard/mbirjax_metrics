@@ -37,6 +37,7 @@ import os
 import sys
 import gc
 import io
+import re
 import contextlib
 import argparse
 import tempfile
@@ -834,6 +835,21 @@ def gate_run(result, references, config):
         for key in sorted(set(today) | set(refcells)):
             _compare_cell(key, today.get(key), refcells.get(key), lab, plat,
                           expected, oom_gos, config, hard, soft)
+    # ── DASHBOARD-MARKER CONTRACT (keep in sync) ──────────────────────────────────────────────────
+    # Every HARD message above is "[lab] {key} ..." with key = _cell_key(c) = "geom|op|size|ndev".
+    # The dashboard (build_dashboard.py `_parse_gate_hard` / `_GATE_CELL_RE`) extracts that cell id to
+    # place the red marker on the scaling plot.  A hard message with NO parseable cell is still COUNTED
+    # (gate tiles + history) but silently NOT MARKED — a count-vs-marker mismatch.  This should never
+    # fire (all keys match the regex); if it does, the gate-string format drifted from the dashboard's
+    # — reconcile BOTH sides.  ⚠ If you change _cell_key / the hard-string format, update _GATE_CELL_RE.
+    _cell_pat = re.compile(r"[a-z_]+\|[a-z_]+\|\d+x\d+x\d+\|\d+")
+    unmarkable = [h for h in hard if not _cell_pat.search(h)]
+    if unmarkable:
+        print(f"  [gate-marker WARNING] {len(unmarkable)} hard-gate message(s) carry no "
+              f"dashboard-parseable cell id (geom|op|size|ndev) — they will be COUNTED but NOT "
+              f"marked on the scaling plot.  Reconcile gate_run with build_dashboard.py _GATE_CELL_RE:")
+        for h in unmarkable:
+            print(f"      {h}")
     return {"result": "fail" if hard else ("warn" if soft else "pass"),
             "hard": hard, "soft": soft, "compared_to": [lab for lab, _ in refs]}
 

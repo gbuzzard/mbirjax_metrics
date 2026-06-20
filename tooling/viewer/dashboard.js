@@ -276,6 +276,20 @@ function linePlot(el, xs, specs, o) {
       group.forEach((p) => { if (p !== u && (p.scales.x.min !== mn || p.scales.x.max !== mx)) p.setScale("x", { min: mn, max: mx }); });
     }];
   }
+  // Optional custom triangle marks at data points (o.marks: [{x, y}]) — uPlot only draws CIRCLE
+  // points, so failing-test flags are painted as red triangles in a draw hook (canvas/device px).
+  if (o.marks && o.marks.length) hooks.draw = [(u) => {
+    const ctx = u.ctx, dpr = u.pxRatio || 1, h = 9 * dpr;   // ~match the 'ran hot' ring (psize 14)
+    ctx.save();
+    o.marks.forEach((m) => {
+      const x = u.valToPos(m.x, "x", true), y = u.valToPos(m.y, "y", true);
+      if (!isFinite(x) || !isFinite(y)) return;
+      ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x - h, y + h); ctx.lineTo(x + h, y + h); ctx.closePath();
+      ctx.fillStyle = m.color || FAILC; ctx.fill();
+      ctx.lineWidth = 1.2 * dpr; ctx.strokeStyle = "#fff"; ctx.stroke();   // white edge for contrast
+    });
+    ctx.restore();
+  }];
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
     scales: { x: xScale, y: yScale },
@@ -286,7 +300,7 @@ function linePlot(el, xs, specs, o) {
     // drag.dist: a drag shorter than this (px) is NOT a zoom — it falls through to a plain click, so
     // a click with a pixel or two of jitter still selects the point instead of zooming a sliver.
     cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime, dist: 6 } },
-    hooks: (hooks.setCursor || hooks.setScale) ? hooks : undefined,
+    hooks: (hooks.setCursor || hooks.setScale || hooks.draw) ? hooks : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
   el.innerHTML = "";
@@ -328,7 +342,8 @@ function platMetrics(plat) {
   const run = runOnPlat(plat);
   if (!run) return null;
   return { run,
-    cells: run.cells.filter((c) => !c.failed).length,
+    cells: run.cells.length,   // TOTAL configs attempted (matches status_nightly's "cells N");
+                               // failures are surfaced via cellsFailed (the sub + drill-down + red markers)
     cellsFailed: run.cells.filter((c) => c.failed).length,
     gate: run.gate.hard.length,
     // The authoritative count is the pytest SUMMARY's `failed` (what status_nightly uses).  The
@@ -358,12 +373,15 @@ function renderTiles() {
       click: anyBad((m) => m.testsFailed > 0), sub: anyBad((m) => m.testsFailed > 0) ? "failures — click" : "none failing" },
   ];
   const nRuns = runsFor(state.platform, state.branch).length;
-  // Thermal advisory/causal flag for the shown run: tint the tile + a ⚠ badge with the affected n's.
+  // Flags for the shown run: tint the tile + ⚠ badge(s).  Failing tests and throttling are RED
+  // (warn-throttled); merely running hot is amber (warn-hot).  Both badges show if both apply.
   const therm = runThermal(cur);
-  const warnTile = therm ? ` warn-${therm.sev}` : "";
-  const warnLine = therm
-    ? `<div class="warnflag ${therm.sev}">⚠ ${therm.sev === "throttled" ? "throttled" : "ran hot"} · n=${therm.ndevs.join(", ")}${therm.peak ? ` · up to ${therm.peak}°C` : ""}</div>`
-    : "";
+  const tf = (cur.tests && cur.tests.failed) || 0;
+  const sev = (tf || (therm && therm.sev === "throttled")) ? "throttled" : (therm ? "hot" : null);
+  const warnTile = sev ? ` warn-${sev}` : "";
+  const warnLine =
+    (therm ? `<div class="warnflag ${therm.sev}">⚠ ${therm.sev === "throttled" ? "throttled" : "ran hot"} · n=${therm.ndevs.join(", ")}${therm.peak ? ` · up to ${therm.peak}°C` : ""}</div>` : "")
+    + (tf ? `<div class="warnflag throttled">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</div>` : "");
   const runTile =
     `<div class="tile${warnTile}" data-click="false">
        <div class="lbl">run shown</div>
@@ -509,7 +527,7 @@ function throttleSeries(run, geom, op, sizes, ndevs, field, div) {
 function renderScaling() {
   const run = currentRun();
   const [geom, op] = state.go.split("|");
-  $("sv-meta").textContent = run ? `${geom} · ${op} — ${state.branch} @ ${run.commit} · ${dateLabel(run.date)}` : "";
+  $("sv-meta").textContent = run ? `${geom} · ${op} — ${state.branch} @ ${run.commit} · ${commitMinute(run)}` : "";
   if (state.view === "table") { $("sv-plot").style.display = "none"; $("sv-table").style.display = ""; renderScalingTable(run, geom, op); return; }
   $("sv-plot").style.display = ""; $("sv-table").style.display = "none";
   const g = gridFor(run, geom, op);
@@ -684,7 +702,8 @@ function renderScalingTable(run, geom, op) {
 function aggregate(run, n, geoms, timeOp) {
   // Keep the source cell behind each point (timeCell/memCell) so the history can flag GPU
   // throttling — the amber ring + tooltip warning — exactly as the scaling panels do.
-  const out = { time: {}, mem: {}, timeCell: {}, memCell: {}, gate: run.gate.hard.length };
+  const out = { time: {}, mem: {}, timeCell: {}, memCell: {}, gate: run.gate.hard.length,
+                testsFailed: (run.tests && run.tests.failed) || 0 };
   geoms.forEach((gm) => {
     const gmSizes = run.cells.filter((c) => c.geom === gm).map((c) => c.size);
     if (!gmSizes.length) { out.time[gm] = out.mem[gm] = out.timeCell[gm] = out.memCell[gm] = null; return; }
@@ -769,16 +788,34 @@ function renderHistory() {
       const c = a ? a[cellField(m.pick)][m.geom] : null;
       if (c && cellHot(c)) warn = `<br><span class="thr">⚠ ${hotWarn(c)}</span>`;
     }
+    // tests-failed flag — same info as the run-shown tile's red badge.
+    const tf = (r.tests && r.tests.failed) || 0;
+    const testWarn = tf ? `<br><span class="bad">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</span>` : "";
     return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
-      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}` : "") + warn;
+      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}` : "") + warn + testWarn;
   };
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
   const histGroup = [];
+  // Red triangle on a run that had FAILING TESTS (a run-level flag, not per-cell like the thermal
+  // markers): one per (platform, branch) failing run, sat on its drawn point for the panel's metric.
+  const failMarks = (pick) => {
+    const out = [];
+    M.platforms.forEach((plat) => M.branches.forEach((b) => {
+      const agg = aggByPB[plat + "|" + b]; if (!agg) return;
+      xs.forEach((t) => {
+        const a = agg[t]; if (!a || !a.testsFailed) return;
+        let y = null;
+        for (const gm of group.geoms) { if (a[pick][gm] != null) { y = a[pick][gm]; break; } }
+        if (y != null) out.push({ x: t, y });
+      });
+    }));
+    return out;
+  };
   const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
-  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min") });
-  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB") });
+  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: failMarks("time") });
+  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: failMarks("mem") });
   const gateSpecs = [];
   M.platforms.forEach((plat) => M.branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
@@ -792,7 +829,8 @@ function renderHistory() {
     `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
     `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}` +
     `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
-    `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span></span>`;
+    `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
+    `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span></span>`;
 }
 
 // Device-count choices for the History `n` selector = the counts present in the ACTIVE group's

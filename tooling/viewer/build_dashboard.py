@@ -167,6 +167,9 @@ def _parse_tests(txt_path: Path) -> dict | None:
 
 
 _GATE_BASIS_RE = re.compile(r"^\[(\w+)\]\s*")
+# Extracts the cell id "geom|op|size|ndev" from a hard-gate string so the dashboard can place the red
+# marker on the scaling plot.  ⚠ KEEP IN SYNC with the engine's gate-string format (performance_tracking.py
+# `_cell_key` / `gate_run`, which self-warns if a hard message ever stops matching this pattern).
 _GATE_CELL_RE = re.compile(r"([a-z_]+\|[a-z_]+\|\d+x\d+x\d+\|\d+)")
 
 
