@@ -847,10 +847,17 @@ function syncHistN() {
 
 // ---- orchestration -----------------------------------------------------------
 function renderAll() { renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); renderHistory(); }
+// Default branch for a platform = the one with the MOST RECENT run (by commit time), NOT the
+// alphabetically-first.  Keeps the run-shown tile on the newest run after a branch rename / new branch
+// (e.g. greg/conebeam_sharding -> greg/sharding_extensions: the newest run is on the new branch).
+function defaultBranch(plat) {
+  const rs = M.runs.filter((r) => r.platform === plat);
+  return rs.length ? rs.reduce((a, b) => (runTime(b) > runTime(a) ? b : a)).branch : (branchesFor(plat)[0] || null);
+}
 function onPlatform() {
   state.platform = $("platform").value;
   const bs = branchesFor(state.platform);
-  if (!bs.includes(state.branch)) state.branch = bs[0];
+  if (!bs.includes(state.branch)) state.branch = defaultBranch(state.platform);
   fillSelect("branch", bs, state.branch);
   state.openTile = null; state.runKey = null; renderAll();
 }
@@ -864,7 +871,7 @@ function init() {
   if (!M.runs.length) { $("tiles").innerHTML = "<p class='muted'>No runs found under results/.</p>"; return; }
 
   state.platform = M.platforms.includes("gpu") ? "gpu" : M.platforms[0];
-  state.branch = branchesFor(state.platform)[0];
+  state.branch = defaultBranch(state.platform);
   fillSelect("platform", M.platforms, state.platform);
   fillSelect("branch", branchesFor(state.platform), state.branch);
 
