@@ -257,7 +257,36 @@ def _fp_discrepancies(t: dict, r: dict, rtol: float) -> list[str]:
     return out
 
 
-def _analyze_correctness(runs: list[dict]) -> None:
+def _fp_reldiff(t: dict, r: dict):
+    """Max relative diff over {sum, mean, l2norm} (the scalar the gates threshold), or None if
+    uncomparable; inf on a shape mismatch.  Used to report the cross-device noise floor for tuning."""
+    if t.get("shape") != r.get("shape"):
+        return float("inf")
+    vals = [abs(tv - rv) / (abs(rv) or 1.0)
+            for m in ("sum", "mean", "l2norm")
+            for rv, tv in [(r.get(m), t.get(m))] if rv is not None and tv is not None]
+    return max(vals) if vals else None
+
+
+def _fmt_cell(cell: str) -> str:
+    """'geom|op|size|ndev' -> 'geom, op, size, n_devices=N' (the human config label)."""
+    p = (cell or "").split("|")
+    return f"{p[0]}, {p[1]}, {p[2]}, n_devices={p[3]}" if len(p) == 4 else (cell or "")
+
+
+def _read_cleared_through(root) -> str | None:
+    """The correctness ack watermark (``cleared_through``) from ``<root>/results/correctness_acks.yaml``,
+    or None.  Pulled out so the status view can also read it from THIS checkout (where the user runs the
+    clear script) even when summarizing a results repo that hasn't pulled the acknowledgment yet."""
+    from pathlib import Path
+    p = Path(root) / "results" / "correctness_acks.yaml"
+    if not p.exists():
+        return None
+    v = (yaml.safe_load(p.read_text()) or {}).get("cleared_through")
+    return str(v) if v else None   # YAML parses an ISO date to datetime.date; keep it a string ("YYYY-MM-DD")
+
+
+def _analyze_correctness(runs: list[dict]) -> dict:
     """Annotate each run with a unified ``correctness`` finding list from THREE references (design note
     D2): the prior run on this branch (from the engine's gate.hard), single-device n=1 within the run
     (cross-device), and the latest main run on the same platform (vs-main).  Each finding is
@@ -283,6 +312,7 @@ def _analyze_correctness(runs: list[dict]) -> None:
             return f"{plat.upper()} · {sha[:10]}"
         return fn or "?"
 
+    xdev_diffs = []   # every cross-device reldiff (the implementation-noise floor, for tuning)
     for r in runs:
         plat, fps, findings = r["platform"], (r.get("_fps") or {}), []
         # prior run — fold the engine's gate.hard correctness hits into the unified list (one per cell).
@@ -303,6 +333,9 @@ def _analyze_correctness(runs: list[dict]) -> None:
             if base is None or _degenerate(base):
                 continue
             for nd in sorted(k for k in d if k != 1):
+                rd = _fp_reldiff(d[nd], base)
+                if rd is not None and rd != float("inf"):
+                    xdev_diffs.append(rd)
                 discr = _fp_discrepancies(d[nd], base, XDEV_RTOL)
                 if discr:
                     findings.append({"reference": "cross_device", "cell": f"{g}|{op}|{sz}|{nd}",
@@ -336,6 +369,7 @@ def _analyze_correctness(runs: list[dict]) -> None:
                 if discr:
                     findings.append({"reference": "cross_platform", "cell": key, "basis": olabel, "discrepancies": discr})
         r["correctness"] = findings
+    return {"xdev_floor": max(xdev_diffs) if xdev_diffs else None, "xdev_n": len(xdev_diffs)}
 
 
 def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
@@ -414,18 +448,15 @@ def collect_data() -> dict:
                 records[f"{platform}|{branch_name}"] = yaml.safe_load(rec_path.read_text()) or {}
 
     runs.sort(key=lambda r: (r["platform"], r["branch"], r["date"]))
-    # Correctness analyzer (P2): annotate each run with cross-device + vs-main + prior findings, then
-    # drop the private fingerprint index so it doesn't bloat the inlined JSON.
-    _analyze_correctness(runs)
+    # Correctness analyzer (P2/P4): annotate each run with cross-device + vs-main + cross-platform + prior
+    # findings (+ the cross-device noise floor), then drop the private fingerprint index from the JSON.
+    corr_stats = _analyze_correctness(runs)
     for r in runs:
         r.pop("_fps", None)
     # Correctness "reviewed-through" watermark (design note D6): a single committed date; any correctness
     # divergence on a commit dated <= this is treated as acknowledged (greyed, dropped from the banner /
     # tab badge).  Absent file => nothing acknowledged.  The guided clear script (P3) writes this field.
-    cleared_through = None
-    acks_path = results_dir / "correctness_acks.yaml"
-    if acks_path.exists():
-        cleared_through = (yaml.safe_load(acks_path.read_text()) or {}).get("cleared_through")
+    cleared_through = _read_cleared_through(REPO_ROOT)
     return {
         "generated": _generated_stamp(),
         "repo_name": REPO_ROOT.name,
@@ -436,12 +467,60 @@ def collect_data() -> dict:
         "records": records,
         "cleared_through": str(cleared_through) if cleared_through else None,
         "corr_tol": {"single": VSMAIN_RTOL_SINGLE, "iter": VSMAIN_RTOL_ITER, "xdev": XDEV_RTOL, "xplat": VSPLAT_RTOL_SINGLE},
+        "corr_stats": corr_stats,
     }
 
 
 # --------------------------------------------------------------------------- #
 # Assembly                                                                    #
 # --------------------------------------------------------------------------- #
+def _correctness_summary(data: dict) -> None:
+    """Print the CORRECTNESS ALERT block + the cross-device noise floor (design note D5/P5).  Emitted at
+    the end of every dashboard build, so the nightly's rebuild surfaces unacknowledged correctness
+    divergences (the same set as the dashboard banner) and the floor is there to tune the tolerances."""
+    runs = data.get("runs") or []
+    through = data.get("cleared_through")
+
+    def _t(r):
+        return r.get("commit_date") or r.get("date") or ""
+
+    def _rdate(r):
+        cd = r.get("commit_date")
+        if cd:
+            return cd[:10]
+        d = r.get("date") or ""
+        return f"{d[:4]}-{d[4:6]}-{d[6:8]}" if (len(d) == 8 and d.isdigit()) else None
+
+    latest: dict = {}
+    for r in runs:
+        k = (r["platform"], r["branch"])
+        if k not in latest or _t(r) > _t(latest[k]):
+            latest[k] = r
+
+    def _acked(r):
+        d = _rdate(r)
+        return through is not None and d is not None and d <= through
+
+    bad = sorted((r for r in latest.values() if r.get("correctness") and not _acked(r)), key=_t, reverse=True)
+    print("\n" + "=" * 78)
+    if bad:
+        print(f"  CORRECTNESS ALERT — {len(bad)} branch run(s) diverge (unacknowledged):")
+        print("=" * 78)
+        for r in bad:
+            print(f"\n  {r['platform']}/{r['branch']} @ {r['commit']} ({_rdate(r)})")
+            for c in sorted({f["cell"] for f in r["correctness"]}):
+                print(f"      {_fmt_cell(c)}")
+        print("\n  Review, then acknowledge with action_scripts/clear_correctness.sh")
+    else:
+        tail = f"  (cleared through {through})" if through else ""
+        print(f"  CORRECTNESS: no unacknowledged divergences.{tail}")
+        print("=" * 78)
+    st = data.get("corr_stats") or {}
+    if st.get("xdev_floor") is not None:
+        print(f"  cross-device noise floor: {st['xdev_floor']:.2e} over {st['xdev_n']} comparison(s) "
+              f"— tune the cross-* tolerances against this.")
+
+
 def build() -> Path:
     data = collect_data()
 
@@ -472,6 +551,7 @@ def build() -> Path:
           f"across platforms={data['platforms']} branches={data['branches']}.")
     print(f"Wrote {OUT_PATH}  ({OUT_PATH.stat().st_size / 1024:.0f} KB)")
     print(f"Open it with:  open '{OUT_PATH}'")
+    _correctness_summary(data)
     return OUT_PATH
 
 

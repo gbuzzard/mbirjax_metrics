@@ -19,12 +19,6 @@ sys.path.insert(0, str(HERE))
 import build_dashboard as bd  # noqa: E402  (path set above)
 
 
-def _fmt_cell(cell):
-    """'geom|op|size|ndev' -> 'geom, op, size, n_devices=N' (matches the dashboard drill-down)."""
-    p = cell.split("|")
-    return f"{p[0]}, {p[1]}, {p[2]}, n_devices={p[3]}" if len(p) == 4 else cell
-
-
 def _run_date(r):
     """A run's date as YYYY-MM-DD (commit date preferred, else the collection date), or None."""
     cd = r.get("commit_date")
@@ -82,7 +76,7 @@ def main(argv):
         for r in sorted(runs, key=lambda r: _run_date(r) or ""):
             print(f"\n  {r['platform']}/{r['branch']} @ {r['commit']} ({_run_date(r)})")
             for c in sorted({f["cell"] for f in r["correctness"]}):
-                print(f"      {_fmt_cell(c)}")
+                print(f"      {bd._fmt_cell(c)}")
 
     print(f"{len(would_clear)} run(s) WOULD be cleared (commit date <= {target}):")
     _list(would_clear)

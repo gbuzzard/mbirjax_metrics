@@ -72,8 +72,15 @@ def main():
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "viewer"))
     try:
         import build_dashboard
+        local_root = build_dashboard.REPO_ROOT    # THIS checkout (where the user runs/commits clear_correctness)
         build_dashboard.REPO_ROOT = Path(root)
-        runs = build_dashboard.collect_data().get("runs", [])
+        data = build_dashboard.collect_data()
+        runs = data.get("runs", [])
+        # The correctness ack watermark is the user's decision, committed in THIS checkout; the summarized
+        # repo (e.g. the nightly clone) may not have pulled it yet.  Honor the LATER cleared_through of the
+        # two so the status view's CORRECTNESS block matches the dashboard.
+        cands = [c for c in (data.get("cleared_through"), build_dashboard._read_cleared_through(local_root)) if c]
+        data["cleared_through"] = max(cands) if cands else None
     except Exception as e:                       # noqa: BLE001 — status tool: degrade, never abort
         print(f"  (could not load runs via build_dashboard for {root}: {e})", file=sys.stderr)
         sys.exit(3)
@@ -82,7 +89,10 @@ def main():
         return
 
     runs.sort(key=lambda r: (r.get("commit_date") or "", r.get("date") or ""), reverse=True)
-    print(f"recent runs (from {root}/results, newest first):")
+    # NB: 'commit time' is the COMMIT measured; 'meas' is when it was MEASURED (a manual add_run /
+    # run_one_night, or a scheduled nightly) — they differ, e.g. a 6/20 commit measured on 6/21.
+    print(f"recent runs (from {root}/results, newest first) — 'commit time' = the commit; 'meas' = date measured:")
+    print(f"     {'commit time':<16} {'meas':>5}  {'plat':<4} {'branch':<26} {'commit':<8} {'cfgs':>4} {'gate':>4} {'tests':>5}")
     for r in runs[:n]:
         cells = r.get("cells") or []
         nfail = sum(1 for c in cells if c.get("failed"))
@@ -90,18 +100,28 @@ def main():
         tests = r.get("tests")
         tf = tests.get("failed") if tests else None
         therm = _thermal(cells)
-
-        cellstr = f"cells {len(cells)}" + (f" ({nfail} failed)" if nfail else "")
-        teststr = "tests " + ("–" if tf is None else str(tf))
-        warn = ""
+        plat = (r.get("platform") or "?").capitalize()          # Cpu / Gpu — visually distinct
+        d = r.get("date") or ""
+        meas = f"{d[4:6]}-{d[6:8]}" if (len(d) == 8 and d.isdigit()) else "?"
+        branch = (r.get("branch") or "?") + (" ·dirty" if r.get("dirty") else "")
+        tfs = "–" if tf is None else str(tf)
+        extra = []
+        if nfail:
+            extra.append(f"{nfail} config(s) failed")
         if therm:
             sev, devs, peak = therm
-            word = "throttled" if sev == "throttled" else "ran hot"
-            warn = f"  ⚠ {word} · n={','.join(map(str, devs))}" + (f" · up to {peak}°C" if peak else "")
+            extra.append(("throttled" if sev == "throttled" else "ran hot")
+                         + f" · n={','.join(map(str, devs))}" + (f" · up to {peak}°C" if peak else ""))
+        warn = ("   ⚠ " + " · ".join(extra)) if extra else ""
         glyph = "✗" if (nfail or hard or (tf or 0)) else ("⚠" if therm else "✓")
-        dirty = " ·dirty" if r.get("dirty") else ""
-        print(f"  {glyph} {_commit_minute(r)}  {r.get('platform', '?'):<3} {r.get('branch', '?')} "
-              f"@ {r.get('commit', '')[:8]}{dirty}  {cellstr} · gate {hard} · {teststr}{warn}")
+        print(f"  {glyph}  {_commit_minute(r):<16} {meas:>5}  {plat:<4} {branch:<26.26} {r.get('commit', '')[:8]:<8} "
+              f"{len(cells):>4} {hard:>4} {tfs:>5}{warn}")
+
+    # Echo the dashboard's CORRECTNESS ALERT block + cross-device floor (the same scan build_dashboard
+    # prints), so the status view surfaces unacknowledged correctness divergences too — not just per-run
+    # gate/test/thermal health.  Correctness is corpus-level (vs-main / cross-device / cross-platform),
+    # so it lives here rather than on each run line.
+    build_dashboard._correctness_summary(data)
 
 
 if __name__ == "__main__":
