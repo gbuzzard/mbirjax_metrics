@@ -468,7 +468,7 @@ function renderDetail() {
     intro = `<p>Each run is compared per config + metric against its reference run(s).  This panel shows <b>performance</b> regressions — correctness has its own tile. <b>Hard:</b> structural change, ok→fail, expected-but-absent, GPU peak-memory &gt;${pct(gc.mem_hard_pct)}. <b>Soft:</b> speedup drop &gt;${pct(gc.speedup_warn_pct)}, time &gt;${pct(gc.time_soft_pct)}, CPU memory, sweep add/drop.</p>`;
   } else if (state.openTile === "correctness") {
     const ct = M.corr_tol || {};
-    intro = `<p>Correctness compares the recon <b>fingerprint</b> against three references — the <b>prior run</b> on this branch, the latest <b>main</b>, and <b>single-device n=1</b> within the same run. Flags a float64 {sum, mean, l2norm} relative change beyond ${ct.single ?? "?"} (single-shot) / ${ct.iter ?? "?"} (iterated VCD) / ${ct.xdev ?? "?"} (cross-device), or a shape/dtype change.${ackThrough ? " Divergences on commits dated ≤ " + M.cleared_through + " are acknowledged." : ""}</p>`;
+    intro = `<p>Correctness compares the recon <b>fingerprint</b> against four references — the <b>prior run</b> on this branch, the latest <b>main</b>, <b>single-device n=1</b> within the same run, and the <b>other platform</b> (CPU↔GPU) at the same commit. Flags a float64 {sum, mean, l2norm} relative change beyond ${ct.single ?? "?"} (single-shot) / ${ct.iter ?? "?"} (iterated VCD) / ${ct.xdev ?? "?"} (cross-device) / ${ct.xplat ?? "?"} (cross-platform), or a shape/dtype change.${ackThrough ? " Divergences on commits dated ≤ " + M.cleared_through + " are acknowledged." : ""}</p>`;
   }
   const section = (plat) => {
     const run = runOnPlat(plat);

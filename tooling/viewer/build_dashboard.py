@@ -219,6 +219,12 @@ def _parse_gate_hard(items) -> list[dict]:
 XDEV_RTOL = 1e-5            # cross-device (n>1 vs n=1, same build): a few x the ~1e-6 floor
 VSMAIN_RTOL_SINGLE = 1e-5   # vs-main, single-shot ops (direct_filter / forward / back)
 VSMAIN_RTOL_ITER = 1e-4     # vs-main, the iterated vcd_nonconst
+# cross-platform (CPU vs GPU, same commit) — float32 differs more across backends; SAFE-LOOSE defaults
+# until there is shared-cell data to calibrate against (no shared cell exists in the corpus yet — needs a
+# size present on BOTH platforms; see Config.sizes / geom_sizes).  Re-run the cross-platform dry-run and
+# tighten once the first shared cells land.
+VSPLAT_RTOL_SINGLE = 1e-3
+VSPLAT_RTOL_ITER = 3e-3
 _FP_FIELDS = ("sum", "mean", "l2norm", "shape", "dtype", "padding_zero")
 
 
@@ -258,11 +264,14 @@ def _analyze_correctness(runs: list[dict]) -> None:
     ``{reference, cell, basis, discrepancies}``.  Reads the per-run ``_fps`` fingerprint index."""
     def _t(r): return r.get("commit_date") or r.get("date") or ""
     main_latest: dict[str, dict] = {}
+    by_bc: dict = {}   # (branch, commit_full) -> {platform: run}, for the CPU<->GPU cross-platform match
     for r in runs:
         if r["branch"] == "main":
             cur = main_latest.get(r["platform"])
             if cur is None or _t(r) > _t(cur):
                 main_latest[r["platform"]] = r
+        if r.get("commit_full"):
+            by_bc.setdefault((r["branch"], r["commit_full"]), {})[r["platform"]] = r
 
     def _prior_label(fn, plat):
         m = re.search(r"_([0-9a-f]{7,40})\.ya?ml$", fn or "")
@@ -311,6 +320,21 @@ def _analyze_correctness(runs: list[dict]) -> None:
                 discr = _fp_discrepancies(fp, rfp, rtol)
                 if discr:
                     findings.append({"reference": "vs_main", "cell": key, "basis": mlabel, "discrepancies": discr})
+        # cross-platform — this run's cells vs the OTHER platform's run at the same (branch, commit).
+        # Only fires where a cell is measured on BOTH platforms (a shared size — none yet; see Config).
+        partners = by_bc.get((r["branch"], r.get("commit_full")), {})
+        other = next((p for p in partners if p != plat), None)
+        if other is not None:
+            ofps, olabel = (partners[other].get("_fps") or {}), f"{other.upper()} · {partners[other]['commit']} · {_commit_minute(partners[other])}"
+            for key, fp in fps.items():
+                rfp = ofps.get(key)
+                if rfp is None or _degenerate(rfp):
+                    continue
+                op = key.split("|")[1]
+                rtol = VSPLAT_RTOL_ITER if op == "vcd_nonconst" else VSPLAT_RTOL_SINGLE
+                discr = _fp_discrepancies(fp, rfp, rtol)
+                if discr:
+                    findings.append({"reference": "cross_platform", "cell": key, "basis": olabel, "discrepancies": discr})
         r["correctness"] = findings
 
 
@@ -411,7 +435,7 @@ def collect_data() -> dict:
         "runs": runs,
         "records": records,
         "cleared_through": str(cleared_through) if cleared_through else None,
-        "corr_tol": {"single": VSMAIN_RTOL_SINGLE, "iter": VSMAIN_RTOL_ITER, "xdev": XDEV_RTOL},
+        "corr_tol": {"single": VSMAIN_RTOL_SINGLE, "iter": VSMAIN_RTOL_ITER, "xdev": XDEV_RTOL, "xplat": VSPLAT_RTOL_SINGLE},
     }
 
 

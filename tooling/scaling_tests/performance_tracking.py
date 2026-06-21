@@ -71,21 +71,25 @@ class Config:
     # SINOGRAM sizes (n_views, n_rows, n_channels) — ASYMMETRIC (all three differ) to surface
     # axis swaps; one DIVIDING + one NON-DIVIDING (all-odd) per platform to exercise padding;
     # plus a GPU 1024-class capacity size.  The recon shape is auto-derived per geometry.
+    # The LARGEST CPU size of each geometry is ALSO measured on GPU (the first GPU entry below) so the
+    # dashboard's CPU<->GPU cross-platform correctness check has a shared cell to compare — cheap on GPU,
+    # no extra CPU cost (CPU already runs it).  See the correctness-gating design note D7.
     sizes: dict = field(default_factory=lambda: {
         "cpu": [(128, 112, 96), (129, 113, 97), (200, 208, 160)],
-        "gpu": [(512, 448, 384), (513, 449, 385), (1024, 1008, 992)],
+        "gpu": [(200, 208, 160), (512, 448, 384), (513, 449, 385), (1024, 1008, 992)],  # 200³ = shared w/ CPU
     })
     # Per-geometry size OVERRIDES (else `sizes[plat]` is used).  The new translation/multiaxis
     # geometries are sharding-baseline work: keep them SMALL (top out at 512 on GPU).  Translation's
     # tuple is (n_views=15 fixed, n_det_rows, n_det_channels); make_model derives its recon from these.
+    # The first GPU entry mirrors the largest CPU size (the CPU<->GPU cross-platform shared cell, D7).
     geom_sizes: dict = field(default_factory=lambda: {
         "multiaxis_parallel": {
             "cpu": [(96, 80, 64), (128, 112, 96), (129, 113, 97)],
-            "gpu": [(256, 224, 192), (512, 448, 384), (513, 449, 385)],
+            "gpu": [(129, 113, 97), (256, 224, 192), (512, 448, 384), (513, 449, 385)],  # 129³ = shared w/ CPU
         },
         "translation": {
             "cpu": [(15, 64, 64), (15, 65, 65)],
-            "gpu": [(15, 256, 256), (15, 257, 257)],
+            "gpu": [(15, 65, 65), (15, 256, 256), (15, 257, 257)],  # 15x65x65 = shared w/ CPU
         },
     })
     # Sizes where every op runs trials=1 (capacity/memory check, not a timing ruler).
