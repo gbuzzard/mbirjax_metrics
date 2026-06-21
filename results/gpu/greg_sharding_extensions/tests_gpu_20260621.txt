@@ -1,0 +1,24 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_sharding_extensions
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [204 items]
+
+.......................................................s................ [ 35%]
+........ss.............................................................. [ 70%]
+.............s...............s..............................             [100%]
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17: 10 warnings
+  /home/buzzard/.mbirjax/regression/lib_greg_sharding_extensions/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:242: GPU present: auto uses GPUs; this exercises the CPU default
+SKIPPED [1] ../tests/sharding/test_hooks.py:89: RETIRE-AFTER-SHARDING: ParallelBeam auto-meshes; no-mesh path is non-PB only.
+SKIPPED [1] ../tests/sharding/test_hooks.py:78: RETIRE-AFTER-SHARDING: ParallelBeam auto-meshes; no-mesh path is non-PB only.
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+=========== 199 passed, 5 skipped, 10 warnings in 334.88s (0:05:34) ============
