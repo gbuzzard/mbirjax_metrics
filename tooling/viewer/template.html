@@ -4,11 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mbirjax metrics</title>
+<link id="favicon" rel="icon" href="data:,">
 <style>/*{{UPLOT_CSS}}*/</style>
 <style>/*{{DASHBOARD_CSS}}*/</style>
 </head>
 <body>
 <div id="app">
+  <div id="corr-banner" class="corr-banner" style="display:none"></div>
   <header>
     <div class="title-row">
       <h1>mbirjax metrics</h1>
@@ -26,7 +28,7 @@
     <div class="panels hist">
       <div class="panel"><div class="pcap" id="hCapVcd">VCD time at largest size (n=1)</div><div id="hVcd" class="chart"></div></div>
       <div class="panel"><div class="pcap" id="hCapMem">peak memory at largest size (n=1)</div><div id="hMem" class="chart"></div></div>
-      <div class="panel"><div class="pcap">hard-gate regressions</div><div id="hGate" class="chart"></div></div>
+      <div class="panel"><div class="pcap">perf regressions (correctness ✕ on the panels above)</div><div id="hGate" class="chart"></div></div>
     </div>
   </section>
 

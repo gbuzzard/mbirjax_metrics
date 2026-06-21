@@ -14,6 +14,7 @@ const GEOMC = { cone: "#D85A30", parallel: "#378ADD" };               // by geom
 const PLATC = { gpu: "#185fa5", cpu: "#BA7517" };                     // history: by platform
 const IDEAL = "#9b9b94", FAILC = "#E24B4A", REFC = "#1f1f1d"; // ideal=grey, gate=red, reference=near-black
 const THROTC = "#E8950C";                                    // amber: a GPU ran hot / throttled (timing unreliable)
+const CORRC = "#a32d2d";                                      // deep red: a CORRECTNESS divergence (more severe than a perf hit)
 const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" if a GPU core>=85C / HBM>=95C / any throttle reason
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
@@ -70,6 +71,27 @@ const runDateLabel = (r) => (r.commit_date ? r.commit_date.slice(0, 10) : dateLa
 // Commit date AND time, to the minute (e.g. "2026-06-17 23:00") — the unambiguous run stamp.
 // ISO is "YYYY-MM-DDTHH:MM:SS±zz"; slice to the minute and swap the T for a space.
 const commitMinute = (r) => (r.commit_date ? r.commit_date.slice(0, 16).replace("T", " ") : (r.date ? dateLabel(r.date) : "?"));
+// ---- correctness (severity split, design note D1/D6) -------------------------------------------
+// The "reviewed-through" watermark (a single date from results/correctness_acks.yaml): a run whose
+// commit is dated <= this is acknowledged — kept visible but greyed and dropped from the banner/badge.
+const ackThrough = M.cleared_through ? Date.parse(M.cleared_through + "T23:59:59Z") / 1000 : null;
+// Correctness findings are computed corpus-wide by build_dashboard (prior + cross-device + vs-main),
+// each {reference, cell, basis, discrepancies[]}.  Perf hard hits stay on gate.hard (kind != correctness).
+const runCorr = (r) => (r.correctness || []);
+const runCorrCells = (r) => new Set(runCorr(r).map((f) => f.cell)).size;   // distinct divergent configs
+const runPerfHard = (r) => (r.gate && r.gate.hard || []).filter((h) => h.kind !== "correctness");
+const runIncorrect = (r) => runCorr(r).length > 0;            // diverges on at least one cell/reference
+const runAcked = (r) => ackThrough != null && runTime(r) <= ackThrough;
+const runAlert = (r) => runIncorrect(r) && !runAcked(r);     // unacknowledged -> drives banner/badge/markers
+// A gate basis / compared_to string is the prior RUN's filename ("prior:regression_<plat>_<ts>_<sha>.yaml").
+// Render it like a run entry — "GPU · <commit> · <commit date+time>" — by resolving its sha to that run.
+function priorLabel(fn, plat) {
+  const m = /_([0-9a-f]{7,40})\.ya?ml$/.exec(fn || "");
+  const sha = m ? m[1] : null;
+  if (!sha) return fn || "?";
+  const r = M.runs.find((x) => x.platform === plat && x.commit_full && x.commit_full.startsWith(sha));
+  return r ? `${plat.toUpperCase()} · ${r.commit} · ${commitMinute(r)}` : `${plat.toUpperCase()} · ${sha.slice(0, 10)}`;
+}
 // The run shown for a given platform on the currently-selected branch: honour an explicitly
 // picked run (state.runKey) only on the active platform; otherwise the latest for that platform.
 function runOnPlat(plat) {
@@ -293,9 +315,18 @@ function linePlot(el, xs, specs, o) {
     o.marks.forEach((m) => {
       const x = u.valToPos(m.x, "x", true), y = u.valToPos(m.y, "y", true);
       if (!isFinite(x) || !isFinite(y)) return;
-      ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x - h, y + h); ctx.lineTo(x + h, y + h); ctx.closePath();
-      ctx.fillStyle = m.color || FAILC; ctx.fill();
-      ctx.lineWidth = 1.2 * dpr; ctx.strokeStyle = "#fff"; ctx.stroke();   // white edge for contrast
+      if (m.shape === "x") {                                 // a CORRECTNESS divergence: a bold ✕ (white-haloed)
+        const r = h * 1.15;
+        const cross = () => { ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
+                              ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke(); };
+        ctx.lineCap = "round";
+        ctx.lineWidth = 4 * dpr; ctx.strokeStyle = "#fff"; cross();        // halo for contrast
+        ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = m.color || CORRC; cross();
+      } else {                                               // a FAILING-TESTS flag: a red triangle
+        ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x - h, y + h); ctx.lineTo(x + h, y + h); ctx.closePath();
+        ctx.fillStyle = m.color || FAILC; ctx.fill();
+        ctx.lineWidth = 1.2 * dpr; ctx.strokeStyle = "#fff"; ctx.stroke();   // white edge for contrast
+      }
     });
     ctx.restore();
   }];
@@ -355,6 +386,8 @@ function platMetrics(plat) {
                                // failures are surfaced via cellsFailed (the sub + drill-down + red markers)
     cellsFailed: run.cells.filter((c) => c.failed).length,
     gate: run.gate.hard.length,
+    correctness: runCorrCells(run),   // distinct divergent configs (own severity tier)
+    perfHard: runPerfHard(run).length,  // hard hits that are NOT correctness (memory / structural / ok->fail)
     // The authoritative count is the pytest SUMMARY's `failed` (what status_nightly uses).  The
     // `failures` node-id LIST is only for the drill-down and can be empty if the log format hid the
     // names (e.g. pytest-xdist without -ra), so counting it would under-report (showed 0 vs 3).
@@ -376,7 +409,9 @@ function renderTiles() {
   const health = [
     { id: "cells", lbl: "configs measured", body: pvs((m) => m.cells, (m) => m.cellsFailed > 0),
       click: anyBad((m) => m.cellsFailed > 0), sub: anyBad((m) => m.cellsFailed > 0) ? "failures — click" : "all ran" },
-    { id: "gate", lbl: "hard gate hits", body: pvs((m) => m.gate, (m) => m.gate > 0),
+    { id: "correctness", lbl: "correctness", body: pvs((m) => m.correctness, (m) => m.correctness > 0),
+      click: true, sub: anyBad((m) => m.correctness > 0) ? "DIVERGENT — click" : "fingerprints match" },
+    { id: "gate", lbl: "perf regressions", body: pvs((m) => m.perfHard, (m) => m.perfHard > 0),
       click: true, sub: "click for details" },
     { id: "tests", lbl: "tests failed", body: pvs((m) => m.testsFailed, (m) => m.testsFailed > 0),
       click: anyBad((m) => m.testsFailed > 0), sub: anyBad((m) => m.testsFailed > 0) ? "failures — click" : "none failing" },
@@ -386,10 +421,16 @@ function renderTiles() {
   // (warn-throttled); merely running hot is amber (warn-hot).  Both badges show if both apply.
   const therm = runThermal(cur);
   const tf = (cur.tests && cur.tests.failed) || 0;
+  const corr = runCorrCells(cur);
+  const corrAlert = runAlert(cur);          // incorrect AND not acknowledged -> dominant red
+  const corrAcked = corr > 0 && !corrAlert; // incorrect but acknowledged -> muted note, audit trail
   const sev = (tf || (therm && therm.sev === "throttled")) ? "throttled" : (therm ? "hot" : null);
-  const warnTile = sev ? ` warn-${sev}` : "";
+  // Correctness OUTRANKS perf/thermal: an unacknowledged INCORRECT run is red regardless of the rest.
+  const warnTile = corrAlert ? " incorrect" : (sev ? ` warn-${sev}` : "");
   const warnLine =
-    (therm ? `<div class="warnflag ${therm.sev}">⚠ ${therm.sev === "throttled" ? "throttled" : "ran hot"} · n=${therm.ndevs.join(", ")}${therm.peak ? ` · up to ${therm.peak}°C` : ""}</div>` : "")
+    (corrAlert ? `<div class="warnflag incorrect">⚠ INCORRECT — ${corr} divergent config${corr > 1 ? "s" : ""}</div>`
+       : corrAcked ? `<div class="warnflag muted">✓ ${corr} correctness divergence${corr > 1 ? "s" : ""} (acknowledged)</div>` : "")
+    + (therm ? `<div class="warnflag ${therm.sev}">⚠ ${therm.sev === "throttled" ? "throttled" : "ran hot"} · n=${therm.ndevs.join(", ")}${therm.peak ? ` · up to ${therm.peak}°C` : ""}</div>` : "")
     + (tf ? `<div class="warnflag throttled">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</div>` : "");
   const runTile =
     `<div class="tile${warnTile}" data-click="false">
@@ -412,25 +453,54 @@ function renderTiles() {
 function renderDetail() {
   const box = $("detail");
   if (!state.openTile) { box.innerHTML = ""; return; }
-  const titles = { gate: "Gate — hard-gate hits", tests: "Failing tests", cells: "Failed configs" };
+  const titles = { gate: "Performance regressions — hard-gate hits", correctness: "Correctness — fingerprint divergences",
+                   tests: "Failing tests", cells: "Failed configs" };
   const pct = (v) => v == null ? "?" : v + "%";
-  // The drill-down covers BOTH platforms (matching the tiles).  Gate gets a one-time threshold
-  // explanation since the thresholds are identical across platforms.
+  // The drill-down covers BOTH platforms (matching the tiles).  Gate/correctness get a one-time
+  // threshold explanation since the thresholds are identical across platforms.
   let intro = "";
+  const anyRun = M.platforms.map(runOnPlat).find(Boolean);
+  const gc = (anyRun && anyRun.gate_config) || {};
   if (state.openTile === "gate") {
-    const anyRun = M.platforms.map(runOnPlat).find(Boolean);
-    const gc = (anyRun && anyRun.gate_config) || {};
-    intro = `<p>Each run is compared per config + metric against its reference run(s); memory + correctness hard-fail, timing only warns. <b>Hard:</b> fingerprint drift (&gt;${gc.fp_rtol_single ?? "?"} single / ${gc.fp_rtol_iter ?? "?"} iter), structural change, ok→fail, expected-but-absent, GPU peak-memory &gt;${pct(gc.mem_hard_pct)}. <b>Soft:</b> speedup drop &gt;${pct(gc.speedup_warn_pct)}, time &gt;${pct(gc.time_soft_pct)}, CPU memory, sweep add/drop.</p>`;
+    intro = `<p>Each run is compared per config + metric against its reference run(s).  This panel shows <b>performance</b> regressions — correctness has its own tile. <b>Hard:</b> structural change, ok→fail, expected-but-absent, GPU peak-memory &gt;${pct(gc.mem_hard_pct)}. <b>Soft:</b> speedup drop &gt;${pct(gc.speedup_warn_pct)}, time &gt;${pct(gc.time_soft_pct)}, CPU memory, sweep add/drop.</p>`;
+  } else if (state.openTile === "correctness") {
+    const ct = M.corr_tol || {};
+    intro = `<p>Correctness compares the recon <b>fingerprint</b> against three references — the <b>prior run</b> on this branch, the latest <b>main</b>, and <b>single-device n=1</b> within the same run. Flags a float64 {sum, mean, l2norm} relative change beyond ${ct.single ?? "?"} (single-shot) / ${ct.iter ?? "?"} (iterated VCD) / ${ct.xdev ?? "?"} (cross-device), or a shape/dtype change.${ackThrough ? " Divergences on commits dated ≤ " + M.cleared_through + " are acknowledged." : ""}</p>`;
   }
   const section = (plat) => {
     const run = runOnPlat(plat);
     const head = `<h4>${plat.toUpperCase()}${run ? ` · ${run.commit} · ${commitMinute(run)}` : ""}</h4>`;
     if (!run) return head + `<p class="muted">no ${state.branch} run on ${plat}.</p>`;
+    if (state.openTile === "correctness") {
+      const fs = runCorr(run);
+      if (!fs.length) return head + `<p class="muted">fingerprints match the references — no divergence.</p>`;
+      // Group findings by cell; within a cell, one "vs <reference>" block per reference (prior / main /
+      // single-device) with that reference's bulleted discrepancies.
+      const byCell = {};
+      fs.forEach((f) => { (byCell[f.cell] = byCell[f.cell] || []).push(f); });
+      const blocks = Object.keys(byCell).map((cell) => {
+        const p = cell.split("|");
+        const coords = `${p[0]}, ${p[1]}, ${p[2]}, n_devices=${p[3]}`;
+        const refs = byCell[cell].map((f) =>
+          `<div class="vsref">vs ${f.basis}</div><ul class="discr">${f.discrepancies.map((d) => `<li>${d}</li>`).join("")}</ul>`).join("");
+        return `<div class="hitcell"><div class="hitcoords">${coords}</div>${refs}</div>`;
+      }).join("");
+      return head + blocks;
+    }
     if (state.openTile === "gate") {
-      const cmp = (run.gate.compared_to || []).join(", ") || "its reference run(s)";
-      return head + (run.gate.hard.length
-        ? `<p class="muted">vs ${cmp}</p><ul>${run.gate.hard.map((h) => `<li class="bad"><span class="basis">vs ${h.basis || "?"}</span> — ${h.text}</li>`).join("")}</ul>`
-        : `<p class="muted">no hard-gate hits (result: ${run.gate.result || "?"}).</p>`);
+      const hits = runPerfHard(run);
+      const cmp = (run.gate.compared_to || []).map((c) => priorLabel(c, plat)).join(", ") || "its reference run(s)";
+      if (!hits.length) return head + `<p class="muted">no perf regressions (result: ${run.gate.result || "?"}).</p>`;
+      // Group hits by cell: one coords line + a bullet per discrepancy.
+      const byCell = {};
+      hits.forEach((h) => { const k = h.cell || "—"; (byCell[k] = byCell[k] || []).push(h); });
+      const blocks = Object.keys(byCell).map((cell) => {
+        const p = cell === "—" ? null : cell.split("|");
+        const coords = p ? `${p[0]}, ${p[1]}, ${p[2]}, n_devices=${p[3]}` : "(run-level)";
+        const bullets = byCell[cell].map((h) => `<li>${h.detail || h.text}</li>`).join("");
+        return `<div class="hitcell"><div class="hitcoords">${coords}</div><ul class="discr">${bullets}</ul></div>`;
+      }).join("");
+      return head + `<p class="muted">vs ${cmp}</p>${blocks}`;
     }
     if (state.openTile === "tests") {
       const t = run.tests, f = (t && t.failures) || [];
@@ -712,7 +782,9 @@ function aggregate(run, n, geoms, timeOp) {
   // Keep the source cell behind each point (timeCell/memCell) so the history can flag GPU
   // throttling — the amber ring + tooltip warning — exactly as the scaling panels do.
   const out = { time: {}, mem: {}, timeCell: {}, memCell: {}, gate: run.gate.hard.length,
-                testsFailed: (run.tests && run.tests.failed) || 0 };
+                gatePerf: runPerfHard(run).length,   // perf-only hard count (correctness is its own signal)
+                testsFailed: (run.tests && run.tests.failed) || 0,
+                corrAlert: runAlert(run) };   // unacknowledged correctness divergence -> ✕ marker
   geoms.forEach((gm) => {
     const gmSizes = run.cells.filter((c) => c.geom === gm).map((c) => c.size);
     if (!gmSizes.length) { out.time[gm] = out.mem[gm] = out.timeCell[gm] = out.memCell[gm] = null; return; }
@@ -801,6 +873,9 @@ function renderHistory() {
       const c = a ? a[cellField(m.pick)][m.geom] : null;
       if (c && cellHot(c)) warn = `<br><span class="thr">⚠ ${hotWarn(c)}</span>`;
     }
+    // correctness divergence flag — the most severe, shown first (same source as the ✕ marker / tile).
+    const corrN = runCorrCells(r);
+    const corrWarn = corrN ? `<br><span class="corr">✕ ${corrN} correctness divergence${corrN > 1 ? "s" : ""}${runAcked(r) ? " (acknowledged)" : ""}</span>` : "";
     // tests-failed flag — same info as the run-shown tile's red badge.
     const tf = (r.tests && r.tests.failed) || 0;
     const testWarn = tf ? `<br><span class="bad">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</span>` : "";
@@ -808,33 +883,36 @@ function renderHistory() {
     const unit = m.pick === "mem" ? " GB" : m.pick === "time" ? " min" : "";
     return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
-      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}${unit}` : "") + warn + testWarn;
+      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}${unit}` : "") + warn + corrWarn + testWarn;
   };
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
   const histGroup = [];
   // Red triangle on a run that had FAILING TESTS (a run-level flag, not per-cell like the thermal
   // markers): one per (platform, branch) failing run, sat on its drawn point for the panel's metric.
-  const failMarks = (pick) => {
+  // run-level overlay marks sat on the run's drawn point for the panel's metric: a red triangle for
+  // FAILING TESTS, a bold ✕ for an unacknowledged CORRECTNESS divergence (flag = the aggregate field).
+  const runMarks = (pick, flag, extra) => {
     const out = [];
     M.platforms.forEach((plat) => branches.forEach((b) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       xs.forEach((t) => {
-        const a = agg[t]; if (!a || !a.testsFailed) return;
+        const a = agg[t]; if (!a || !a[flag]) return;
         let y = null;
         for (const gm of group.geoms) { if (a[pick][gm] != null) { y = a[pick][gm]; break; } }
-        if (y != null) out.push({ x: t, y });
+        if (y != null) out.push({ x: t, y, ...extra });
       });
     }));
     return out;
   };
+  const allMarks = (pick) => [...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
   const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
-  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: failMarks("time") });
-  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: failMarks("mem") });
+  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time") });
+  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem") });
   const gateSpecs = [];
   M.platforms.forEach((plat) => branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
-    const ys = xs.map((t) => { const a = agg[t]; return a ? a.gate : null; });
+    const ys = xs.map((t) => { const a = agg[t]; return a ? a.gatePerf : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
   linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup });
@@ -845,7 +923,8 @@ function renderHistory() {
     `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}` +
     `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
     `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
-    `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span></span>`;
+    `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span>` +
+    `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span></span>`;
 }
 
 // Device-count choices for the History `n` selector = the counts present in the ACTIVE group's
@@ -860,8 +939,49 @@ function syncHistN() {
   fillSelect("histN", devs, state.histN);
 }
 
+// ---- correctness banner + tab badge (the dashboard IS the alert — design note D5) ----------------
+// The favicon doubles as a passive signal: a red "!" tile when any divergence is unacknowledged, so a
+// pinned/bookmarked tab flags it without being opened.  SVG data-URI -> no asset, no infra.
+function setFavicon(n) {
+  let link = $("favicon");
+  if (!link) { link = document.createElement("link"); link.id = "favicon"; link.rel = "icon"; document.head.appendChild(link); }
+  const svg = n > 0
+    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="${CORRC}"/><text x="8" y="12.5" font-size="13" font-weight="bold" text-anchor="middle" fill="#fff" font-family="sans-serif">!</text></svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="${PLATC.gpu}"/></svg>`;
+  link.href = "data:image/svg+xml," + encodeURIComponent(svg);
+}
+function renderBanner() {
+  const box = $("corr-banner"); if (!box) return;
+  // the alert inbox: the LATEST run per (platform, branch) that is unacknowledged-incorrect — not every
+  // historical run (those show as ✕ marks in History).  A branch auto-clears when its latest run is clean.
+  const bad = [];
+  M.platforms.forEach((p) => branchesFor(p).forEach((b) => { const r = latestRun(p, b); if (r && runAlert(r)) bad.push(r); }));
+  bad.sort((a, b) => runTime(b) - runTime(a));
+  setFavicon(bad.length);
+  document.title = bad.length ? `⚠(${bad.length}) mbirjax metrics` : "mbirjax metrics";
+  if (!bad.length) { box.style.display = "none"; box.innerHTML = ""; return; }
+  const since = bad.reduce((a, b) => (runTime(b) < runTime(a) ? b : a));
+  const item = (r) => {
+    const cells = [...new Set(runCorr(r).map((f) => f.cell).filter(Boolean))];
+    const lbl = cells.length ? cells.slice(0, 3).join(", ") + (cells.length > 3 ? ` +${cells.length - 3}` : "") : runCorrCells(r) + " cell(s)";
+    return `<li data-rk="${runKey(r)}" data-plat="${r.platform}" data-branch="${r.branch}">`
+      + `<b>${r.branch}</b> · ${r.platform.toUpperCase()} · ${commitMinute(r)} — <span class="cells">${lbl}</span></li>`;
+  };
+  box.style.display = "block";
+  box.innerHTML = `<div class="cb-head">✕ ${bad.length} unacknowledged correctness divergence${bad.length > 1 ? "s" : ""} since ${runDateLabel(since)}</div>`
+    + `<ul class="cb-list">${bad.map(item).join("")}</ul>`
+    + `<div class="cb-foot">vs the prior run on each branch · click a row to view it · clear reviewed runs with <code>action_scripts/clear_correctness.sh</code></div>`;
+  box.querySelectorAll("li").forEach((li) => li.onclick = () => {
+    state.platform = li.dataset.plat; state.branch = li.dataset.branch; state.runKey = li.dataset.rk; state.openTile = "correctness";
+    fillSelect("platform", M.platforms, state.platform);
+    fillSelect("branch", branchesFor(state.platform), state.branch);
+    renderAll();
+    $("tiles").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 // ---- orchestration -----------------------------------------------------------
-function renderAll() { renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); renderHistory(); }
+function renderAll() { renderBanner(); renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); renderHistory(); }
 // Default branch for a platform = the one with the MOST RECENT run (by commit time), NOT the
 // alphabetically-first.  Keeps the run-shown tile on the newest run after a branch rename / new branch
 // (e.g. greg/conebeam_sharding -> greg/sharding_extensions: the newest run is on the new branch).

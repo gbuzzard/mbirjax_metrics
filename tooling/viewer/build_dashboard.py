@@ -166,31 +166,152 @@ def _parse_tests(txt_path: Path) -> dict | None:
     return out
 
 
-_GATE_BASIS_RE = re.compile(r"^\[(\w+)\]\s*")
+_GATE_BASIS_RE = re.compile(r"^\[([^\]]+)\]\s*")   # whole basis incl. "prior:regression_<plat>_<ts>_<sha>.yaml"
 # Extracts the cell id "geom|op|size|ndev" from a hard-gate string so the dashboard can place the red
 # marker on the scaling plot.  ⚠ KEEP IN SYNC with the engine's gate-string format (performance_tracking.py
 # `_cell_key` / `gate_run`, which self-warns if a hard message ever stops matching this pattern).
 _GATE_CELL_RE = re.compile(r"([a-z_]+\|[a-z_]+\|\d+x\d+x\d+\|\d+)")
 
 
+def _hard_kind(text: str) -> str:
+    """Classify a hard-gate string as 'correctness' or 'perf' (the severity split — see the
+    correctness-gating design note).  Correctness = the fingerprint divergence / padding-leak gates;
+    everything else (memory, structural is_sharded/band-count, ok->fail, absent) is perf.  The engine's
+    correctness strings always say 'fingerprint …' or 'padding leak …' (performance_tracking.py
+    `_gate_fingerprint`); keep this in sync if those phrasings change."""
+    t = text.lower()
+    return "correctness" if ("fingerprint" in t or "padding leak" in t) else "perf"
+
+
 def _parse_gate_hard(items) -> list[dict]:
-    """Split each hard-gate string into {basis, cell, text}.
+    """Split each hard-gate string into {basis, cell, text, kind}.
 
     The engine prefixes each entry with its comparison basis, e.g.
     ``[prior:regression_gpu_...yaml] cone|back|512x448x384|1 memory ...`` — so the dashboard can
-    show what it was compared against and mark the offending cell on the plot.
+    show what it was compared against and mark the offending cell on the plot.  ``kind`` carries the
+    correctness/perf severity split so the dashboard can surface correctness on its own.
     """
     out = []
     for s in items or []:
         s = str(s)
         mb = _GATE_BASIS_RE.match(s)
         mc = _GATE_CELL_RE.search(s)
+        text = _GATE_BASIS_RE.sub("", s).strip()          # basis stripped -> "<cell> <discrepancy>"
+        cell = mc.group(1) if mc else None
+        # ``detail`` is just the discrepancy (cell id stripped too) so the UI can group hits per cell.
+        detail = text[len(cell):].strip() if (cell and text.startswith(cell)) else text
         out.append({
             "basis": mb.group(1) if mb else None,
-            "cell": mc.group(1) if mc else None,
-            "text": _GATE_BASIS_RE.sub("", s).strip(),
+            "cell": cell,
+            "text": text,
+            "detail": detail,
+            "kind": _hard_kind(s),
         })
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Correctness analyzer (P2): cross-device + vs-main, computed over the corpus   #
+# --------------------------------------------------------------------------- #
+# Tolerances are calibrated from the corpus dry-run: the cross-device noise floor is ~1e-6 (sharding is
+# value-preserving), and vs-main's meaningful reorders sit at 4-8e-5 while value-preserving float drift
+# sits at ~1e-6 — so 1e-5 cleanly separates "real change" from "noise".  VCD is looser (seed-dependent).
+XDEV_RTOL = 1e-5            # cross-device (n>1 vs n=1, same build): a few x the ~1e-6 floor
+VSMAIN_RTOL_SINGLE = 1e-5   # vs-main, single-shot ops (direct_filter / forward / back)
+VSMAIN_RTOL_ITER = 1e-4     # vs-main, the iterated vcd_nonconst
+_FP_FIELDS = ("sum", "mean", "l2norm", "shape", "dtype", "padding_zero")
+
+
+def _commit_minute(run: dict) -> str:
+    cd = run.get("commit_date")
+    return cd[:16].replace("T", " ") if cd else (run.get("date") or "?")
+
+
+def _degenerate(fp: dict) -> bool:
+    """A reference fingerprint that is all-zero / no-op (e.g. main's pre-fix multiaxis direct_filter):
+    not a usable baseline, so vs-main skips it rather than reporting a meaningless reldiff."""
+    return not fp.get("l2norm") and not fp.get("sum")
+
+
+def _fp_discrepancies(t: dict, r: dict, rtol: float) -> list[str]:
+    """Human discrepancy strings where ``t`` diverges from reference ``r`` beyond ``rtol`` (structural
+    shape/dtype changes are always reported)."""
+    if t.get("shape") != r.get("shape"):
+        return [f"shape {r.get('shape')} -> {t.get('shape')}"]
+    out = []
+    if t.get("dtype") != r.get("dtype"):
+        out.append(f"dtype {r.get('dtype')} -> {t.get('dtype')}")
+    for m in ("sum", "mean", "l2norm"):
+        rv, tv = r.get(m), t.get(m)
+        if rv is None or tv is None:
+            continue
+        rd = abs(tv - rv) / (abs(rv) or 1.0)
+        if rd > rtol:
+            out.append(f"{m}: reldiff {rd:.2e} > rtol {rtol:g} (Δ {tv - rv:+.3g}; {tv:g} vs {rv:g} expected)")
+    return out
+
+
+def _analyze_correctness(runs: list[dict]) -> None:
+    """Annotate each run with a unified ``correctness`` finding list from THREE references (design note
+    D2): the prior run on this branch (from the engine's gate.hard), single-device n=1 within the run
+    (cross-device), and the latest main run on the same platform (vs-main).  Each finding is
+    ``{reference, cell, basis, discrepancies}``.  Reads the per-run ``_fps`` fingerprint index."""
+    def _t(r): return r.get("commit_date") or r.get("date") or ""
+    main_latest: dict[str, dict] = {}
+    for r in runs:
+        if r["branch"] == "main":
+            cur = main_latest.get(r["platform"])
+            if cur is None or _t(r) > _t(cur):
+                main_latest[r["platform"]] = r
+
+    def _prior_label(fn, plat):
+        m = re.search(r"_([0-9a-f]{7,40})\.ya?ml$", fn or "")
+        sha = m.group(1) if m else None
+        if sha:
+            for x in runs:
+                if x["platform"] == plat and (x.get("commit_full") or "").startswith(sha):
+                    return f"{plat.upper()} · {x['commit']} · {_commit_minute(x)}"
+            return f"{plat.upper()} · {sha[:10]}"
+        return fn or "?"
+
+    for r in runs:
+        plat, fps, findings = r["platform"], (r.get("_fps") or {}), []
+        # prior run — fold the engine's gate.hard correctness hits into the unified list (one per cell).
+        prior_basis = _prior_label((r["gate"].get("compared_to") or [None])[0], plat) if r["gate"].get("compared_to") else "prior run"
+        prior_by_cell: dict = {}
+        for h in r["gate"]["hard"]:
+            if h.get("kind") == "correctness":
+                prior_by_cell.setdefault(h.get("cell") or "—", []).append(h.get("detail") or h.get("text"))
+        for cell, discr in prior_by_cell.items():
+            findings.append({"reference": "prior", "cell": cell, "basis": prior_basis, "discrepancies": discr})
+        # cross-device — n>1 vs n=1 within this run (same build, only the device mesh differs).
+        by: dict = {}
+        for key, fp in fps.items():
+            g, op, sz, nd = key.split("|")
+            by.setdefault((g, op, sz), {})[int(nd)] = fp
+        for (g, op, sz), d in by.items():
+            base = d.get(1)
+            if base is None or _degenerate(base):
+                continue
+            for nd in sorted(k for k in d if k != 1):
+                discr = _fp_discrepancies(d[nd], base, XDEV_RTOL)
+                if discr:
+                    findings.append({"reference": "cross_device", "cell": f"{g}|{op}|{sz}|{nd}",
+                                     "basis": f"{plat.upper()} · n=1 (same run)", "discrepancies": discr})
+        # vs-main — each cell vs the latest main run's same cell (skip degenerate/absent main baselines).
+        mref = main_latest.get(plat)
+        if mref is not None and r["branch"] != "main":
+            mfps, mlabel = (mref.get("_fps") or {}), f"MAIN · {mref['commit']} · {_commit_minute(mref)}"
+            for key, fp in fps.items():
+                rfp = mfps.get(key)
+                if rfp is None or _degenerate(rfp):
+                    continue
+                op = key.split("|")[1]
+                rtol = VSMAIN_RTOL_ITER if op == "vcd_nonconst" else VSMAIN_RTOL_SINGLE
+                discr = _fp_discrepancies(fp, rfp, rtol)
+                if discr:
+                    findings.append({"reference": "vs_main", "cell": key, "basis": mlabel, "discrepancies": discr})
+        r["correctness"] = findings
 
 
 def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
@@ -201,7 +322,15 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
     gate = doc.get("gate") or {}
     cfg = doc.get("config") or {}
     tests = _parse_tests(path.parent / f"tests_{platform}_{date}.txt")
+    # Fingerprint index for the correctness analyzer (cross-device / vs-main).  Private — stripped from
+    # the run before the JSON is emitted (it would bloat window.__METRICS__; only findings are kept).
+    fps = {}
+    for c in (doc.get("cells") or []):
+        fp = c.get("fingerprint")
+        if fp:
+            fps[f"{c.get('geometry')}|{c.get('op')}|{c.get('size')}|{c.get('n_devices')}"] = {m: fp.get(m) for m in _FP_FIELDS}
     return {
+        "_fps": fps,
         "platform": platform,
         "branch": branch,
         "branch_dir": branch_dir,
@@ -261,6 +390,18 @@ def collect_data() -> dict:
                 records[f"{platform}|{branch_name}"] = yaml.safe_load(rec_path.read_text()) or {}
 
     runs.sort(key=lambda r: (r["platform"], r["branch"], r["date"]))
+    # Correctness analyzer (P2): annotate each run with cross-device + vs-main + prior findings, then
+    # drop the private fingerprint index so it doesn't bloat the inlined JSON.
+    _analyze_correctness(runs)
+    for r in runs:
+        r.pop("_fps", None)
+    # Correctness "reviewed-through" watermark (design note D6): a single committed date; any correctness
+    # divergence on a commit dated <= this is treated as acknowledged (greyed, dropped from the banner /
+    # tab badge).  Absent file => nothing acknowledged.  The guided clear script (P3) writes this field.
+    cleared_through = None
+    acks_path = results_dir / "correctness_acks.yaml"
+    if acks_path.exists():
+        cleared_through = (yaml.safe_load(acks_path.read_text()) or {}).get("cleared_through")
     return {
         "generated": _generated_stamp(),
         "repo_name": REPO_ROOT.name,
@@ -269,6 +410,8 @@ def collect_data() -> dict:
         "branches": sorted(branches),
         "runs": runs,
         "records": records,
+        "cleared_through": str(cleared_through) if cleared_through else None,
+        "corr_tol": {"single": VSMAIN_RTOL_SINGLE, "iter": VSMAIN_RTOL_ITER, "xdev": XDEV_RTOL},
     }
 
 
