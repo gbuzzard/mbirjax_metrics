@@ -37,7 +37,7 @@ const HIST_GROUPS = [
 const IDEAL_EXP = { direct_filter: 1, forward: 1, back: 1, vcd_nonconst: 4 / 3 };
 const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back: "voxels", vcd_nonconst: "voxels · views" };
 
-const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp" };
+const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp", histBranch: "all" };
 
 // Displayed name for each reference (internal key -> label).  References are now derived from the
 // tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
@@ -238,27 +238,36 @@ function linePlot(el, xs, specs, o) {
   if (o.yPad != null) yScale.range = padRange(o.yPad, o.yLog);
   else if (o.padAll != null) yScale.range = padRange(o.padAll, o.yLog);
   else if (o.tightLog && o.yLog) yScale.range = tightLog;
-  // Nearest drawn series at the cursor's x-index (shared by the click-to-pick and hover-tooltip
-  // handlers): the series whose y at idx is closest (in px) to the cursor, within a px threshold.
-  const nearestSeries = (u, idx, maxPx) => {
-    let best = -1, bestD = Infinity;
+  // Truly-nearest drawn point to the cursor, in 2-D px (shared by the click-to-pick and hover-tooltip
+  // handlers).  Previously this snapped to uPlot's cursor.idx — the nearest x-COLUMN — then took the
+  // nearest series in y.  When two runs sit close in x (two commits a few hours apart on a multi-day
+  // axis), a few px of cursor motion flips the snapped column and the pick jumps to a far run.  Scanning
+  // every drawn (series, column) by Euclidean px distance instead picks the dot the eye is closest to.
+  const nearestPoint = (u, maxPx) => {
+    const cl = u.cursor.left, ct = u.cursor.top;
+    if (cl == null || ct == null || cl < 0 || ct < 0) return null;
+    let bSi = -1, bDi = -1, bD = Infinity;
     for (let si = 1; si < u.data.length; si++) {
-      const v = u.data[si][idx]; if (v == null) continue;
-      const d = Math.abs(u.valToPos(v, "y") - u.cursor.top);
-      if (d < bestD) { bestD = d; best = si; }
+      const col = u.data[si];
+      for (let di = 0; di < col.length; di++) {
+        const v = col[di]; if (v == null) continue;
+        const dx = u.valToPos(u.data[0][di], "x") - cl, dy = u.valToPos(v, "y") - ct;
+        const d = dx * dx + dy * dy;
+        if (d < bD) { bD = d; bSi = si; bDi = di; }
+      }
     }
-    return (best > 0 && bestD <= maxPx) ? best : -1;
+    return (bSi > 0 && bD <= maxPx * maxPx) ? { si: bSi, di: bDi } : null;
   };
   // Optional hover tooltip: o.tooltip(spec, idx) -> HTML string (or null to hide).
   let tip = null;
   if (o.tooltip) { tip = document.createElement("div"); tip.className = "u-tip"; }
   const hooks = {};
   if (o.tooltip) hooks.setCursor = [(u) => {
-    const idx = u.cursor.idx, cl = u.cursor.left, ct = u.cursor.top;
+    const cl = u.cursor.left, ct = u.cursor.top;
     // hide while off-plot or mid drag-zoom
-    if (idx == null || cl == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
-    const si = nearestSeries(u, idx, 30), oi = idx - padOff;
-    const html = (si > 0 && oi >= 0 && oi < xs.length) ? o.tooltip(specs[si - 1], oi) : null;
+    if (cl == null || ct == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
+    const np = nearestPoint(u, 30), oi = np ? np.di - padOff : -1;
+    const html = (np && oi >= 0 && oi < xs.length) ? o.tooltip(specs[np.si - 1], oi) : null;
     if (!html) { tip.style.display = "none"; return; }
     tip.innerHTML = html; tip.style.display = "block";
     const ob = u.over.getBoundingClientRect(), eb = el.getBoundingClientRect();
@@ -311,10 +320,10 @@ function linePlot(el, xs, specs, o) {
   if (o.onPick) {
     const over = el.querySelector(".u-over");
     if (over) over.addEventListener("click", () => {
-      const u = el._u; const idx = u.cursor.idx;
-      if (idx == null) return;
-      const si = nearestSeries(u, idx, 40), oi = idx - padOff;
-      if (si > 0 && oi >= 0 && oi < xs.length) o.onPick(specs[si - 1], oi);
+      const u = el._u; const np = nearestPoint(u, 40);
+      if (!np) return;
+      const oi = np.di - padOff;
+      if (oi >= 0 && oi < xs.length) o.onPick(specs[np.si - 1], oi);
     });
   }
   return el._u;
@@ -738,6 +747,10 @@ function renderHistory() {
   const xs = uniq(M.runs.map(runTime)).sort((a, b) => a - b);
   const n = state.histN;
   const group = HIST_GROUPS.find((g) => g.id === state.histGroup) || HIST_GROUPS[0];
+  // Branch filter: "all" shows every branch (colour=platform, style=geometry); selecting one
+  // restricts all three panels to that branch only.
+  const branches = (state.histBranch && state.histBranch !== "all")
+    ? M.branches.filter((b) => b === state.histBranch) : M.branches;
   $("hCapVcd").textContent = `${group.opLabel} time at largest size (n=${n})`;
   $("hCapMem").textContent = `peak memory at largest size (n=${n})`;
   const aggByPB = {};  // "platform|branch" -> runTime -> aggregate (for the active geometry group)
@@ -747,7 +760,7 @@ function renderHistory() {
   const cellField = (pick) => (pick === "time" ? "timeCell" : "memCell");
   const specsFor = (pick) => {
     const out = [], markers = [];
-    M.platforms.forEach((plat) => M.branches.forEach((b) => group.geoms.forEach((gm) => {
+    M.platforms.forEach((plat) => branches.forEach((b) => group.geoms.forEach((gm) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       const ys = xs.map((t) => { const a = agg[t]; return a && a[pick][gm] != null ? a[pick][gm] : null; });
       if (!ys.some((y) => y != null)) return;
@@ -791,9 +804,11 @@ function renderHistory() {
     // tests-failed flag — same info as the run-shown tile's red badge.
     const tf = (r.tests && r.tests.failed) || 0;
     const testWarn = tf ? `<br><span class="bad">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</span>` : "";
+    // unit follows the panel: minutes for the time panel, GB for memory (gate has no pick -> bare count).
+    const unit = m.pick === "mem" ? " GB" : m.pick === "time" ? " min" : "";
     return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
-      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}` : "") + warn + testWarn;
+      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}${unit}` : "") + warn + testWarn;
   };
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
@@ -802,7 +817,7 @@ function renderHistory() {
   // markers): one per (platform, branch) failing run, sat on its drawn point for the panel's metric.
   const failMarks = (pick) => {
     const out = [];
-    M.platforms.forEach((plat) => M.branches.forEach((b) => {
+    M.platforms.forEach((plat) => branches.forEach((b) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       xs.forEach((t) => {
         const a = agg[t]; if (!a || !a.testsFailed) return;
@@ -817,7 +832,7 @@ function renderHistory() {
   linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: failMarks("time") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: failMarks("mem") });
   const gateSpecs = [];
-  M.platforms.forEach((plat) => M.branches.forEach((b) => {
+  M.platforms.forEach((plat) => branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gate : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
@@ -880,6 +895,9 @@ function init() {
   $("op").onchange = () => { state.go = $("op").value; renderScaling(); };
   $("ref").value = state.ref;
   $("ref").onchange = () => { state.ref = $("ref").value; renderScaling(); };
+  // History branch filter: "all" (default) overlays every branch; pick one to isolate it.
+  fillSelect("histBranch", ["all", ...M.branches], state.histBranch, ["all branches", ...M.branches]);
+  $("histBranch").onchange = () => { state.histBranch = $("histBranch").value; renderHistory(); };
   // History geometry-group toggle: swaps cone+parallel <-> translation+multiaxis (different headline op).
   $("hist-group-seg").innerHTML = HIST_GROUPS.map((g) =>
     `<button data-g="${g.id}" class="${g.id === state.histGroup ? "on" : ""}">${g.label}</button>`).join("");

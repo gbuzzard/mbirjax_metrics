@@ -5832,43 +5832,19 @@ gate:
   hard:
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|1024x1008x992|1
     memory 20729.8 MB vs 17229.2 MB expected (+3500.58 MB, +20.3%)'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|1024x1008x992|1
-    is_sharded False -> True'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|512x448x384|1
-    is_sharded False -> True'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|513x449x385|1
-    is_sharded False -> True'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|1024x1008x992|1
-    is_sharded False -> True'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|1024x1008x992|1
     fingerprint sum: reldiff 4.52e-05 > rtol 1e-05 (Δ +0.264; 5834.04 vs 5833.77 expected)'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|1024x1008x992|1
     fingerprint mean: reldiff 4.52e-05 > rtol 1e-05 (Δ +2.58e-10; 5.69767e-06 vs 5.69741e-06
     expected)'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|512x448x384|1
-    is_sharded False -> True'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|513x449x385|1
-    is_sharded False -> True'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|1024x1008x992|1
     memory 26162.5 MB vs 15602.7 MB expected (+10559.9 MB, +67.7%)'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|1024x1008x992|1
-    is_sharded False -> True'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|512x448x384|1
-    is_sharded False -> True'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|513x449x385|1
     memory 4625.46 MB vs 2847.42 MB expected (+1778.04 MB, +62.4%)'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|513x449x385|1
-    is_sharded False -> True'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|1024x1008x992|1
     memory 72026.7 MB vs 61419.6 MB expected (+10607 MB, +17.3%)'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|1024x1008x992|1
-    is_sharded False -> True'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|512x448x384|1
-    is_sharded False -> True'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|513x449x385|1
     memory 8279.31 MB vs 6187.09 MB expected (+2092.22 MB, +33.8%)'
-  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|513x449x385|1
-    is_sharded False -> True'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] parallel|back|1024x1008x992|1
     memory 24641.8 MB vs 9840.12 MB expected (+14801.7 MB, +150.4%)'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] parallel|back|512x448x384|1
@@ -5926,5 +5902,29 @@ gate:
     gated): cone|vcd_nonconst|513x449x385|2'
   - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] new cell, no baseline (not
     gated): cone|vcd_nonconst|513x449x385|4'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|1024x1008x992|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|512x448x384|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|back|513x449x385|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|1024x1008x992|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|512x448x384|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|513x449x385|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|1024x1008x992|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|512x448x384|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|forward|513x449x385|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|1024x1008x992|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|512x448x384|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_gpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|513x449x385|1
+    is_sharded False -> True (gained sharding)'
   compared_to:
   - prior:regression_gpu_20260616T200154Z_5168813a.yaml

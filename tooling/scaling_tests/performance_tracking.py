@@ -775,12 +775,19 @@ def _gate_metrics(key, t, r, lab, plat, config, hard, soft):
     rt, tt = r.get("min_ms"), t.get("min_ms")
     if rt and tt is not None and (tt - rt) / rt * 100.0 > config.time_soft_pct:
         soft.append(pre + "time " + _fmt_delta(tt, rt, " ms"))
-    # structural — HARD everywhere.
-    if bool(t.get("is_sharded")) != bool(r.get("is_sharded")):
-        hard.append(pre + f"is_sharded {r.get('is_sharded')} -> {t.get('is_sharded')}")
+    # structural — DIRECTION-AWARE.  Losing the sharded path (True->False) or the banded back path
+    # (value->None), or a band-count change between two sharded runs, is a HARD regression.  GAINING
+    # sharding (False->True) or banding (None->value) is the placement port LANDING — an improvement,
+    # recorded SOFT, not gated.  (Without this, the run where sharding lands on a tracked branch flags
+    # every newly-sharded cell as a regression — a huge false-positive burst.)
+    ts, rs_ = bool(t.get("is_sharded")), bool(r.get("is_sharded"))
+    if ts != rs_:
+        msg = pre + f"is_sharded {r.get('is_sharded')} -> {t.get('is_sharded')}"
+        (hard if (rs_ and not ts) else soft).append(msg + ("" if (rs_ and not ts) else " (gained sharding)"))
     tb, rb = t.get("back_n_bands_per_shard"), r.get("back_n_bands_per_shard")
-    if (tb is not None or rb is not None) and tb != rb:
-        hard.append(pre + f"back band count {rb} -> {tb}")
+    if tb != rb and (tb is not None or rb is not None):
+        msg = pre + f"back band count {rb} -> {tb}"
+        (soft if rb is None else hard).append(msg + (" (banded back-projection landed)" if rb is None else ""))
     _gate_fingerprint(key, t.get("fingerprint"), r.get("fingerprint"), t.get("op", ""),
                       lab, config, hard, soft)
 

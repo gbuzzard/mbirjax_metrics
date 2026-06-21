@@ -4110,32 +4110,8 @@ cells:
     padding_zero:
   speedup: 1.0
 gate:
-  result: fail
-  hard:
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|128x112x96|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|129x113x97|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|200x208x160|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|128x112x96|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|129x113x97|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|200x208x160|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|forward|128x112x96|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|forward|129x113x97|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|forward|200x208x160|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|128x112x96|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|129x113x97|1
-    is_sharded False -> True'
-  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|200x208x160|1
-    is_sharded False -> True'
+  result: warn
+  hard: []
   soft:
   - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|128x112x96|1
     memory 1118.27 MB vs 640.266 MB expected (+478 MB, +74.7%) [CPU RSS, coarse]'
@@ -4215,5 +4191,29 @@ gate:
     time 13.4764 ms vs 8.37613 ms expected (+5.10029 ms, +60.9%)'
   - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] parallel|forward|128x112x96|4
     memory 862.391 MB vs 789.594 MB expected (+72.7969 MB, +9.2%) [CPU RSS, coarse]'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|128x112x96|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|129x113x97|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|back|200x208x160|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|128x112x96|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|129x113x97|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|direct_filter|200x208x160|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|forward|128x112x96|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|forward|129x113x97|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|forward|200x208x160|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|128x112x96|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|129x113x97|1
+    is_sharded False -> True (gained sharding)'
+  - '[prior:regression_cpu_20260616T200154Z_5168813a.yaml] cone|vcd_nonconst|200x208x160|1
+    is_sharded False -> True (gained sharding)'
   compared_to:
   - prior:regression_cpu_20260616T200154Z_5168813a.yaml
