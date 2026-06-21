@@ -47,6 +47,9 @@ const REF_LABEL = { main: "main", prerelease: "prerelease", prior: "prior run", 
 // ---- generic helpers ---------------------------------------------------------
 const uniq = (a) => [...new Set(a)];
 const cellKey = (c) => `${c.geom}|${c.op}|${c.size}|${c.ndev}`;
+// "geom|op|size|ndev" -> "geom, op, size, n_devices=N" (the human config label, shared by the banner
+// and the correctness/perf drill-downs).
+const cellCoords = (k) => { const p = (k || "").split("|"); return p.length === 4 ? `${p[0]}, ${p[1]}, ${p[2]}, n_devices=${p[3]}` : (k || ""); };
 const sizeVol = (s) => s.split("x").reduce((p, n) => p * (+n || 1), 1);
 // Sort by COMMIT time (not collection date), so "latest" = the most recent COMMIT.  Otherwise an
 // add_run of an OLD commit (collected recently) would sort last and become the default run shown.
@@ -479,8 +482,7 @@ function renderDetail() {
       const byCell = {};
       fs.forEach((f) => { (byCell[f.cell] = byCell[f.cell] || []).push(f); });
       const blocks = Object.keys(byCell).map((cell) => {
-        const p = cell.split("|");
-        const coords = `${p[0]}, ${p[1]}, ${p[2]}, n_devices=${p[3]}`;
+        const coords = cellCoords(cell);
         const refs = byCell[cell].map((f) =>
           `<div class="vsref">vs ${f.basis}</div><ul class="discr">${f.discrepancies.map((d) => `<li>${d}</li>`).join("")}</ul>`).join("");
         return `<div class="hitcell"><div class="hitcoords">${coords}</div>${refs}</div>`;
@@ -495,8 +497,7 @@ function renderDetail() {
       const byCell = {};
       hits.forEach((h) => { const k = h.cell || "—"; (byCell[k] = byCell[k] || []).push(h); });
       const blocks = Object.keys(byCell).map((cell) => {
-        const p = cell === "—" ? null : cell.split("|");
-        const coords = p ? `${p[0]}, ${p[1]}, ${p[2]}, n_devices=${p[3]}` : "(run-level)";
+        const coords = cell === "—" ? "(run-level)" : cellCoords(cell);
         const bullets = byCell[cell].map((h) => `<li>${h.detail || h.text}</li>`).join("");
         return `<div class="hitcell"><div class="hitcoords">${coords}</div><ul class="discr">${bullets}</ul></div>`;
       }).join("");
@@ -961,17 +962,20 @@ function renderBanner() {
   document.title = bad.length ? `⚠(${bad.length}) mbirjax metrics` : "mbirjax metrics";
   if (!bad.length) { box.style.display = "none"; box.innerHTML = ""; return; }
   const since = bad.reduce((a, b) => (runTime(b) < runTime(a) ? b : a));
+  // Each run is a clickable .cb-run row: a header line + a bulleted list of its divergent configs.
+  // The click handler sits on .cb-run only, so clicks on the nested config bullets bubble up to it.
   const item = (r) => {
     const cells = [...new Set(runCorr(r).map((f) => f.cell).filter(Boolean))];
-    const lbl = cells.length ? cells.slice(0, 3).join(", ") + (cells.length > 3 ? ` +${cells.length - 3}` : "") : runCorrCells(r) + " cell(s)";
-    return `<li data-rk="${runKey(r)}" data-plat="${r.platform}" data-branch="${r.branch}">`
-      + `<b>${r.branch}</b> · ${r.platform.toUpperCase()} · ${commitMinute(r)} — <span class="cells">${lbl}</span></li>`;
+    const bullets = cells.length ? cells.map((c) => `<li>${cellCoords(c)}</li>`).join("") : `<li>${runCorrCells(r)} config(s)</li>`;
+    return `<li class="cb-run" data-rk="${runKey(r)}" data-plat="${r.platform}" data-branch="${r.branch}">`
+      + `<div class="cb-runhead"><b>${r.branch}</b> · ${r.platform.toUpperCase()} · ${commitMinute(r)}</div>`
+      + `<ul class="cb-cfgs">${bullets}</ul></li>`;
   };
   box.style.display = "block";
   box.innerHTML = `<div class="cb-head">✕ ${bad.length} unacknowledged correctness divergence${bad.length > 1 ? "s" : ""} since ${runDateLabel(since)}</div>`
     + `<ul class="cb-list">${bad.map(item).join("")}</ul>`
     + `<div class="cb-foot">vs the prior run on each branch · click a row to view it · clear reviewed runs with <code>action_scripts/clear_correctness.sh</code></div>`;
-  box.querySelectorAll("li").forEach((li) => li.onclick = () => {
+  box.querySelectorAll(".cb-run").forEach((li) => li.onclick = () => {
     state.platform = li.dataset.plat; state.branch = li.dataset.branch; state.runKey = li.dataset.rk; state.openTile = "correctness";
     fillSelect("platform", M.platforms, state.platform);
     fillSelect("branch", branchesFor(state.platform), state.branch);

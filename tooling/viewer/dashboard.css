@@ -72,10 +72,13 @@ section { margin: 26px 0; }
   background: var(--fail-bg); border: 1px solid var(--fail); border-left: 5px solid var(--fail); border-radius: 8px; }
 .corr-banner .cb-head { font-weight: 600; color: var(--fail); font-size: 14px; }
 .corr-banner .cb-list { list-style: none; margin: 6px 0 0; padding: 0; }
-.corr-banner .cb-list li { font-family: var(--mono); font-size: 12px; padding: 4px 6px; border-radius: 5px; cursor: pointer; }
-.corr-banner .cb-list li:hover { background: var(--bg); }
-.corr-banner .cb-list .cells { color: var(--muted); }
-.corr-banner .cb-foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
+/* one clickable row per run; clicks on the nested config bullets bubble up to it */
+.corr-banner .cb-run { padding: 5px 6px; border-radius: 5px; cursor: pointer; }
+.corr-banner .cb-run:hover { background: var(--bg); }
+.corr-banner .cb-runhead { font-family: var(--mono); font-size: 12px; }
+.corr-banner .cb-cfgs { list-style: disc; margin: 2px 0 0; padding-left: 24px; }
+.corr-banner .cb-cfgs li { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 1px 0; }
+.corr-banner .cb-foot { font-size: 11px; color: var(--muted); margin-top: 8px; }
 .legend .cx { font-weight: 700; font-size: 13px; line-height: 1; }
 .u-tip .corr { color: var(--fail); font-weight: 600; }
 
