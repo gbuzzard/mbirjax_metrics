@@ -1,0 +1,17 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_greg_sharding_extensions
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [204 items]
+
+...........................................................ss........... [ 35%]
+.....................................................................s.. [ 70%]
+.....................................................s......             [100%]
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:89: RETIRE-AFTER-SHARDING: ParallelBeam auto-meshes; no-mesh path is non-PB only.
+SKIPPED [1] ../tests/sharding/test_hooks.py:78: RETIRE-AFTER-SHARDING: ParallelBeam auto-meshes; no-mesh path is non-PB only.
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+================== 200 passed, 4 skipped in 129.34s (0:02:09) ==================
