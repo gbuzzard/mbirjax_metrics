@@ -10,9 +10,16 @@
 #   action_scripts/add_run.sh              Print this help and exit.
 #
 # Either way it checks out the chosen commit into a throwaway git worktree (your working tree is
-# untouched), runs the engine against it, and writes results/<plat>/<branch>/regression_<plat>_<commit
-# time>_<sha8>.yaml — so the run lands on the dashboard timeline at its COMMIT time.  No gate is
-# applied (a backfilled run is reference data, not a pass/fail checkpoint), and a nonzero exit keeps the terminal open.
+# untouched) and measures it through the SAME pipeline as the nightly — the dedicated `mbirjax_regression`
+# conda env with the worktree pip-installed editable (NOT your dev env, which is left untouched) — then
+# writes results/<plat>/<branch>/regression_<plat>_<commit-time>_<sha8>.yaml, so the run lands on the
+# dashboard timeline at its COMMIT time, comparable to the nightly runs around it.  No gate is applied
+# (a backfilled run is reference data, not a pass/fail checkpoint), and a nonzero exit keeps the terminal open.
+#
+# Installing the worktree editable is what SELECTS the code under measurement: a modern editable install
+# registers a sys.meta_path finder that takes precedence over PYTHONPATH, so pointing the engine at the
+# worktree via PYTHONPATH alone would NOT override a different mbirjax already installed in the env (it
+# would silently measure that one).  Hence the dedicated env + pip install -e the worktree (see lib_env.sh).
 
 if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
 
@@ -28,6 +35,17 @@ if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
   HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   REPO="$(cd "$HERE/.." && pwd)"
 
+  # Config + the shared env/install mechanism (CONDA_ENV=mbirjax_regression, INSTALL_EXTRAS_*,
+  # HARNESS_DEPS, CONDA_PYTHON) — the same files the nightly sources, so this stays in lockstep with it.
+  # The nightly sources these under `set -uo` (no -e); relax -e here too so a benign nonzero in the
+  # config (now or later) can't abort the run (unset vars still trip `set -u` at use, as intended).
+  set +e
+  # shellcheck disable=SC1091
+  source "$REPO/tooling/regression/regression.env"
+  # shellcheck disable=SC1091
+  source "$REPO/tooling/regression/lib_env.sh"
+  set -e
+
   usage() {
     cat <<'EOF'
 Add one performance run to this metrics repo, measured from a SPECIFIC mbirjax commit
@@ -41,9 +59,11 @@ Usage:
                                         the dashboard branch group, so prefer a branch/tag name.
   action_scripts/add_run.sh            Print this help and exit.
 
-It checks out the commit into a throwaway worktree (your working tree is untouched), measures it,
-and writes results/<plat>/<branch>/regression_<plat>_<commit-time>_<sha8>.yaml — placing the run on
-the timeline at its COMMIT time.  No gate is applied (a backfilled run isn't a pass/fail checkpoint).
+It checks out the commit into a throwaway worktree (your working tree is untouched) and measures it
+through the same pipeline as the nightly — the dedicated mbirjax_regression conda env with the worktree
+pip-installed editable (your dev env is untouched) — writing
+results/<plat>/<branch>/regression_<plat>_<commit-time>_<sha8>.yaml at its COMMIT time on the timeline.
+No gate is applied (a backfilled run isn't a pass/fail checkpoint).
 EOF
   }
   if [ "$#" -eq 0 ]; then usage; exit 0; fi
@@ -67,29 +87,32 @@ EOF
   fi
   SLUG="${BRANCH//\//_}"
 
-  # ---- best-effort: activate the mbirjax conda env ------------------------------------------------
-  if [ "${CONDA_DEFAULT_ENV:-}" != "mbirjax" ]; then
-    set +e
-    command -v conda >/dev/null 2>&1 || for s in "$HOME/miniforge3" "$HOME/miniconda3" "$HOME/anaconda3" /opt/conda; do
-      [ -f "$s/etc/profile.d/conda.sh" ] && . "$s/etc/profile.d/conda.sh" && break
-    done
-    command -v conda >/dev/null 2>&1 && eval "$(conda shell.bash hook)" && conda activate mbirjax
-    set -e
-  fi
+  # ---- dedicated env (create if missing) + activate + harness deps (shared with the nightly) -------
+  # Runs in mbirjax_regression, NOT your dev env — your dev env's editable install is left untouched.
+  # In a `source add_run.sh` invocation this activate happens in add_run's subshell, so your current
+  # shell's active env is unaffected too.
+  reg_activate_env || exit $?
 
-  # ---- platform + output dir (mirror run_regression.sh) -------------------------------------------
-  if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then PLAT="gpu"; else PLAT="cpu"; fi
+  # ---- platform + pip extras + output dir (shared with run_regression.sh) --------------------------
+  read -r PLAT EXTRAS <<<"$(reg_plat_extras)"
   OUT="$REPO/results/$PLAT/$SLUG"; mkdir -p "$OUT"
 
   # ---- isolated checkout of the chosen commit, then measure --------------------------------------
   WT="$(mktemp -d)/lib"
   git -C "$SRC" worktree add --quiet --detach "$WT" "$COMMITISH"
   SHA="$(git -C "$WT" rev-parse --short=8 HEAD)"
-  echo "add_run: $PLAT · branch=$BRANCH · commit=$SHA · src=$SRC"
+  echo "add_run: $PLAT · branch=$BRANCH · commit=$SHA · src=$SRC · env=$CONDA_ENV"
   echo "         -> $OUT"
 
+  # Install the worktree editable into the dedicated env — THIS selects the code under measurement
+  # (re-points the editable finder at $WT).  First time pulls jax, so it can be slow.
+  echo "add_run: installing library [$EXTRAS] into $CONDA_ENV (first time pulls jax — can be slow)..."
+  reg_install_lib "$WT" "$EXTRAS" || { echo "add_run: pip install -e '$WT[$EXTRAS]' into $CONDA_ENV failed." >&2; exit 2; }
+
   # REG_GATE=0: a backfilled run is reference data, not a pass/fail checkpoint (no nonzero exit, no
-  # gate).  The engine still records a day-over-day note vs the prior commit's run, if any.
+  # gate).  The engine still records a day-over-day note vs the prior commit's run, if any.  lib_root=$WT
+  # gives the engine the worktree for provenance (and PYTHONPATH); the editable install above is what
+  # actually fixes which code imports.
   REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_RUN_TAG="$BRANCH" REG_GATE=0 \
     python "$REPO/tooling/scaling_tests/run_nightly.py"
 )

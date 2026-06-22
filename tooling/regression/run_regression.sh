@@ -80,37 +80,16 @@ trap 'rm -rf "$WORK_DIR/.lock.d"' EXIT
 METRICS_REPO="$(cd "$HERE/../.." && pwd)"        # = $WORK_DIR/metrics
 HARNESS_DIR="$METRICS_REPO/tooling"
 
-# Conda env (DEDICATED — the per-branch editable installs churn it).  conda must be on PATH here
-# (Mac: your shell PATH; cluster: from PREAMBLE_FILE's `module load conda`).  We (re)source conda.sh
-# to define the `conda activate` shell function, which does not survive the phase-1->2 exec.
-if ! command -v conda >/dev/null 2>&1; then
-  log "FATAL: 'conda' not found.  On the cluster, set PREAMBLE_FILE in regression.env to a script"
-  log "       that loads conda+cuda (e.g. PREAMBLE_FILE=\"\$HOME/load_conda_cuda.sh\")."
-  exit 2
-fi
+# Dedicated env (create if missing) + activate + harness deps — the SHARED mechanism, so a manual
+# add_run backfill is produced by the same pipeline (see lib_env.sh).  conda must be reachable here
+# (Mac: your shell PATH; cluster: from PREAMBLE_FILE's `module load conda`); the `conda activate` shell
+# function is re-sourced inside, since it does not survive the phase-1->2 exec.
 # shellcheck disable=SC1091
-source "$(conda info --base)/etc/profile.d/conda.sh"
-# Auto-create the DEDICATED env if missing, so a fresh node self-bootstraps (the wrapper installs all
-# deps per-run, so a bare python env is enough).  One-time per node; subsequent runs just activate.
-if ! conda env list | awk '{print $1}' | grep -qx "$CONDA_ENV"; then
-  log "conda env '$CONDA_ENV' not found — creating it (one-time on this node)."
-  conda create -y -q -n "$CONDA_ENV" "python=${CONDA_PYTHON:-3.11}" \
-    || { log "FATAL: could not create conda env '$CONDA_ENV'."; exit 2; }
-fi
-conda activate "$CONDA_ENV" || { log "FATAL: conda activate '$CONDA_ENV' failed."; exit 2; }
+source "$HARNESS_DIR/regression/lib_env.sh"
+reg_activate_env || exit $?
 
-# Harness's own deps (scaling_common imports matplotlib/ruamel at module level) — idempotent.
-if [ -n "${HARNESS_DEPS:-}" ]; then
-  # shellcheck disable=SC2086
-  pip install --quiet $HARNESS_DEPS || log "WARN: harness deps install failed (engine may not import)."
-fi
-
-# Platform (no jax import in the wrapper — just the GPU presence signal).
-if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
-  PLAT="gpu"; EXTRAS="$INSTALL_EXTRAS_gpu"
-else
-  PLAT="cpu"; EXTRAS="$INSTALL_EXTRAS_cpu"
-fi
+# Platform + pip extras (shared with add_run; no jax import in the wrapper — just the GPU signal).
+read -r PLAT EXTRAS <<<"$(reg_plat_extras)"
 RES="$METRICS_REPO/results/$PLAT"; STATE="$METRICS_REPO/state/$PLAT"
 mkdir -p "$RES" "$STATE"
 log "platform=$PLAT extras=[$EXTRAS] env=$CONDA_ENV metrics=$METRICS_REPO"
@@ -157,7 +136,7 @@ for i in "${!CHANGED_BR[@]}"; do
   SHA="$(git -C "$WT" rev-parse HEAD)"   # the tip we actually got; recorded as state below
 
   log "$BR: installing library [$EXTRAS] into $CONDA_ENV (first time pulls jax — can be slow)..."
-  if ! pip install -e "$WT[$EXTRAS]" >"$WT/.install.log" 2>&1; then
+  if ! reg_install_lib "$WT" "$EXTRAS" >"$WT/.install.log" 2>&1; then
     log "ERROR $BR: pip install -e '$WT[$EXTRAS]' failed (see $WT/.install.log) — skip."
     rm -rf "$WT"; continue
   fi

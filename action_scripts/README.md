@@ -6,15 +6,17 @@ for you), and each keeps the terminal open on a nonzero exit instead of closing 
 
 | script | purpose |
 |---|---|
-| `build_dashboard.sh` | Rebuild the static dashboard (`dashboard/index.html`) from the YAML time series and open it locally. (The live site is rebuilt automatically by a GitHub Action; see the repo README.) Wraps `tooling/viewer/build_dashboard.py`. |
-| `add_run.sh` | Measure a **specific mbirjax commit** and add it to the tracked time series — e.g. to seed an older prerelease run onto the timeline. `--local` measures the branch checked out in your current mbirjax repo (no uncommitted changes); `<ref>` measures a branch/tag/sha from `MBIRJAX_REPO` (default `../mbirjax`); no args prints help. Checks out into a throwaway worktree (your tree is untouched). |
+| `build_dashboard.sh` | Rebuild the static dashboard (`dashboard/index.html`) from the YAML time series and open it locally. (The live site is rebuilt automatically by a GitHub Action; see the repo README.) Wraps `tooling/dashboard/build_dashboard.py`. |
+| `add_run.sh` | Measure a **specific mbirjax commit** and add it to the tracked time series — e.g. to seed an older prerelease run onto the timeline. `--local` measures the **committed `HEAD`** of the branch in your current mbirjax checkout (uncommitted changes to tracked files are rejected — it's the commit, *not* your live working tree); `<ref>` measures a branch/tag/sha from `MBIRJAX_REPO` (default `../mbirjax`); no args prints help. Either way it checks out that commit into a **throwaway git worktree** (your tree is untouched) and measures it through the **same pipeline as the nightly** — the dedicated `mbirjax_regression` env with the worktree `pip install -e`'d into it (shared via `tooling/regression/lib_env.sh`) — so a seeded point is comparable to the nightly runs around it. Your dev `mbirjax` env is never touched; the first run pulls jax into the dedicated env (slow once). Installing the worktree (not just `PYTHONPATH`) is required: a modern editable install registers a `sys.meta_path` finder that takes precedence over `PYTHONPATH`, so without it the engine would silently measure whatever mbirjax is already installed in the env. |
 | `run_one_night.sh` | Run **one nightly pass** by hand — the faithful single invocation of the harness (`tooling/regression/run_regression.sh`): for each tracked branch whose remote tip moved, clone it, run the tests + the perf engine, write results, and push. Use it to verify the pipeline before enabling the scheduled nightly. |
 | `enable_nightly.sh` / `disable_nightly.sh` | Start / stop the **scheduled** nightly. Platform-aware: macOS uses a launchd agent; Gautschi uses a managed SLURM `scrontab` block (resources from `run_configs.env`'s `SLURM_*` knobs). Wrap `tooling/regression/{enable,disable}_nightly.sh`. |
-| `status_nightly.sh` | **Is the nightly on, and what has it done?** Read-only check of both layers that must hold — the schedule (launchd agent / `scrontab` block) **and** the `ENABLED` kill-switch — with a one-line verdict (✅ will run · ⏸ paused via `ENABLED=0` · ❌ not scheduled), then the **last wake** time and a **tile-style summary of recent runs** (commit · platform · branch · sha, configs/failed, gate hits, tests failed, thermal flag). Wraps `tooling/regression/status_nightly.sh`. |
+| `status_nightly.sh` | **Is the nightly on, and what has it done?** Read-only check of both layers that must hold — the schedule (launchd agent / `scrontab` block) **and** the `ENABLED` kill-switch — with a one-line verdict (✅ will run · ⏸ paused via `ENABLED=0` · ❌ not scheduled), then the **last wake** time, a **table of recent runs** (commit time · `meas` date · Cpu/Gpu · branch · sha · configs · gate · tests · thermal flag), and a **CORRECTNESS** summary of any unacknowledged divergences. Wraps `tooling/regression/status_nightly.sh`. |
+| `clear_correctness.sh` | **Acknowledge reviewed correctness divergences** through a date — writes `results/correctness_acks.yaml` so they drop off the dashboard banner / browser-tab badge (record kept). No args prints the status and confirms "clear through today? [Y/n]"; `--status` previews only. Wraps `tooling/dashboard/clear_correctness.py`. |
 | `create_token.sh` | One-time setup of the fine-grained GitHub PAT used for the unattended push. See `create_token_instructions.md`. |
 
 **`run_configs.env`** — the run-time knobs you edit: `TRACKED_BRANCHES`, `INSTALL_EXTRAS_cpu/gpu`,
-`CONDA_PYTHON`, and the cluster `SLURM_*` knobs (account/partition/QoS/GPUs/cores/walltime). The
+`CONDA_PYTHON`, `MACOS_NIGHTLY_TIME` (local "HH:MM" the Mac runs the nightly), and the cluster `SLURM_*`
+knobs (account/partition/QoS/GPUs/cores/walltime). The
 harness sources it (via `tooling/regression/regression.env`); edits propagate to the nightly
 automatically (it pulls the metrics repo before each run). Harness infrastructure (URLs, paths,
 credentials, schedule, the `ENABLED` kill-switch) stays in `regression.env`.
@@ -45,7 +47,7 @@ From a shell where `conda` is on your PATH:
    ```
    REG_SMOKE=1 bash tooling/regression/run_regression.sh   # ~1-2 min plumbing check (no push)
    action_scripts/run_one_night.sh                          # one real pass (measures + pushes)
-   action_scripts/enable_nightly.sh                         # load the launchd agent (daily at POLL_SCHEDULE)
+   action_scripts/enable_nightly.sh                         # load the launchd agent (daily at MACOS_NIGHTLY_TIME)
    action_scripts/status_nightly.sh                         # confirm it's on (schedule + ENABLED)
    ```
    `disable_nightly.sh` unloads it; logs land in `~/.mbirjax/regression/launchd.{out,err}.log`.
@@ -81,4 +83,4 @@ On a Gautschi login node:
    `disable_nightly.sh` removes it; `status_nightly.sh` (or `scrontab -l` / `squeue --me`) inspect it.
    To pre-flight the SLURM directives without running, `sbatch --test-only tooling/regression/nightly_regression.slurm`.
 
-See `tooling/viewer/README.md` (dashboard) and `tooling/regression/README.md` (nightly) for details.
+See `tooling/dashboard/README.md` (dashboard) and `tooling/regression/README.md` (nightly) for details.
