@@ -14,12 +14,24 @@ for you), and each keeps the terminal open on a nonzero exit instead of closing 
 | `clear_correctness.sh` | **Acknowledge reviewed correctness divergences** through a date — writes `results/correctness_acks.yaml` so they drop off the dashboard banner / browser-tab badge (record kept). No args prints the status and confirms "clear through today? [Y/n]"; `--status` previews only. Wraps `tooling/dashboard/clear_correctness.py`. |
 | `create_token.sh` | One-time setup of the fine-grained GitHub PAT used for the unattended push. See `create_token_instructions.md`. |
 
-**`run_configs.env`** — the run-time knobs you edit: `TRACKED_BRANCHES`, `INSTALL_EXTRAS_cpu/gpu`,
-`CONDA_PYTHON`, `MACOS_NIGHTLY_TIME` (local "HH:MM" the Mac runs the nightly), and the cluster `SLURM_*`
-knobs (account/partition/QoS/GPUs/cores/walltime). The
-harness sources it (via `tooling/regression/regression.env`); edits propagate to the nightly
-automatically (it pulls the metrics repo before each run). Harness infrastructure (URLs, paths,
-credentials, schedule, the `ENABLED` kill-switch) stays in `regression.env`.
+## Run knobs — `run_configs.env`
+
+The run-time knobs you edit. The harness sources this (via `tooling/regression/regression.env`); because
+each run pulls the metrics repo before measuring, edits here propagate to the nightly automatically.
+
+| knob | scope | what it sets |
+|---|---|---|
+| `TRACKED_BRANCHES` | all | mbirjax branches to watch; each is measured only when its remote tip moves (fire-on-change). |
+| `INSTALL_EXTRAS_cpu` / `INSTALL_EXTRAS_gpu` | all | pip extras for each branch's editable install (`test` = pytest + xdist; `cuda12` = `jax[cuda12]`). |
+| `CONDA_PYTHON` | all | Python version for the dedicated `mbirjax_regression` env — used only when the harness must create it. |
+| `MACOS_NIGHTLY_TIME` | macOS | local 24-h `HH:MM` the launchd nightly runs. Pick a time the Mac is **awake** — a scheduled wake from sleep is a "dark wake" that won't fire a LaunchAgent. Re-run `enable_nightly.sh` after changing. |
+| `SLURM_ACCOUNT` · `SLURM_PARTITION` · `SLURM_QOS` | cluster | SLURM account / partition (`ai`, H100) / QoS (`normal`; `standby` isn't accepted on `ai`). |
+| `SLURM_GPUS_PER_NODE` | cluster | GPUs for the sweep (4 → the full n=4 sharding sweep; 2 → n=1,2 only). |
+| `SLURM_NTASKS` | cluster | CPU cores. |
+| `SLURM_WALLTIME` | cluster | walltime ceiling; fire-on-change exits in seconds on a no-change night, so it's just a cap. |
+
+Harness *infrastructure* (URLs, paths, credentials, the schedule cadence, the `ENABLED` kill-switch)
+lives in `regression.env`, not here.
 
 ## One-time setup
 

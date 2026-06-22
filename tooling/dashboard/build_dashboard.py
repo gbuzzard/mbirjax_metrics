@@ -219,12 +219,12 @@ def _parse_gate_hard(items) -> list[dict]:
 XDEV_RTOL = 1e-5            # cross-device (n>1 vs n=1, same build): a few x the ~1e-6 floor
 VSMAIN_RTOL_SINGLE = 1e-5   # vs-main, single-shot ops (direct_filter / forward / back)
 VSMAIN_RTOL_ITER = 1e-4     # vs-main, the iterated vcd_nonconst
-# cross-platform (CPU vs GPU, same commit) — float32 differs more across backends; SAFE-LOOSE defaults
-# until there is shared-cell data to calibrate against (no shared cell exists in the corpus yet — needs a
-# size present on BOTH platforms; see Config.sizes / geom_sizes).  Re-run the cross-platform dry-run and
-# tighten once the first shared cells land.
-VSPLAT_RTOL_SINGLE = 1e-3
-VSPLAT_RTOL_ITER = 3e-3
+# cross-platform (CPU vs GPU, same commit) — calibrated 2026-06-22 from 42 shared cells over 8 commits:
+# the CPU<->GPU fingerprint reldiff floor is <=4.2e-6 (single-op) and <=5.5e-6 (vcd_nonconst), only ~5x
+# the cross-device floor — so 1e-4 sits ~20x above it (a real backend divergence would be far larger).
+# The build prints the live cross-platform floor (see _correctness_summary); re-tighten if it grows.
+VSPLAT_RTOL_SINGLE = 1e-4
+VSPLAT_RTOL_ITER = 1e-4
 _FP_FIELDS = ("sum", "mean", "l2norm", "shape", "dtype", "padding_zero")
 
 
@@ -313,6 +313,7 @@ def _analyze_correctness(runs: list[dict]) -> dict:
         return fn or "?"
 
     xdev_diffs = []   # every cross-device reldiff (the implementation-noise floor, for tuning)
+    xplat_diffs = []  # every CPU<->GPU shared-cell reldiff (the cross-platform floor, for tuning)
     for r in runs:
         plat, fps, findings = r["platform"], (r.get("_fps") or {}), []
         # prior run — fold the engine's gate.hard correctness hits into the unified list (one per cell).
@@ -364,12 +365,17 @@ def _analyze_correctness(runs: list[dict]) -> dict:
                 if rfp is None or _degenerate(rfp):
                     continue
                 op = key.split("|")[1]
+                if plat < other:        # the comparison is symmetric — count each CPU<->GPU pair once
+                    rd = _fp_reldiff(fp, rfp)
+                    if rd is not None and rd != float("inf"):
+                        xplat_diffs.append(rd)
                 rtol = VSPLAT_RTOL_ITER if op == "vcd_nonconst" else VSPLAT_RTOL_SINGLE
                 discr = _fp_discrepancies(fp, rfp, rtol)
                 if discr:
                     findings.append({"reference": "cross_platform", "cell": key, "basis": olabel, "discrepancies": discr})
         r["correctness"] = findings
-    return {"xdev_floor": max(xdev_diffs) if xdev_diffs else None, "xdev_n": len(xdev_diffs)}
+    return {"xdev_floor": max(xdev_diffs) if xdev_diffs else None, "xdev_n": len(xdev_diffs),
+            "xplat_floor": max(xplat_diffs) if xplat_diffs else None, "xplat_n": len(xplat_diffs)}
 
 
 def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
@@ -519,6 +525,9 @@ def _correctness_summary(data: dict) -> None:
     if st.get("xdev_floor") is not None:
         print(f"  cross-device noise floor: {st['xdev_floor']:.2e} over {st['xdev_n']} comparison(s) "
               f"— tune the cross-* tolerances against this.")
+    if st.get("xplat_floor") is not None:
+        print(f"  cross-platform (CPU<->GPU) floor: {st['xplat_floor']:.2e} over {st['xplat_n']} shared cell(s) "
+              f"— calibrates VSPLAT_RTOL_* (now {VSPLAT_RTOL_SINGLE:g}/{VSPLAT_RTOL_ITER:g}).")
 
 
 def build() -> Path:
