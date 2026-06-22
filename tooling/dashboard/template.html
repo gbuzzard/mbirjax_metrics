@@ -18,6 +18,70 @@
     </div>
   </header>
 
+  <!-- Single-source reading guide: this panel is the ONE canonical "how to read it" copy.  The repo
+       README and the mbirjax Sphinx "Performance Dashboard" page link here instead of duplicating it,
+       so the guide can never drift from the UI it describes (it ships in the same page). -->
+  <details id="help" class="help">
+    <summary>How to read this dashboard</summary>
+    <div class="help-body">
+      <p>A scheduled job measures each tracked mbirjax branch — running its reconstruction operators (the
+      FBP filter, forward projection, back projection, and the iterative VCD recon) across a range of
+      problem sizes and device counts, on both CPU and GPU — and records, for every configuration:
+      <b>run time</b>, <b>peak memory</b>, and a numeric <b>fingerprint</b> of the output used to catch
+      correctness changes. The dashboard is the view onto that growing time series; read it top to bottom.</p>
+
+      <h3>Tiles — health of the shown run</h3>
+      <p>A row of cards for the selected run, each split <b>CPU | GPU</b>:</p>
+      <ul>
+        <li><b>configs measured</b> — how many (geometry × op × size × device-count) cells ran, and how many failed.</li>
+        <li><b>correctness</b> — how many configs diverge from a trusted reference (see <i>Correctness</i> below). Red = divergent.</li>
+        <li><b>performance regressions</b> — configs whose time or memory regressed versus the reference.</li>
+        <li><b>tests failed</b> — unit-test failures from that commit.</li>
+        <li><b>run shown</b> — which commit you're viewing (branch · platform · date).</li>
+      </ul>
+      <p>Click any card to drill into the specifics.</p>
+
+      <h3>Correctness banner (red, top of page)</h3>
+      <p>If any branch's latest run produces a <b>different reconstruction</b> than its reference, a red
+      banner lists the offending configs — and the browser tab gets a ⚠ badge so you notice without even
+      switching to it. This is the loudest signal on the page: correctness is treated as more important
+      than speed. It clears when the divergence goes away or is acknowledged as reviewed.</p>
+
+      <h3>History — trends over time</h3>
+      <p>Time-series panels (commit time on the x-axis) spanning both platforms and all branches:
+      <b>time</b> and <b>peak memory</b> at the largest size, plus a <b>performance-regressions</b> count.
+      Use the controls to pick a branch, a geometry group (cone + parallel, or translation + multiaxis),
+      and a device count. <b>Click any point to load that run</b> into the tiles and scaling views.</p>
+
+      <h3>Scaling — how the selected run behaves</h3>
+      <ul>
+        <li><b>time vs size</b> and <b>memory vs size</b> (log–log), each with an "ideal" slope for reference.</li>
+        <li><b>speedup vs devices</b> and <b>per-device memory</b> — i.e. does the work actually shard across GPUs?</li>
+        <li><b>compare against</b> overlays the same curves from <code>main</code>, <code>prerelease</code>, the prior run, or the best-ever.</li>
+      </ul>
+
+      <h3>Colors &amp; marks</h3>
+      <ul>
+        <li><b>Colour = platform:</b> GPU is blue, CPU is amber.</li>
+        <li><b>Line style = geometry</b> within each group (one solid, one dashed).</li>
+        <li><b>Red ✕</b> = a correctness fail (output mismatch between reference and the indicated run) ·
+        <b>red △</b> = failing tests · <b>amber ring</b> = a GPU that ran hot ·
+        <b>amber disc</b> = a GPU that throttled (so that point's timing is unreliable).</li>
+      </ul>
+
+      <h3>Correctness — what "diverges" means</h3>
+      <p>Each output's fingerprint is checked against up to four references:</p>
+      <ul>
+        <li>the <b>prior run</b> on the same branch — did this commit change the result?</li>
+        <li>the latest <b>main</b> — does this branch still match the canonical answer?</li>
+        <li><b>single- vs multi-device</b> within the same run — does sharding change the result?</li>
+        <li>the <b>other platform</b> — do CPU and GPU agree?</li>
+      </ul>
+      <p>A change beyond a small tolerance is flagged. Reviewed or expected changes can be
+      <b>acknowledged</b> so they stop alerting (without erasing the record).</p>
+    </div>
+  </details>
+
   <div id="tiles" class="tiles"></div>
   <div id="detail"></div>
 

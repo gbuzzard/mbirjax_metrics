@@ -33,6 +33,21 @@ select { font-family: inherit; font-size: 13px; color: var(--text); background: 
 section { margin: 26px 0; }
 .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 
+/* "How to read this dashboard" — the single-source reading guide (collapsed by default).  The repo
+   README and the mbirjax Sphinx page link here rather than duplicating it, so it can't drift. */
+.help { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 18px; }
+.help > summary { cursor: pointer; padding: 10px 14px; font-weight: 500; color: var(--accent);
+  list-style: none; user-select: none; }
+.help > summary::-webkit-details-marker { display: none; }
+.help > summary::before { content: "\25b8\00a0"; color: var(--muted); }   /* ▸ */
+.help[open] > summary::before { content: "\25be\00a0"; }                  /* ▾ */
+.help > summary:hover { color: var(--text); }
+.help-body { padding: 2px 18px 16px; border-top: 1px solid var(--border); }
+.help-body h3 { font-size: 14px; font-weight: 600; margin: 16px 0 4px; }
+.help-body p { margin: 6px 0; }
+.help-body ul { margin: 6px 0; padding-left: 20px; }
+.help-body li { margin: 3px 0; }
+
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
 .tile { background: var(--surface); border-radius: 10px; padding: 12px 14px; border: 1px solid transparent; cursor: default; }
 .tile.click { cursor: pointer; }
