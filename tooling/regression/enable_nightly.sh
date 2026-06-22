@@ -53,6 +53,7 @@ LOGDIR="$HOME/.mbirjax/regression"
 
 [ -f "$WRAPPER" ] || { echo "ERROR: wrapper not found at $WRAPPER"; exit 1; }
 command -v conda >/dev/null 2>&1 || { echo "ERROR: conda not on PATH (run from a shell where conda works)."; exit 1; }
+CONDA_BIN="$(dirname "$(command -v conda)")"
 
 # macOS runs at MACOS_NIGHTLY_TIME (24h "HH:MM", from run_configs.env) — a time the Mac is AWAKE (a
 # scheduled wake from sleep is a dark wake that won't fire a LaunchAgent).  The cluster path uses POLL_SCHEDULE.
