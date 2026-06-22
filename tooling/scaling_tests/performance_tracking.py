@@ -277,11 +277,18 @@ def run_denoise(model, image, config):
     library's own test does the same): otherwise per-call partition variation (~1e-4) swamps the ~1e-7
     float floor — it would confound the cross-device check (sharded vs n=1) AND make the fingerprint
     irreproducible across runs/platforms.  Seeding makes the result deterministic AND sharding-invariant.
+
+    ``output_sharded`` was added with the sharded denoiser, so it does NOT exist on pre-sharding branches
+    (main / prerelease).  Mirror ``run_filter``: try it, and on the resulting ``TypeError`` fall back to
+    the plain call — those branches are single-device (n=1) anyway, where the result is the real shape.
     """
     np.random.seed(config.measure_seed)
-    out, _ = model.denoise(image, sigma_noise=config.denoise_sigma,
-                           max_iterations=config.denoise_iterations,
-                           stop_threshold_change_pct=0.0, print_logs=False, output_sharded=True)
+    kw = dict(sigma_noise=config.denoise_sigma, max_iterations=config.denoise_iterations,
+              stop_threshold_change_pct=0.0, print_logs=False)
+    try:
+        out, _ = model.denoise(image, output_sharded=True, **kw)
+    except TypeError:
+        out, _ = model.denoise(image, **kw)
     return out
 
 
