@@ -16,7 +16,7 @@ runs above — there is no separate reference file.
 
 Run it on demand to refresh the page::
 
-    cd tooling/viewer
+    cd tooling/dashboard
     python build_dashboard.py        # -> <repo>/dashboard/index.html
 
 There are no command-line arguments by design; the few knobs live in the CONFIG
@@ -36,7 +36,7 @@ import yaml
 # --------------------------------------------------------------------------- #
 # CONFIG — edit here, not via the command line.                               #
 # --------------------------------------------------------------------------- #
-# Repo root is inferred as two levels up from this file (tooling/viewer/ -> repo).
+# Repo root is inferred as two levels up from this file (tooling/dashboard/ -> repo).
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
 OUT_PATH = REPO_ROOT / "dashboard" / "index.html"

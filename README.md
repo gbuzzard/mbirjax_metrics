@@ -1,55 +1,71 @@
 # mbirjax_metrics
 
-Performance-regression data and tooling for [mbirjax](https://mbirjax.readthedocs.io/).
+The performance & correctness dashboard for [mbirjax](https://mbirjax.readthedocs.io/) — an
+automatically-updated record of how fast, how memory-hungry, and how **correct** mbirjax's
+reconstruction operators are over time, on both CPU and GPU.
 
-This is the standalone, version-controlled home for mbirjax's performance time series and the tools
-that gather and display it. Keeping it separate from the mbirjax library means the results survive
-mbirjax's branch churn and are never pushed to the library's `main`.
+**Live dashboard:** <https://gbuzzard.github.io/mbirjax_metrics/>
 
-**Live dashboard:** <https://gbuzzard.github.io/mbirjax_metrics/> — rebuilt from the YAML time series
-and published automatically by a GitHub Action on every push to `main` (`.github/workflows/pages.yml`).
+The dashboard rebuilds and republishes automatically whenever new measurements are pushed, so that
+link is always current. Everything below is a guide to **reading** it — you don't need to run
+anything. (Why a separate repo from mbirjax itself: it keeps the performance time series out of the
+library's history, so the data survives branch churn and is never pushed to the library's `main`.)
 
-## Quick start
+## What you're looking at
 
-```bash
-conda activate mbirjax
-action_scripts/build_dashboard.sh     # -> dashboard/index.html
-open dashboard/index.html             # macOS; or double-click the file
-```
+A scheduled job measures each tracked mbirjax branch — running its reconstruction operators (the FBP
+filter, forward projection, back projection, and the iterative VCD recon) across a range of problem
+sizes and device counts, on both CPU and GPU — and records, for every configuration: **run time**,
+**peak memory**, and a numeric **fingerprint** of the output used to catch correctness changes. The
+dashboard is the view onto that growing time series. Read it top to bottom:
 
-The only dependency for building the dashboard is PyYAML, which the `mbirjax` env already provides.
+### 1 · Tiles — health of the shown run, at a glance
+A row of cards for the currently-selected run, each split **CPU | GPU**:
+- **configs measured** — how many (geometry × op × size × device-count) cells ran, and how many failed.
+- **correctness** — how many configs diverge from a trusted reference (see *Correctness* below). Red = divergent.
+- **performance regressions** — configs whose time or memory regressed versus the reference.
+- **tests failed** — unit-test failures from that commit.
+- **run shown** — which commit you're viewing (branch · platform · date).
 
-## Layout
+Click any card to drill into the specifics.
 
-- **`action_scripts/`** — the top-level entry points (build the dashboard, add a run, run the
-  nightly). Start here; see `action_scripts/README.md`.
-- **`tooling/`**
-  - `scaling_tests/` — the measurement **engine** (`performance_tracking.py`): sweeps geometry × op ×
-    size × device-count, records min time / peak memory / speedup + a tolerant correctness
-    fingerprint per config, and runs the diff/gate. Also the nightly launcher (`run_nightly.py`) and
-    the reference-capture scripts.
-  - `regression/` — the unattended **nightly harness** (`run_regression.sh`): fire-on-change per
-    tracked branch — clone the tip → run tests → measure → push.
-  - `viewer/` — the **dashboard generator** (`build_dashboard.py`): reads the YAML time series and
-    emits a single self-contained `dashboard/index.html` (no server, no network).
-- **`results/<platform>/<branch>/`** — the **time series**: one
-  `regression_<plat>_<commit-time>_<sha8>.yaml` per measured commit (named and sorted by *commit*
-  time), plus a `records_<plat>.yaml` best-ever book and the pytest log.  The gate compares each run
-  against this branch's own previous run; cross-branch context (vs `main`/`prerelease`) and
-  best-ever drift are shown on the dashboard, derived from these same runs (no separate reference).
-- **`state/`** — per-platform fire-on-change bookkeeping (the last-measured sha per branch).
-- **`dashboard/`** — the generated `index.html` (gitignored; regenerate with `build_dashboard.sh`).
+### 2 · Correctness banner (red, top of page)
+If any branch's latest run produces a **different reconstruction** than its reference, a red banner
+lists the offending configs — and the browser tab gets a ⚠ badge so you notice without even
+switching to it. This is the loudest signal on the page: correctness is treated as more important
+than speed. It clears when the divergence goes away or is acknowledged as reviewed.
 
-## The dashboard
+### 3 · History — trends over time
+Time-series panels (commit time on the x-axis) spanning both platforms and all branches: **time** and
+**peak memory** at the largest size, plus a **performance-regressions** count. Use the controls to pick a
+**branch**, a **geometry group** (cone + parallel, or translation + multiaxis), and a **device
+count**. **Click any point to load that run** into the tiles and scaling views.
 
-Health tiles (configs measured, hard-gate hits, tests, the run shown), a per-op **Scaling** view
-(time/memory vs problem size and speedup / per-device-memory-÷-shard vs device count, on log axes
-with ideal references and a "compare against" overlay), and a **History** timeline spanning both
-platforms. Details in `tooling/viewer/README.md`.
+### 4 · Scaling — how the selected run behaves
+For the chosen run and operation:
+- **time vs size** and **memory vs size** (log–log), each with an "ideal" slope for reference.
+- **speedup vs devices** and **per-device memory** — i.e. does the work actually shard across GPUs?
+- **compare against** overlays the same curves from `main`, `prerelease`, the prior run, or the best-ever.
 
-## How a run is gated
+## Reading the colors & marks
+- **Colour = platform:** GPU is blue, CPU is amber.
+- **Line style = geometry** within each group (one solid, one dashed).
+- **Red ✕** = a correctness fail (output mismatch between reference and the indicated run) · **red △** = failing tests · **amber ring** = a GPU that ran
+  hot · **amber disc** = a GPU that throttled (so that point's timing is unreliable).
 
-After each run the engine compares it — per config and metric — against the prior run and the
-reference snapshot(s). Memory and correctness are deterministic, so they **hard-fail**; timing is
-noisy, so it only **warns**. The full criteria and thresholds are described in
-`tooling/regression/README.md` and surfaced in the dashboard's gate tile.
+## Correctness — what "diverges" means
+Each output's fingerprint is checked against up to four references:
+- the **prior run** on the same branch — did this commit change the result?
+- the latest **main** — does this branch still match the canonical answer?
+- **single- vs multi-device** within the same run — does sharding change the result?
+- the **other platform** — do CPU and GPU agree?
+
+A change beyond a small tolerance is flagged. Reviewed or expected changes can be **acknowledged** so
+they stop alerting (without erasing the record).
+
+## Running or extending it
+You don't need a server — the dashboard is a single self-contained page generated from the YAML time
+series in `results/`.
+- Build it locally: `conda activate mbirjax && action_scripts/build_dashboard.sh`, then open `dashboard/index.html`.
+- Add a one-off measurement, run the nightly by hand, or check the schedule — see **[`action_scripts/README.md`](action_scripts/README.md)**.
+- How runs are measured, gated, and scheduled — see the READMEs under **[`tooling/`](tooling/)**.

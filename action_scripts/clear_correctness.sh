@@ -8,7 +8,7 @@
 #   action_scripts/clear_correctness.sh 2026-06-20   # clear through an explicit earlier date
 #   action_scripts/clear_correctness.sh --status     # print status only, never prompt or write
 #
-# Thin wrapper around tooling/viewer/clear_correctness.py (reuses build_dashboard.collect_data, so it
+# Thin wrapper around tooling/dashboard/clear_correctness.py (reuses build_dashboard.collect_data, so it
 # shows exactly what the dashboard shows).  After writing, rebuild with action_scripts/build_dashboard.sh
 # and commit the acks file.  Override the interpreter with PYTHON=... .
 
@@ -40,7 +40,7 @@ if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
     elif command -v python3 >/dev/null 2>&1; then PY=python3
     else echo "No python interpreter found — activate the mbirjax conda env first." >&2; exit 127; fi
   fi
-  "$PY" "$REPO/tooling/viewer/clear_correctness.py" "$@"
+  "$PY" "$REPO/tooling/dashboard/clear_correctness.py" "$@"
 )
 _rc=$?
 if [ "$_sourced" -eq 1 ]; then return "$_rc"; else exit "$_rc"; fi

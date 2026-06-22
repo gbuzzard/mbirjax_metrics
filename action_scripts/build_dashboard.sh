@@ -3,7 +3,7 @@
 #
 #     action_scripts/build_dashboard.sh          # or:  source action_scripts/build_dashboard.sh
 #
-# Thin wrapper around tooling/viewer/build_dashboard.py (writes dashboard/index.html).
+# Thin wrapper around tooling/dashboard/build_dashboard.py (writes dashboard/index.html).
 # It first tries to activate the `mbirjax` conda env (the only dependency, PyYAML,
 # lives there); if that env is already active or conda isn't found it just proceeds.
 #
@@ -40,7 +40,7 @@ if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
     elif command -v python3 >/dev/null 2>&1; then PY=python3
     else echo "No python interpreter found — activate the mbirjax conda env first." >&2; exit 127; fi
   fi
-  "$PY" "$REPO/tooling/viewer/build_dashboard.py" "$@"
+  "$PY" "$REPO/tooling/dashboard/build_dashboard.py" "$@"
 )
 _rc=$?
 if [ "$_sourced" -eq 1 ]; then return "$_rc"; else exit "$_rc"; fi

@@ -414,7 +414,7 @@ function renderTiles() {
       click: anyBad((m) => m.cellsFailed > 0), sub: anyBad((m) => m.cellsFailed > 0) ? "failures — click" : "all ran" },
     { id: "correctness", lbl: "correctness", body: pvs((m) => m.correctness, (m) => m.correctness > 0),
       click: true, sub: anyBad((m) => m.correctness > 0) ? "DIVERGENT — click" : "fingerprints match" },
-    { id: "gate", lbl: "perf regressions", body: pvs((m) => m.perfHard, (m) => m.perfHard > 0),
+    { id: "gate", lbl: "performance regressions", body: pvs((m) => m.perfHard, (m) => m.perfHard > 0),
       click: true, sub: "click for details" },
     { id: "tests", lbl: "tests failed", body: pvs((m) => m.testsFailed, (m) => m.testsFailed > 0),
       click: anyBad((m) => m.testsFailed > 0), sub: anyBad((m) => m.testsFailed > 0) ? "failures — click" : "none failing" },
@@ -492,7 +492,7 @@ function renderDetail() {
     if (state.openTile === "gate") {
       const hits = runPerfHard(run);
       const cmp = (run.gate.compared_to || []).map((c) => priorLabel(c, plat)).join(", ") || "its reference run(s)";
-      if (!hits.length) return head + `<p class="muted">no perf regressions (result: ${run.gate.result || "?"}).</p>`;
+      if (!hits.length) return head + `<p class="muted">no performance regressions (result: ${run.gate.result || "?"}).</p>`;
       // Group hits by cell: one coords line + a bullet per discrepancy.
       const byCell = {};
       hits.forEach((h) => { const k = h.cell || "—"; (byCell[k] = byCell[k] || []).push(h); });

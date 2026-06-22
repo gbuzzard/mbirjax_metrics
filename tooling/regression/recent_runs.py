@@ -8,7 +8,7 @@ added here is the run-level thermal flag, which mirrors cellHot()/cellThrottled(
 dashboard.js (JS and Python can't share a runtime, so the small rule lives once on each side).
 
 Usage:  recent_runs.py <results_repo_root> [N]
-build_dashboard is imported from THIS checkout's tooling/viewer (so the slim-cell shape matches the
+build_dashboard is imported from THIS checkout's tooling/dashboard (so the slim-cell shape matches the
 thermal rule below), then its REPO_ROOT is pointed at <results_repo_root> so collect_data() reads
 THAT repo's results/ — e.g. the nightly's persistent clone, even when the clone's own (pushed)
 build_dashboard predates the thermal fields.  Requires the same dependency the dashboard build needs
@@ -69,7 +69,7 @@ def main():
 
     # Use THIS checkout's build_dashboard (its slim-cell shape matches _thermal below), but read the
     # target repo's results/ by overriding REPO_ROOT.
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "viewer"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dashboard"))
     try:
         import build_dashboard
         local_root = build_dashboard.REPO_ROOT    # THIS checkout (where the user runs/commits clear_correctness)

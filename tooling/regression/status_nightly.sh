@@ -13,7 +13,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "$HERE/regression.env"
 
-# The recent-run summary reuses tooling/viewer/build_dashboard.py, so it needs the SAME interpreter
+# The recent-run summary reuses tooling/dashboard/build_dashboard.py, so it needs the SAME interpreter
 # the dashboard build uses — the `mbirjax` conda env, where its only dep (PyYAML) lives (see
 # build_dashboard.sh).  Prefer that env (then the harness env, then bare python) and validate by
 # importing yaml; MBIRJAX_STATUS_PYTHON overrides.
