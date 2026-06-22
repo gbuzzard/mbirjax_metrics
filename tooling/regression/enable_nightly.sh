@@ -6,7 +6,7 @@
 #
 # Run it from the regression/ dir (in the metrics clone for the real install, or here during dev).
 # On macOS it fills the plist from regression.env (schedule + wrapper path + a conda PATH) and loads
-# it; launchd runs at the scheduled time and at the next wake if the laptop slept.  Re-run after
+# it; launchd runs at the scheduled time but only if the laptop is awake.  Re-run after
 # editing regression.env / run_configs.env to apply changes.
 set -euo pipefail
 # Keep an interactive terminal open on a nonzero exit so the error stays visible.
@@ -54,10 +54,14 @@ LOGDIR="$HOME/.mbirjax/regression"
 [ -f "$WRAPPER" ] || { echo "ERROR: wrapper not found at $WRAPPER"; exit 1; }
 command -v conda >/dev/null 2>&1 || { echo "ERROR: conda not on PATH (run from a shell where conda works)."; exit 1; }
 
-# Daily HH:MM from POLL_SCHEDULE ("M H * * *"); only daily is supported by this installer.
-MIN="$(echo "$POLL_SCHEDULE" | awk '{print $1}')"; [ "$MIN" = "*" ] && MIN=0
-HR="$(echo "$POLL_SCHEDULE"  | awk '{print $2}')"; [ "$HR"  = "*" ] && HR=2
-CONDA_BIN="$(dirname "$(command -v conda)")"
+# macOS runs at MACOS_NIGHTLY_TIME (24h "HH:MM", from run_configs.env) — a time the Mac is AWAKE (a
+# scheduled wake from sleep is a dark wake that won't fire a LaunchAgent).  The cluster path uses POLL_SCHEDULE.
+RUN_TIME="${MACOS_NIGHTLY_TIME:-09:00}"
+case "$RUN_TIME" in
+  [0-9]:[0-5][0-9]|[0-1][0-9]:[0-5][0-9]|2[0-3]:[0-5][0-9]) ;;
+  *) echo "ERROR: MACOS_NIGHTLY_TIME='$RUN_TIME' must be 24-hour HH:MM (e.g. 09:00)." >&2; exit 2 ;;
+esac
+HR=$((10#${RUN_TIME%%:*})); MIN=$((10#${RUN_TIME##*:}))
 
 mkdir -p "$LOGDIR" "$HOME/Library/LaunchAgents"
 sed -e "s|@LABEL@|$LABEL|g" \

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- TEMPLATE — enable_nightly.sh fills the @PLACEHOLDERS@ and writes the result to
      ~/Library/LaunchAgents/com.mbirjax.regression.plist.  Do not load this file directly.
-     launchd's StartCalendarInterval runs at the scheduled time AND at the next wake if the
-     laptop was asleep (unlike cron, which silently skips a missed run). -->
+     NOTE: a LaunchAgent runs only on a FULL wake (active login session).  A scheduled wake from
+     sleep is typically a DARK wake — verified in this Mac's power log — during which launchd does
+     NOT run the agent, so a 2am StartCalendarInterval on a slept laptop simply never fires.  Hence
+     POLL_SCHEDULE_MACOS schedules this for a time the Mac is normally AWAKE (default 09:00). -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
