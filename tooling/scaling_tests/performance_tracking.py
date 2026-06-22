@@ -58,14 +58,17 @@ import numpy as np
 @dataclass
 class Config:
     # sweep dimensions
-    geometries: list = field(default_factory=lambda: ["parallel", "cone", "translation", "multiaxis_parallel"])
+    geometries: list = field(default_factory=lambda: ["parallel", "cone", "translation", "multiaxis_parallel", "denoiser"])
     ops: list = field(default_factory=lambda: ["direct_filter", "forward", "back", "vcd_nonconst"])
     # Per-geometry op OVERRIDES (else `ops` is used).  translation/multiaxis only have geometry-SPECIFIC
     # compute in the projectors + filter; their vcd recon is the qGGMRF outer loop shared with
     # parallel/cone (tracked there), so measuring it would be redundant — drop vcd for those two.
+    # denoiser: its ONLY real op is `denoise` (the qGGMRF VCD outer loop with identity projectors —
+    # the vcd_nonconst analog); forward/back are the identity and there is no FBP, so nothing else.
     geom_ops: dict = field(default_factory=lambda: {
         "translation": ["direct_filter", "forward", "back"],
         "multiaxis_parallel": ["direct_filter", "forward", "back"],
+        "denoiser": ["denoise"],
     })
     device_counts: list = field(default_factory=lambda: [1, 2, 4])
     # SINOGRAM sizes (n_views, n_rows, n_channels) — ASYMMETRIC (all three differ) to surface
@@ -91,6 +94,15 @@ class Config:
             "cpu": [(15, 64, 64), (15, 65, 65)],
             "gpu": [(15, 65, 65), (15, 256, 256), (15, 257, 257)],  # 15x65x65 = shared w/ CPU
         },
+        # denoiser: the size tuple IS the IMAGE shape (rows, cols, slices) — no sinogram.  Sized from the
+        # measured envelope (GPU: 1024³-class fits, 1600³ OOMs on n=1/2/4; CPU ~256³-class is a few s).
+        # Asymmetric to surface axis swaps; the all-odd cell forces slice-axis padding; (1024,1008,992) is
+        # the GPU capacity probe (single-trial — see single_trial_sizes).  The largest CPU cell is mirrored
+        # to GPU as the cross-platform shared cell.
+        "denoiser": {
+            "cpu": [(128, 144, 160), (225, 241, 257)],
+            "gpu": [(225, 241, 257), (512, 448, 384), (1024, 1008, 992)],  # 225x241x257 = shared w/ CPU
+        },
     })
     # Sizes where every op runs trials=1 (capacity/memory check, not a timing ruler).
     single_trial_sizes: list = field(default_factory=lambda: ["1024x1008x992"])
@@ -100,10 +112,18 @@ class Config:
     weight_mode: str = "nonconstant"
     weight_seed: int = 13
 
+    # denoiser (QGGMRFDenoiser.denoise — the vcd analog with identity projectors).  A FIXED sigma + EXACT
+    # iteration count (stop_threshold_change_pct=0) + seeded input image make the fingerprint
+    # deterministic (so the cross-device / cross-platform / vs-main checks are meaningful).
+    denoise_iterations: int = 20   # realistic (the demo's max; matches the measured timing envelope) and
+                                   # surfaces sharding-communication overhead better than a 3-iter ruler
+    denoise_sigma: float = 0.1
+    denoise_sharpness: float = 0.0
+
     # measurement
     warmup: int = 1
     trials_by_op: dict = field(default_factory=lambda: {
-        "direct_filter": 3, "forward": 3, "back": 3, "vcd_nonconst": 1})
+        "direct_filter": 3, "forward": 3, "back": 3, "vcd_nonconst": 1, "denoise": 1})
     inline: bool = False   # True = single-process, debuggable (memory not per-config)
 
     # geometry / seeds
@@ -200,9 +220,14 @@ def make_model(config, geometry, size):
         model.set_params(delta_det_channel=delta_det, delta_det_row=delta_det)
         model.set_params(delta_voxel=delta_voxel, voxel_row_aspect=1.0, voxel_slice_aspect=1.0)
         model.set_params(recon_shape=(config.tct_recon_rows, cols, slices))
+    elif geometry == "denoiser":
+        # The denoiser has no sinogram/projection: the size tuple IS the image (= recon) shape, and the
+        # model is a QGGMRFDenoiser over it.  n_views/angles above are computed but unused here.
+        model = mbirjax.QGGMRFDenoiser(tuple(int(x) for x in size))
+        model.set_params(sharpness=config.denoise_sharpness)
     else:
         raise ValueError(f"unknown geometry {geometry!r} "
-                         f"(expected parallel/cone/translation/multiaxis_parallel)")
+                         f"(expected parallel/cone/translation/multiaxis_parallel/denoiser)")
     model.set_params(verbose=0)
     return model
 
@@ -227,6 +252,37 @@ def make_sinogram(config, size):
     """
     rng = np.random.default_rng(config.input_seed)
     return rng.random(size, dtype=np.float32)
+
+
+def make_noisy_image(config, size):
+    """Deterministic noisy 3D image (numpy float32) of IMAGE shape ``size`` — the denoiser's input.
+
+    A seeded random image is a valid timing/memory/fingerprint input: with a FIXED ``sigma_noise`` and an
+    EXACT iteration count (``stop_threshold_change_pct=0``) the denoise is deterministic, so the output
+    fingerprint is reproducible across runs, device counts, and platforms.
+    """
+    rng = np.random.default_rng(config.input_seed)
+    return rng.standard_normal(size, dtype=np.float32)
+
+
+def run_denoise(model, image, config):
+    """Timed op: the qGGMRF MAP denoiser (the vcd analog — same VCD outer loop, identity projectors).
+
+    Passes the HOST image and lets ``denoise`` place/shard it internally — matching ``run_vcd`` (the
+    iterative recon's input placement is part of its measured cost, unlike the single-shot ops which
+    pre-place via ``to_device``).  ``output_sharded=True`` keeps the result in the device (sharded) form
+    — measure the denoise, not the final gather.  Returns just the image (drops the recon dict).
+
+    The denoiser builds its VCD partitions with ``np.random``, so we seed the global RNG first (the
+    library's own test does the same): otherwise per-call partition variation (~1e-4) swamps the ~1e-7
+    float floor — it would confound the cross-device check (sharded vs n=1) AND make the fingerprint
+    irreproducible across runs/platforms.  Seeding makes the result deterministic AND sharding-invariant.
+    """
+    np.random.seed(config.measure_seed)
+    out, _ = model.denoise(image, sigma_noise=config.denoise_sigma,
+                           max_iterations=config.denoise_iterations,
+                           stop_threshold_change_pct=0.0, print_logs=False, output_sharded=True)
+    return out
 
 
 def to_device(model, arr, kind):
@@ -416,7 +472,12 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, out_file
     """
     import mbirjax  # noqa: F401  (device-setup side effect; must precede jax init)
     size = parse_size_label(size_label)
-    sino_np = make_sinogram(config, size)
+    # The denoiser has no sinogram/projection: its input is a noisy IMAGE of the recon shape, and
+    # denoise() builds its own partitions internally — so the sinogram / indices / cylinders / VCD-
+    # partition setup below is projection-only.
+    is_denoiser = (geometry == "denoiser")
+    sino_np = None if is_denoiser else make_sinogram(config, size)
+    image_np = make_noisy_image(config, size) if is_denoiser else None
 
     # Build the model + op input once (device-independent host arrays).  Pin the base model to
     # ONE device so derived inputs carry no multi-device placement; build_and_time configures
@@ -425,11 +486,15 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, out_file
     if hasattr(base_model, "configure_devices"):   # absent on pre-sharding code
         base_model.configure_devices(1)
     recon_shape = tuple(int(x) for x in base_model.get_params('recon_shape'))
-    idx = make_indices(base_model)
-    num_pixels = len(idx)
-    num_slices = recon_shape[2]
-    cylinders = (make_cylinders(num_pixels, num_slices, config.input_seed)
-                 if op == "forward" else None)
+    if is_denoiser:
+        idx = cylinders = num_pixels = None
+        num_slices = recon_shape[2]
+    else:
+        idx = make_indices(base_model)
+        num_pixels = len(idx)
+        num_slices = recon_shape[2]
+        cylinders = (make_cylinders(num_pixels, num_slices, config.input_seed)
+                     if op == "forward" else None)
     # VCD inputs (built once, device-independent): nonconstant weights + the pixel partitions.
     weights = partitions = partition_sequence = None
     if op == "vcd_nonconst":
@@ -440,12 +505,13 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, out_file
     gc.collect()
 
     # TRUE (unpadded) output shape per op, for the fingerprint crop: filter/forward emit the
-    # sinogram shape; back emits (num_pixels, num_slices); vcd emits the recon shape.
+    # sinogram shape; back emits (num_pixels, num_slices); vcd + denoise emit the recon (image) shape.
     op_true_shape = {
         "direct_filter": tuple(size),
         "forward": tuple(size),
         "back": (num_pixels, num_slices),
         "vcd_nonconst": tuple(recon_shape),
+        "denoise": tuple(recon_shape),
     }.get(op, tuple(size))
 
     trials = 1 if size_label in config.single_trial_sizes else config.trials_by_op.get(op, 3)
@@ -487,6 +553,9 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, out_file
             model.setup_logger(print_logs=False)
             run_fn = lambda: run_vcd(model, sino_np, weights, partitions,
                                      partition_sequence, config.measure_seed)
+        elif op == "denoise":
+            # Pass the HOST image; denoise places/shards it internally (like run_vcd, not to_device).
+            run_fn = lambda: run_denoise(model, image_np, config)
         else:
             raise ValueError(f"op {op!r} not implemented")
         stats, result = sc.time_op(run_fn, config.warmup, trials)
@@ -539,6 +608,7 @@ def _probe_sharding_by_geom():
         "multiaxis_parallel": lambda: mbirjax.MultiAxisParallelModel((16, 8, 8), ang2),
         "translation": lambda: mbirjax.TranslationModel((int(tv16.shape[0]), 8, 8), tv16,
                                                         source_detector_dist=32.0, source_iso_dist=16.0),
+        "denoiser": lambda: mbirjax.QGGMRFDenoiser((8, 8, 8)),
     }
     out = {}
     for name, mk in builders.items():
@@ -738,7 +808,7 @@ def _gate_fingerprint(key, tf, rf, op, lab, config, hard, soft):
         return
     if tf.get("dtype") != rf.get("dtype"):
         hard.append(f"[{lab}] {key} fingerprint dtype {rf.get('dtype')} -> {tf.get('dtype')}")
-    rtol = config.fp_rtol_iter if op == "vcd_nonconst" else config.fp_rtol_single
+    rtol = config.fp_rtol_iter if op in ("vcd_nonconst", "denoise") else config.fp_rtol_single
     for m in ("sum", "mean", "l2norm"):
         rv, tv = rf.get(m), tf.get(m)
         if rv is None or tv is None:

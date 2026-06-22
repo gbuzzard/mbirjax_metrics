@@ -19,16 +19,18 @@ const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" 
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
 
-const OP_ORDER = ["direct_filter", "forward", "back", "vcd_nonconst"];
-const GEOM_ORDER = ["parallel", "cone", "translation", "multiaxis_parallel"];
+const OP_ORDER = ["direct_filter", "forward", "back", "vcd_nonconst", "denoise"];
+const GEOM_ORDER = ["parallel", "cone", "translation", "multiaxis_parallel", "denoiser"];
 // History line-style by geometry (one solid + one dashed within each group); short legend labels.
-const GEOM_DASH = { cone: undefined, parallel: [5, 3], translation: undefined, multiaxis_parallel: [5, 3] };
-const GEOM_LABEL = { cone: "cone", parallel: "parallel", translation: "translation", multiaxis_parallel: "multiaxis" };
-// History geometry GROUPS: a toggle swaps the pair shown.  cone/parallel headline the vcd recon;
-// translation/multiaxis don't run vcd (only projectors + filter), so they headline back-projection.
+const GEOM_DASH = { cone: undefined, parallel: [5, 3], translation: undefined, multiaxis_parallel: [5, 3], denoiser: undefined };
+const GEOM_LABEL = { cone: "cone", parallel: "parallel", translation: "translation", multiaxis_parallel: "multiaxis", denoiser: "denoiser" };
+// History geometry GROUPS: a toggle swaps the set shown.  cone/parallel headline the vcd recon;
+// translation/multiaxis don't run vcd (only projectors + filter), so they headline back-projection;
+// the denoiser is its own group (a single geometry) headlining its one op, denoise (the vcd analog).
 const HIST_GROUPS = [
   { id: "cp", label: "cone + parallel", geoms: ["cone", "parallel"], op: "vcd_nonconst", opLabel: "VCD" },
   { id: "tm", label: "translation + multiaxis", geoms: ["translation", "multiaxis_parallel"], op: "back", opLabel: "back-projection" },
+  { id: "dn", label: "denoiser", geoms: ["denoiser"], op: "denoise", opLabel: "denoise" },
 ];
 
 // Expected (ideal) time-scaling per op, for the roughly cubical sweep shapes.

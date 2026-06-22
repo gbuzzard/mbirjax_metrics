@@ -350,7 +350,7 @@ def _analyze_correctness(runs: list[dict]) -> dict:
                 if rfp is None or _degenerate(rfp):
                     continue
                 op = key.split("|")[1]
-                rtol = VSMAIN_RTOL_ITER if op == "vcd_nonconst" else VSMAIN_RTOL_SINGLE
+                rtol = VSMAIN_RTOL_ITER if op in ("vcd_nonconst", "denoise") else VSMAIN_RTOL_SINGLE
                 discr = _fp_discrepancies(fp, rfp, rtol)
                 if discr:
                     findings.append({"reference": "vs_main", "cell": key, "basis": mlabel, "discrepancies": discr})
@@ -369,7 +369,7 @@ def _analyze_correctness(runs: list[dict]) -> dict:
                     rd = _fp_reldiff(fp, rfp)
                     if rd is not None and rd != float("inf"):
                         xplat_diffs.append(rd)
-                rtol = VSPLAT_RTOL_ITER if op == "vcd_nonconst" else VSPLAT_RTOL_SINGLE
+                rtol = VSPLAT_RTOL_ITER if op in ("vcd_nonconst", "denoise") else VSPLAT_RTOL_SINGLE
                 discr = _fp_discrepancies(fp, rfp, rtol)
                 if discr:
                     findings.append({"reference": "cross_platform", "cell": key, "basis": olabel, "discrepancies": discr})
