@@ -976,8 +976,13 @@ function renderBanner() {
   box.style.display = "block";
   box.innerHTML = `<div class="cb-head">✕ ${bad.length} unacknowledged correctness divergence${bad.length > 1 ? "s" : ""} since ${runDateLabel(since)}</div>`
     + `<ul class="cb-list">${bad.map(item).join("")}</ul>`
-    + `<div class="cb-foot">vs the prior run on each branch · click a row to view it · clear reviewed runs with <code>action_scripts/clear_correctness.sh</code></div>`;
+    + `<div class="cb-foot">vs the prior run on each branch · click a row to view it (again to hide) · clear reviewed runs with <code>action_scripts/clear_correctness.sh</code></div>`;
   box.querySelectorAll(".cb-run").forEach((li) => li.onclick = () => {
+    // Toggle: a second click on the row whose correctness detail is already open collapses it; clicking
+    // a DIFFERENT row switches to (and opens) that run instead.
+    const isOpen = state.openTile === "correctness" && state.runKey === li.dataset.rk
+                   && state.platform === li.dataset.plat && state.branch === li.dataset.branch;
+    if (isOpen) { state.openTile = null; renderAll(); return; }
     state.platform = li.dataset.plat; state.branch = li.dataset.branch; state.runKey = li.dataset.rk; state.openTile = "correctness";
     fillSelect("platform", M.platforms, state.platform);
     fillSelect("branch", branchesFor(state.platform), state.branch);
