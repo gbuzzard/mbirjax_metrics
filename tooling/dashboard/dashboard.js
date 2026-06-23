@@ -40,7 +40,7 @@ const HIST_GROUPS = [
 const IDEAL_EXP = { direct_filter: 1, forward: 1, back: 1, vcd_nonconst: 4 / 3 };
 const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back: "voxels", vcd_nonconst: "voxels · views" };
 
-const state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp", histBranch: "all" };
+const ui_state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp", histBranch: "all" };
 
 // Displayed name for each reference (internal key -> label).  References are now derived from the
 // tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
@@ -57,11 +57,11 @@ const sizeVol = (s) => s.split("x").reduce((p, n) => p * (+n || 1), 1);
 // add_run of an OLD commit (collected recently) would sort last and become the default run shown.
 const runsFor = (p, b) => M.runs.filter((r) => r.platform === p && r.branch === b).sort((a, b2) => runTime(a) - runTime(b2));
 const latestRun = (p, b) => { const r = runsFor(p, b); return r.length ? r[r.length - 1] : null; };
-// The run currently being viewed: the one the user picked (state.runKey), else latest.
+// The run currently being viewed: the one the user picked (ui_state.runKey), else latest.
 function currentRun() {
-  const rs = runsFor(state.platform, state.branch);
+  const rs = runsFor(ui_state.platform, ui_state.branch);
   if (!rs.length) return null;
-  if (state.runKey) { const m = rs.find((r) => runKey(r) === state.runKey); if (m) return m; }
+  if (ui_state.runKey) { const m = rs.find((r) => runKey(r) === ui_state.runKey); if (m) return m; }
   return rs[rs.length - 1];
 }
 // A run's position in time: the commit's date when recorded, else the collection
@@ -98,20 +98,25 @@ function priorLabel(fn, plat) {
   return r ? `${plat.toUpperCase()} · ${r.commit} · ${commitMinute(r)}` : `${plat.toUpperCase()} · ${sha.slice(0, 10)}`;
 }
 // The run shown for a given platform on the currently-selected branch: honour an explicitly
-// picked run (state.runKey) only on the active platform; otherwise the latest for that platform.
+// picked run (ui_state.runKey) only on the active platform; otherwise the latest for that platform.
 function runOnPlat(plat) {
-  const rs = runsFor(plat, state.branch);
+  const rs = runsFor(plat, ui_state.branch);
   if (!rs.length) return null;
-  if (plat === state.platform && state.runKey) { const m = rs.find((r) => runKey(r) === state.runKey); if (m) return m; }
-  return rs[rs.length - 1];
+  // Anchor BOTH platforms to the shown run's COMMIT, so every split tile (and the per-platform drill-down)
+  // reflects exactly that commit.  A platform that did not measure this commit returns null here -> shows
+  // '—'; we do NOT substitute its latest run (that would mix commits).  Only an absent anchor commit (old
+  // data with no commit_full) falls back to latest, so the page still renders.
+  const cur = currentRun();
+  if (!cur || !cur.commit_full) return rs[rs.length - 1];
+  return rs.filter((r) => r.commit_full === cur.commit_full).sort((a, b) => runTime(b) - runTime(a))[0] || null;
 }
 // The run backing the active reference overlay: the tracked main/prerelease tip, or this branch's
 // immediately-preceding run.  best-ever is records-derived (not a single run) -> handled separately.
 function refRun() {
-  if (state.ref === "main") return latestRun(state.platform, "main");
-  if (state.ref === "prerelease") return latestRun(state.platform, "prerelease");
-  if (state.ref === "prior") {
-    const rs = runsFor(state.platform, state.branch), cur = currentRun();
+  if (ui_state.ref === "main") return latestRun(ui_state.platform, "main");
+  if (ui_state.ref === "prerelease") return latestRun(ui_state.platform, "prerelease");
+  if (ui_state.ref === "prior") {
+    const rs = runsFor(ui_state.platform, ui_state.branch), cur = currentRun();
     const i = cur ? rs.indexOf(cur) : -1;
     return i > 0 ? rs[i - 1] : null;
   }
@@ -119,7 +124,7 @@ function refRun() {
 }
 // Branch/sha/date provenance string for the active comparison reference.
 function refProvenance() {
-  if (state.ref === "best") return "per-config best-ever";
+  if (ui_state.ref === "best") return "per-config best-ever";
   const r = refRun(); if (!r) return "";
   const d = r.commit_date ? r.commit_date.slice(0, 10) : (r.date ? runDateLabel(r) : "");
   return `${r.branch || "?"}${r.commit ? " @ " + r.commit : ""}${d ? " · " + d : ""}`;
@@ -152,7 +157,7 @@ function hotGpuStr(c) {
   if (w.thr) s += ` · ${w.thr.join(", ")}`;
   return s;
 }
-// Tooltip warning text: lead with the state word so "hot" (advisory) reads distinctly from
+// Tooltip warning text: lead with the ui_state word so "hot" (advisory) reads distinctly from
 // "throttled" (the driver clamped clocks, so the time is suspect).
 function hotWarn(c) { return (cellThrottled(c) ? "throttled" : "hot") + " · " + hotGpuStr(c); }
 // Run-level thermal summary for the "run shown" tile: the worst severity present (throttled beats
@@ -335,6 +340,37 @@ function linePlot(el, xs, specs, o) {
     });
     ctx.restore();
   }];
+  // "Run shown" overlay (o.showNow): a full-height red guide at the CURRENT run's commit-x, drawn in
+  // drawClear so it sits BEHIND the grid + data + marks (never obscures them), plus a red ring around
+  // that run's point(s) on its OWN platform's series, drawn just UNDER the ✕/throttle/test marks.  The
+  // ring lands on the blue (GPU) or amber (CPU) line, so it also says which platform you're viewing.
+  // currentRun() is read LIVE, so navigating runs only needs el._u.redraw() (no re-render -> zoom survives).
+  if (o.showNow) {
+    const drawNow = (u, ring) => {
+      const cur = (typeof currentRun === "function") ? currentRun() : null;
+      if (!cur) return;
+      const nx = u.valToPos(runTime(cur), "x", true);
+      if (!isFinite(nx)) return;
+      const ctx = u.ctx, dpr = u.pxRatio || 1;
+      if (!ring) {
+        ctx.save(); ctx.strokeStyle = "rgba(163,45,45,0.55)"; ctx.lineWidth = 3 * dpr;
+        ctx.beginPath(); ctx.moveTo(nx, u.bbox.top); ctx.lineTo(nx, u.bbox.top + u.bbox.height); ctx.stroke(); ctx.restore();
+        return;
+      }
+      const di = X.indexOf(runTime(cur));
+      if (di < 0) return;
+      ctx.save(); ctx.strokeStyle = CORRC; ctx.lineWidth = 2 * dpr;
+      S.forEach((s) => {
+        if (!s.meta || s.pointsOnly || s.meta.platform !== cur.platform || s.meta.branch !== cur.branch) return;
+        const v = s.ys[di]; if (v == null) return;
+        const y = u.valToPos(v, "y", true); if (!isFinite(y)) return;
+        ctx.beginPath(); ctx.arc(nx, y, 13 * dpr, 0, 2 * Math.PI); ctx.stroke();
+      });
+      ctx.restore();
+    };
+    hooks.drawClear = [(u) => drawNow(u, false)];
+    hooks.draw = hooks.draw ? [(u) => drawNow(u, true), ...hooks.draw] : [(u) => drawNow(u, true)];
+  }
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
     scales: { x: xScale, y: yScale },
@@ -345,7 +381,7 @@ function linePlot(el, xs, specs, o) {
     // drag.dist: a drag shorter than this (px) is NOT a zoom — it falls through to a plain click, so
     // a click with a pixel or two of jitter still selects the point instead of zooming a sliver.
     cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime, dist: 6 } },
-    hooks: (hooks.setCursor || hooks.setScale || hooks.draw) ? hooks : undefined,
+    hooks: (hooks.setCursor || hooks.setScale || hooks.draw || hooks.drawClear) ? hooks : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
   el.innerHTML = "";
@@ -367,7 +403,7 @@ function linePlot(el, xs, specs, o) {
 
 // ---- header / selectors ------------------------------------------------------
 function goOptions() {
-  const run = latestRun(state.platform, state.branch);
+  const run = latestRun(ui_state.platform, ui_state.branch);
   if (!run) return [];
   const combos = uniq(run.cells.map((c) => c.geom + "|" + c.op));
   return combos.sort((a, b) => {
@@ -377,8 +413,8 @@ function goOptions() {
 }
 function syncGoSelect() {
   const opts = goOptions();
-  if (!opts.includes(state.go)) state.go = opts.includes("cone|vcd_nonconst") ? "cone|vcd_nonconst" : opts[0];
-  fillSelect("op", opts, state.go, opts.map((s) => s.replace("|", " · ")));
+  if (!opts.includes(ui_state.go)) ui_state.go = opts.includes("cone|vcd_nonconst") ? "cone|vcd_nonconst" : opts[0];
+  fillSelect("op", opts, ui_state.go, opts.map((s) => s.replace("|", " · ")));
 }
 
 // ---- tiles + drill-down ------------------------------------------------------
@@ -408,7 +444,7 @@ function renderTiles() {
   const anyBad = (isBad) => M.platforms.some((p) => mets[p] && isBad(mets[p]));
   const pvs = (pick, isBad) => `<div class="pvs">` + M.platforms.map((p) => {
     const m = mets[p];
-    if (!m) return `<span class="pv none" title="no ${state.branch} run on ${p}">${p.toUpperCase()}<b>—</b></span>`;
+    if (!m) return `<span class="pv none" title="no ${p.toUpperCase()} run for this commit">${p.toUpperCase()}<b>—</b></span>`;
     return `<span class="pv">${p.toUpperCase()}<b class="${isBad(m) ? "bad" : ""}">${pick(m)}</b></span>`;
   }).join("") + `</div>`;
   const health = [
@@ -421,7 +457,6 @@ function renderTiles() {
     { id: "tests", lbl: "tests failed", body: pvs((m) => m.testsFailed, (m) => m.testsFailed > 0),
       click: anyBad((m) => m.testsFailed > 0), sub: anyBad((m) => m.testsFailed > 0) ? "failures — click" : "none failing" },
   ];
-  const nRuns = runsFor(state.platform, state.branch).length;
   // Flags for the shown run: tint the tile + ⚠ badge(s).  Failing tests and throttling are RED
   // (warn-throttled); merely running hot is amber (warn-hot).  Both badges show if both apply.
   const therm = runThermal(cur);
@@ -437,27 +472,49 @@ function renderTiles() {
        : corrAcked ? `<div class="warnflag muted">✓ ${corr} correctness divergence${corr > 1 ? "s" : ""} (acknowledged)</div>` : "")
     + (therm ? `<div class="warnflag ${therm.sev}">⚠ ${therm.sev === "throttled" ? "throttled" : "ran hot"} · n=${therm.ndevs.join(", ")}${therm.peak ? ` · up to ${therm.peak}°C` : ""}</div>` : "")
     + (tf ? `<div class="warnflag throttled">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</div>` : "");
+  // Run navigation (this tile): ◀/▶ step through THIS platform+branch's runs by commit time; the ⇄
+  // toggle jumps to the OTHER platform's run of the SAME commit (greyed if that platform never measured
+  // this commit).  Both keep the open drill-down so you can step and watch the same panel update.
+  const series = runsFor(ui_state.platform, ui_state.branch).slice().sort((a, b) => runTime(a) - runTime(b));
+  const idx = series.findIndex((r) => runKey(r) === runKey(cur));   // cur, not ui_state.runKey (null until you navigate)
+  const prevR = idx > 0 ? series[idx - 1] : null;
+  const nextR = (idx >= 0 && idx < series.length - 1) ? series[idx + 1] : null;
+  const otherPlat = M.platforms.find((p) => p !== ui_state.platform);
+  const otherR = (otherPlat && cur.commit_full)
+    ? (runsFor(otherPlat, ui_state.branch).filter((r) => r.commit_full === cur.commit_full)
+         .sort((a, b) => runTime(b) - runTime(a))[0] || null)
+    : null;
   const runTile =
     `<div class="tile${warnTile}" data-click="false">
        <div class="lbl">run shown</div>
+       <div class="runnav">
+         <button class="rn-step" data-dir="prev" ${prevR ? "" : "disabled"} title="${prevR ? "older run · " + commitMinute(prevR) : "oldest run"}">◀</button>
+         <button class="rn-step" data-dir="next" ${nextR ? "" : "disabled"} title="${nextR ? "newer run · " + commitMinute(nextR) : "newest run"}">▶</button>
+         ${idx >= 0 && series.length > 1 ? `<span class="rn-pos">${idx + 1}/${series.length}</span>` : ""}
+         <button class="rn-plat" ${otherR ? "" : "disabled"} title="${otherR ? "same commit on " + (otherPlat || "").toUpperCase() : "no " + (otherPlat || "other").toUpperCase() + " run for this commit"}">⇄&nbsp;${(otherPlat || "").toUpperCase()}</button>
+       </div>
        <div class="when">${commitMinute(cur)}</div>
-       <div class="sub"><b>${state.branch}</b> · <b>${state.platform.toUpperCase()}</b> · ${cur.commit}${cur.dirty ? " · dirty" : ""}${nRuns > 1 ? " · pick in history" : ""}</div>
+       <div class="sub"><b>${ui_state.branch}</b> · <b>${ui_state.platform.toUpperCase()}</b> · ${cur.commit}${cur.dirty ? " · dirty" : ""}</div>
        ${warnLine}
      </div>`;
   box.innerHTML = health.map((t) =>
-    `<div class="tile ${t.click ? "click" : ""} ${state.openTile === t.id ? "open" : ""}" data-id="${t.id}" data-click="${!!t.click}">
+    `<div class="tile ${t.click ? "click" : ""} ${ui_state.openTile === t.id ? "open" : ""}" data-id="${t.id}" data-click="${!!t.click}">
        <div class="lbl">${t.lbl}</div>${t.body}<div class="sub">${t.sub}</div></div>`
   ).join("") + runTile;
   box.querySelectorAll(".tile").forEach((el) => {
     if (el.dataset.click === "true") el.onclick = () => {
-      state.openTile = state.openTile === el.dataset.id ? null : el.dataset.id;
+      ui_state.openTile = ui_state.openTile === el.dataset.id ? null : el.dataset.id;
       renderTiles(); renderDetail();
     };
   });
+  // Run-shown nav: ◀/▶ step within the series, ⇄ swaps to the other platform's same-commit run.
+  box.querySelectorAll(".rn-step").forEach((b) => b.onclick = () => showRun(b.dataset.dir === "prev" ? prevR : nextR));
+  const platBtn = box.querySelector(".rn-plat");
+  if (platBtn) platBtn.onclick = () => showRun(otherR);
 }
 function renderDetail() {
   const box = $("detail");
-  if (!state.openTile) { box.innerHTML = ""; return; }
+  if (!ui_state.openTile) { box.innerHTML = ""; return; }
   const titles = { gate: "Performance regressions — hard-gate hits", correctness: "Correctness — fingerprint divergences",
                    tests: "Failing tests", cells: "Failed configs" };
   const pct = (v) => v == null ? "?" : v + "%";
@@ -466,17 +523,17 @@ function renderDetail() {
   let intro = "";
   const anyRun = M.platforms.map(runOnPlat).find(Boolean);
   const gc = (anyRun && anyRun.gate_config) || {};
-  if (state.openTile === "gate") {
+  if (ui_state.openTile === "gate") {
     intro = `<p>Each run is compared per config + metric against its reference run(s).  This panel shows <b>performance</b> regressions — correctness has its own tile. <b>Hard:</b> structural change, ok→fail, expected-but-absent, GPU peak-memory &gt;${pct(gc.mem_hard_pct)}. <b>Soft:</b> speedup drop &gt;${pct(gc.speedup_warn_pct)}, time &gt;${pct(gc.time_soft_pct)}, CPU memory, sweep add/drop.</p>`;
-  } else if (state.openTile === "correctness") {
+  } else if (ui_state.openTile === "correctness") {
     const ct = M.corr_tol || {};
     intro = `<p>Correctness compares the recon <b>fingerprint</b> against four references — the <b>prior run</b> on this branch, the latest <b>main</b>, <b>single-device n=1</b> within the same run, and the <b>other platform</b> (CPU↔GPU) at the same commit. Flags a float64 {sum, mean, l2norm} relative change beyond ${ct.single ?? "?"} (single-shot) / ${ct.iter ?? "?"} (iterated VCD) / ${ct.xdev ?? "?"} (cross-device) / ${ct.xplat ?? "?"} (cross-platform), or a shape/dtype change.${ackThrough ? " Divergences on commits dated ≤ " + M.cleared_through + " are acknowledged." : ""}</p>`;
   }
   const section = (plat) => {
     const run = runOnPlat(plat);
     const head = `<h4>${plat.toUpperCase()}${run ? ` · ${run.commit} · ${commitMinute(run)}` : ""}</h4>`;
-    if (!run) return head + `<p class="muted">no ${state.branch} run on ${plat}.</p>`;
-    if (state.openTile === "correctness") {
+    if (!run) return head + `<p class="muted">no ${plat.toUpperCase()} run for this commit.</p>`;
+    if (ui_state.openTile === "correctness") {
       const fs = runCorr(run);
       if (!fs.length) return head + `<p class="muted">fingerprints match the references — no divergence.</p>`;
       // Group findings by cell; within a cell, one "vs <reference>" block per reference (prior / main /
@@ -491,7 +548,7 @@ function renderDetail() {
       }).join("");
       return head + blocks;
     }
-    if (state.openTile === "gate") {
+    if (ui_state.openTile === "gate") {
       const hits = runPerfHard(run);
       const cmp = (run.gate.compared_to || []).map((c) => priorLabel(c, plat)).join(", ") || "its reference run(s)";
       if (!hits.length) return head + `<p class="muted">no performance regressions (result: ${run.gate.result || "?"}).</p>`;
@@ -505,7 +562,7 @@ function renderDetail() {
       }).join("");
       return head + `<p class="muted">vs ${cmp}</p>${blocks}`;
     }
-    if (state.openTile === "tests") {
+    if (ui_state.openTile === "tests") {
       const t = run.tests, f = (t && t.failures) || [];
       return head + (f.length ? `<ul>${f.map((x) => `<li class="bad">${x}</li>`).join("")}</ul>`
         : (t && t.failed ? `<p class="bad">${t.failed} failing</p><p class="muted">(test names not captured in this log)</p>`
@@ -515,7 +572,7 @@ function renderDetail() {
     return head + (f.length ? `<ul>${f.map((c) => `<li class="bad">${cellKey(c)}${c.oom ? " — OOM" : ""}${c.error ? " — " + c.error : ""}</li>`).join("")}</ul>`
       : `<p class="muted">all configs ran.</p>`);
   };
-  box.innerHTML = `<div class="detail-box"><h3>${titles[state.openTile] || ""}</h3>${intro}${M.platforms.map(section).join("")}</div>`;
+  box.innerHTML = `<div class="detail-box"><h3>${titles[ui_state.openTile] || ""}</h3>${intro}${M.platforms.map(section).join("")}</div>`;
 }
 
 // ---- scaling view: data ------------------------------------------------------
@@ -528,7 +585,7 @@ function gridFor(run, geom, op) {
 }
 function refVal(geom, op, size, nd, metric) {
   const key = `${geom}|${op}|${size}|${nd}`;
-  if (state.ref === "best") { const r = M.records[state.platform + "|" + state.branch]; const e = r && r[key]; return e && e[metric] ? e[metric].value : null; }
+  if (ui_state.ref === "best") { const r = M.records[ui_state.platform + "|" + ui_state.branch]; const e = r && r[key]; return e && e[metric] ? e[metric].value : null; }
   const run = refRun(); if (!run) return null;
   const c = findCell(run, key);
   return c ? c[metric] : null;
@@ -537,8 +594,8 @@ function refVal(geom, op, size, nd, metric) {
 // reference run carries whatever device counts it measured (main is n=1-only, prerelease shards
 // parallel, etc.), and refVal returns null where the ref lacks a cell -> spanGaps bridges it.
 function refSeries(geom, op, sizes, ndevs, metric, div) {
-  if (state.ref === "none") return [];
-  const lab = REF_LABEL[state.ref] || state.ref;
+  if (ui_state.ref === "none") return [];
+  const lab = REF_LABEL[ui_state.ref] || ui_state.ref;
   const out = [];
   ndevs.forEach((nd) => {
     const ys = sizes.map((s) => { const v = refVal(geom, op, s, nd, metric); return v != null ? v / div : null; });
@@ -608,14 +665,14 @@ function throttleSeries(run, geom, op, sizes, ndevs, field, div) {
 
 function renderScaling() {
   const run = currentRun();
-  const [geom, op] = state.go.split("|");
-  $("sv-meta").textContent = run ? `${geom} · ${op} — ${state.branch} @ ${run.commit} · ${commitMinute(run)}` : "";
-  if (state.view === "table") { $("sv-plot").style.display = "none"; $("sv-table").style.display = ""; renderScalingTable(run, geom, op); return; }
+  const [geom, op] = ui_state.go.split("|");
+  $("sv-meta").textContent = run ? `${geom} · ${op} — ${ui_state.branch} @ ${run.commit} · ${commitMinute(run)}` : "";
+  if (ui_state.view === "table") { $("sv-plot").style.display = "none"; $("sv-table").style.display = ""; renderScalingTable(run, geom, op); return; }
   $("sv-plot").style.display = ""; $("sv-table").style.display = "none";
   const g = gridFor(run, geom, op);
   const { sizes, ndevs, at } = g;
   if (!sizes.length) { $("pTime").innerHTML = "<p class='muted'>no cells.</p>"; return; }
-  const PLAT = (state.platform || "").toUpperCase();
+  const PLAT = (ui_state.platform || "").toUpperCase();
   // The ∝-voxels/views "ideal" reference doesn't hold for the translation geometry — suppress it
   // (line + caption note) there; keep it for parallel/cone/multiaxis.
   const showIdeal = geom !== "translation";
@@ -726,8 +783,8 @@ function renderScalingLegend(ndevs, sizes, showIdeal) {
   const devs = ndevs.map((n) => k(devColor(n), "n=" + n)).join("");
   const szs = sizes.map((s, i) => k(SIZEC[i % SIZEC.length], s)).join("");
   // active comparison: solid black swatch + display name + provenance (branch @ commit)
-  const refNote = state.ref !== "none"
-    ? `<span class="k"><span class="sw" style="background:${REFC};height:4px"></span>${REF_LABEL[state.ref] || state.ref}${refProvenance() ? " (" + refProvenance() + ")" : ""}</span>` : "";
+  const refNote = ui_state.ref !== "none"
+    ? `<span class="k"><span class="sw" style="background:${REFC};height:4px"></span>${REF_LABEL[ui_state.ref] || ui_state.ref}${refProvenance() ? " (" + refProvenance() + ")" : ""}</span>` : "";
   // Top legend sits above time & memory (device-count curves + the overlay ref);
   // the second legend sits above speedup & shard (size curves).
   $("sv-legend").innerHTML =
@@ -748,7 +805,7 @@ function renderScalingTable(run, geom, op) {
   const useMin = allMs.length && Math.max(...allMs) >= 60000;
   const tUnit = useMin ? "min" : "s", tDiv = useMin ? 60000 : 1000;
   const fmtT = (ms) => ms == null ? "—" : (ms / tDiv).toFixed(2);
-  const refActive = state.ref !== "none";
+  const refActive = ui_state.ref !== "none";
   const dCell = (cur, ref, lowerBetter) => {
     if (cur == null || ref == null || ref === 0) return "<td class='num'>—</td>";
     const d = ((cur - ref) / Math.abs(ref)) * 100;
@@ -757,7 +814,7 @@ function renderScalingTable(run, geom, op) {
     return `<td class='num ${worse ? "up" : "dn"}'>${d > 0 ? "+" : ""}${d.toFixed(1)}%</td>`;
   };
   const tbl = (title, field, div, fmt, unit) => {
-    let h = `<table class='grid'><caption>${title}${unit ? " (" + unit + ")" : ""}${refActive ? " · Δ vs " + state.ref : ""}</caption><thead><tr><th>devices</th>`;
+    let h = `<table class='grid'><caption>${title}${unit ? " (" + unit + ")" : ""}${refActive ? " · Δ vs " + ui_state.ref : ""}</caption><thead><tr><th>devices</th>`;
     sizes.forEach((s) => { h += `<th>${s}</th>`; if (refActive) h += "<th>Δ</th>"; });
     h += "</tr></thead><tbody>";
     ndevs.forEach((nd) => {
@@ -804,28 +861,38 @@ function aggregate(run, n, geoms, timeOp) {
   return out;
 }
 // Click a history point -> show that run (and switch platform/branch to match).
+// Load a specific run into the run-dependent views (tiles / detail / scaling), syncing the platform +
+// branch selectors.  History is left untouched so its zoom survives.  By default the open drill-down is
+// PRESERVED (so the run-shown ◀/▶ can step while you watch the same panel update); pass resetOpen=true to
+// close it (History clicks do, since you're navigating away from a specific point).
+// Re-highlight the "run shown" guide/ring on the History panels WITHOUT re-rendering them (the draw
+// hooks read currentRun() live, so a redraw() suffices) — so the marker tracks navigation while the
+// panels' zoom survives.
+function refreshHistoryNow() {
+  ["hVcd", "hMem", "hGate"].forEach((id) => { const el = $(id); if (el && el._u) el._u.redraw(); });
+}
+function showRun(r, resetOpen) {
+  if (!r) return;
+  ui_state.platform = r.platform; ui_state.branch = r.branch; ui_state.runKey = runKey(r);
+  if (resetOpen) ui_state.openTile = null;
+  fillSelect("platform", M.platforms, ui_state.platform);
+  fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
+  renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); refreshHistoryNow();
+}
 function pickRun(spec, idx) {
   const t = spec._xs[idx];
-  const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === t);
-  if (!r) return;
-  state.platform = spec.meta.platform; state.branch = spec.meta.branch;
-  state.runKey = runKey(r); state.openTile = null;
-  fillSelect("platform", M.platforms, state.platform);
-  fillSelect("branch", branchesFor(state.platform), state.branch);
-  // Re-render only the run-dependent views; leave the History plots untouched so their current
-  // zoom survives the pick (the timeline is the same regardless of which run is selected).
-  renderTiles(); renderDetail(); syncGoSelect(); renderScaling();
+  showRun(runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === t), true);
 }
 function renderHistory() {
   // The history spans BOTH platforms and all branches; x is commit time
   // (falls back to collection date for older runs).
   const xs = uniq(M.runs.map(runTime)).sort((a, b) => a - b);
-  const n = state.histN;
-  const group = HIST_GROUPS.find((g) => g.id === state.histGroup) || HIST_GROUPS[0];
+  const n = ui_state.histN;
+  const group = HIST_GROUPS.find((g) => g.id === ui_state.histGroup) || HIST_GROUPS[0];
   // Branch filter: "all" shows every branch (colour=platform, style=geometry); selecting one
   // restricts all three panels to that branch only.
-  const branches = (state.histBranch && state.histBranch !== "all")
-    ? M.branches.filter((b) => b === state.histBranch) : M.branches;
+  const branches = (ui_state.histBranch && ui_state.histBranch !== "all")
+    ? M.branches.filter((b) => b === ui_state.histBranch) : M.branches;
   $("hCapVcd").textContent = `${group.opLabel} time at largest size (n=${n})`;
   $("hCapMem").textContent = `peak memory at largest size (n=${n})`;
   const aggByPB = {};  // "platform|branch" -> runTime -> aggregate (for the active geometry group)
@@ -909,7 +976,7 @@ function renderHistory() {
     return out;
   };
   const allMarks = (pick) => [...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
-  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup });
+  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true });
   linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem") });
   const gateSpecs = [];
@@ -918,7 +985,7 @@ function renderHistory() {
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gatePerf : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup });
+  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   $("hist-legend").innerHTML =
@@ -927,19 +994,20 @@ function renderHistory() {
     `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
     `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
     `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span>` +
+    `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
     `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span></span>`;
 }
 
 // Device-count choices for the History `n` selector = the counts present in the ACTIVE group's
 // geometries (cone/parallel have 1/2/4; translation/multiaxis are n=1 until sharding lands).  Clamps
-// state.histN into range so switching groups can't leave it on a count the new group lacks.
+// ui_state.histN into range so switching groups can't leave it on a count the new group lacks.
 function syncHistN() {
-  const group = HIST_GROUPS.find((g) => g.id === state.histGroup) || HIST_GROUPS[0];
+  const group = HIST_GROUPS.find((g) => g.id === ui_state.histGroup) || HIST_GROUPS[0];
   const devs = uniq(M.runs.flatMap((r) => r.cells.filter((c) => group.geoms.includes(c.geom)).map((c) => c.ndev)))
     .filter((x) => x != null).sort((a, b) => a - b);
   if (!devs.length) devs.push(1);
-  if (!devs.includes(state.histN)) state.histN = devs[0];
-  fillSelect("histN", devs, state.histN);
+  if (!devs.includes(ui_state.histN)) ui_state.histN = devs[0];
+  fillSelect("histN", devs, ui_state.histN);
 }
 
 // ---- correctness banner + tab badge (the dashboard IS the alert — design note D5) ----------------
@@ -980,12 +1048,12 @@ function renderBanner() {
   box.querySelectorAll(".cb-run").forEach((li) => li.onclick = () => {
     // Toggle: a second click on the row whose correctness detail is already open collapses it; clicking
     // a DIFFERENT row switches to (and opens) that run instead.
-    const isOpen = state.openTile === "correctness" && state.runKey === li.dataset.rk
-                   && state.platform === li.dataset.plat && state.branch === li.dataset.branch;
-    if (isOpen) { state.openTile = null; renderAll(); return; }
-    state.platform = li.dataset.plat; state.branch = li.dataset.branch; state.runKey = li.dataset.rk; state.openTile = "correctness";
-    fillSelect("platform", M.platforms, state.platform);
-    fillSelect("branch", branchesFor(state.platform), state.branch);
+    const isOpen = ui_state.openTile === "correctness" && ui_state.runKey === li.dataset.rk
+                   && ui_state.platform === li.dataset.plat && ui_state.branch === li.dataset.branch;
+    if (isOpen) { ui_state.openTile = null; renderAll(); return; }
+    ui_state.platform = li.dataset.plat; ui_state.branch = li.dataset.branch; ui_state.runKey = li.dataset.rk; ui_state.openTile = "correctness";
+    fillSelect("platform", M.platforms, ui_state.platform);
+    fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
     renderAll();
     $("tiles").scrollIntoView({ behavior: "smooth", block: "start" });
   });
@@ -1001,11 +1069,11 @@ function defaultBranch(plat) {
   return rs.length ? rs.reduce((a, b) => (runTime(b) > runTime(a) ? b : a)).branch : (branchesFor(plat)[0] || null);
 }
 function onPlatform() {
-  state.platform = $("platform").value;
-  const bs = branchesFor(state.platform);
-  if (!bs.includes(state.branch)) state.branch = defaultBranch(state.platform);
-  fillSelect("branch", bs, state.branch);
-  state.openTile = null; state.runKey = null; renderAll();
+  ui_state.platform = $("platform").value;
+  const bs = branchesFor(ui_state.platform);
+  if (!bs.includes(ui_state.branch)) ui_state.branch = defaultBranch(ui_state.platform);
+  fillSelect("branch", bs, ui_state.branch);
+  ui_state.openTile = null; ui_state.runKey = null; renderAll();
 }
 function init() {
   // The repo name at the end of the header line links to the repo (plain text if the URL is unknown).
@@ -1016,34 +1084,34 @@ function init() {
   $("footer").innerHTML = `${M.runs.length} run(s) · platforms ${M.platforms.join(", ")} · branches ${M.branches.join(", ")} · regenerate with <code>action_scripts/build_dashboard.sh</code>`;
   if (!M.runs.length) { $("tiles").innerHTML = "<p class='muted'>No runs found under results/.</p>"; return; }
 
-  state.platform = M.platforms.includes("gpu") ? "gpu" : M.platforms[0];
-  state.branch = defaultBranch(state.platform);
-  fillSelect("platform", M.platforms, state.platform);
-  fillSelect("branch", branchesFor(state.platform), state.branch);
+  ui_state.platform = M.platforms.includes("gpu") ? "gpu" : M.platforms[0];
+  ui_state.branch = defaultBranch(ui_state.platform);
+  fillSelect("platform", M.platforms, ui_state.platform);
+  fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
 
   $("platform").onchange = onPlatform;
-  $("branch").onchange = () => { state.branch = $("branch").value; state.openTile = null; state.runKey = null; renderAll(); };
-  $("op").onchange = () => { state.go = $("op").value; renderScaling(); };
-  $("ref").value = state.ref;
-  $("ref").onchange = () => { state.ref = $("ref").value; renderScaling(); };
+  $("branch").onchange = () => { ui_state.branch = $("branch").value; ui_state.openTile = null; ui_state.runKey = null; renderAll(); };
+  $("op").onchange = () => { ui_state.go = $("op").value; renderScaling(); };
+  $("ref").value = ui_state.ref;
+  $("ref").onchange = () => { ui_state.ref = $("ref").value; renderScaling(); };
   // History branch filter: "all" (default) overlays every branch; pick one to isolate it.
-  fillSelect("histBranch", ["all", ...M.branches], state.histBranch, ["all branches", ...M.branches]);
-  $("histBranch").onchange = () => { state.histBranch = $("histBranch").value; renderHistory(); };
+  fillSelect("histBranch", ["all", ...M.branches], ui_state.histBranch, ["all branches", ...M.branches]);
+  $("histBranch").onchange = () => { ui_state.histBranch = $("histBranch").value; renderHistory(); };
   // History geometry-group toggle: swaps cone+parallel <-> translation+multiaxis (different headline op).
   $("hist-group-seg").innerHTML = HIST_GROUPS.map((g) =>
-    `<button data-g="${g.id}" class="${g.id === state.histGroup ? "on" : ""}">${g.label}</button>`).join("");
+    `<button data-g="${g.id}" class="${g.id === ui_state.histGroup ? "on" : ""}">${g.label}</button>`).join("");
   $("hist-group-seg").querySelectorAll("button").forEach((b) => b.onclick = () => {
-    state.histGroup = b.dataset.g;
+    ui_state.histGroup = b.dataset.g;
     $("hist-group-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
     syncHistN(); renderHistory();
   });
   // History device-count selector (n): the device counts present in the ACTIVE group (the new
   // geometries only have n=1 until sharding lands, so the choices shrink when that group is selected).
   syncHistN();
-  $("histN").onchange = () => { state.histN = +$("histN").value; renderHistory(); };
+  $("histN").onchange = () => { ui_state.histN = +$("histN").value; renderHistory(); };
   $("view-seg").innerHTML = `<button data-v="plot" class="on">plot</button><button data-v="table">table</button>`;
   $("view-seg").querySelectorAll("button").forEach((b) => b.onclick = () => {
-    state.view = b.dataset.v; $("view-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); renderScaling();
+    ui_state.view = b.dataset.v; $("view-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); renderScaling();
   });
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { renderScaling(); renderHistory(); }, 160); });
   renderAll();

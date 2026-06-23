@@ -441,7 +441,7 @@ def path_info(model, op, devs, num_pixels, num_slices):
     NOT the legacy single-device path).  For the back op also record the sharded band length /
     band count (best-effort), which drive back memory and the horizontal-recompute cost.
     """
-    info = {"is_sharded": bool(getattr(model, "is_sharded", False)),
+    info = {"is_sharded": bool(getattr(model, "is_sharded", False)) or hasattr(model, "shard_devices"),
             "n_shard_devices": len(getattr(model, "shard_devices", None) or devs),
             "platform": devs[0].platform}
     if op == "back":

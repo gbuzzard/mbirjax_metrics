@@ -13,10 +13,8 @@ Design notes
 ────────────
 - Import mbirjax BEFORE jax (device-setup-first ordering).  These scripts are
   consumers, so they follow the rule users should follow.
-- which_mbirjax() prints the resolved mbirjax path at startup.  Because both
-  worktrees share one conda env and one editable install, the *working
-  directory* decides whether beta or research code is loaded — so we surface it
-  loudly rather than let a mis-set cwd give silently wrong results.
+- The setup banner (build_setup_result / print_setup_banner) surfaces the loaded mbirjax's git
+  BRANCH + path at startup, so a mis-set checkout gives a visible — not silent — wrong result.
 - Correctness is reported as the percent of elements whose abs error exceeds an
   fp32 threshold (plus max error and count), so a handful of bad points among
   millions reads as "0.0003% above threshold", not a total failure.  This is
@@ -45,7 +43,7 @@ matplotlib.use("Agg")   # file output only; no interactive backend needed
 import matplotlib.pyplot as plt
 
 # NOTE: jax and mbirjax are imported LAZILY, inside the functions that need them
-# (gpus / detect_platform / pick_devices / time_op / which_mbirjax).  This keeps
+# (gpus / detect_platform / pick_devices / time_op).  This keeps
 # `import scaling_common` JAX-free so the orchestrator (see the op driver) can
 # use the pure helpers — paths, YAML, plots, annotate_*, size_label,
 # default_device_counts, run_worker — WITHOUT initializing a JAX backend.  That
@@ -98,49 +96,6 @@ def pyproject_version(root):
         return m.group(1) if m else None
     except Exception:
         return None
-
-
-def beta_status(pkg_path):
-    """Identify whether the loaded mbirjax is the beta sharding code.
-
-    Detection is by GIT BRANCH, not directory name, so it works regardless of
-    where the worktree lives — locally the beta worktree is 'mbirjax_sharding',
-    but on the cluster the beta branch may be checked out into a plain 'mbirjax'
-    directory.  Beta == a branch whose name contains 'sharding' (the beta branch
-    is greg/parallel_sharding; research is greg/parallel_tests; prerelease is
-    'prerelease').
-
-    Returns:
-        (state, branch): state is 'beta', 'not-beta', or 'unknown' (branch could
-        not be determined — e.g. detached HEAD or no git).
-    """
-    branch = mbirjax_git_branch(pkg_path)
-    if branch is None:
-        return "unknown", None
-    return ("beta" if "sharding" in branch else "not-beta"), branch
-
-
-def which_mbirjax():
-    """Print a clear beta/not-beta banner for the resolved mbirjax (by branch).
-
-    Returns:
-        str: the mbirjax package path.
-    """
-    import mbirjax
-    path = os.path.dirname(mbirjax.__file__)
-    state, branch = beta_status(path)
-    print("=" * 72)
-    if state == "beta":
-        print(f"  mbirjax code in use:  *** beta ***  (branch {branch})")
-    elif state == "not-beta":
-        print(f"  mbirjax code in use:  ### NOT beta ###  (branch {branch})")
-        print("  !! WARNING: results will reflect NON-beta code.  Check PYTHONPATH /")
-        print("  !! working directory so the beta sharding branch is loaded.")
-    else:
-        print("  mbirjax code in use:  (branch undetermined — verify path manually)")
-    print(f"  path: {path}")
-    print("=" * 72)
-    return path
 
 
 # ── Subprocess orchestration (worker isolation) ───────────────────────────────
@@ -292,9 +247,9 @@ def build_setup_result(plat, max_dev, dev_label, corr):
         except Exception:   # noqa: BLE001 — best effort, never abort setup
             pass
     pkg_path = os.path.dirname(mbirjax.__file__)
-    state, branch = beta_status(pkg_path)   # by git branch, not dir name
+    branch = mbirjax_git_branch(pkg_path)   # the loaded mbirjax's git branch — the real identity
     result = {"platform": plat, "max_devices": max_dev, "device_label": dev_label,
-              "mbirjax_path": pkg_path, "beta_state": state, "branch": branch,
+              "mbirjax_path": pkg_path, "branch": branch,
               "correctness": corr, "topology": topology, "dev2dev_safe": dev2dev_safe}
     print(f"[setup] platform={plat}  max_devices={max_dev}  ({dev_label})")
     if dev2dev_safe is not None:
@@ -306,7 +261,7 @@ def build_setup_result(plat, max_dev, dev_label, corr):
 
 
 def print_setup_banner(setup):
-    """Orchestrator side: print the mbirjax / beta / platform / correctness /
+    """Orchestrator side: print the mbirjax / platform / correctness /
     topology banner from a setup-worker result, and return the common fields
     ``(plat, max_dev, dev_label, corr, mpath)``.  Topology / dev2dev lines print
     only when the worker recorded them (GPU runs).
@@ -316,15 +271,8 @@ def print_setup_banner(setup):
     dev_label = setup["device_label"]
     corr = setup["correctness"]
     mpath = setup.get("mbirjax_path", "?")
-    state = setup.get("beta_state", "unknown")
-    branch = setup.get("branch")
-    if state == "beta":
-        label = f"*** beta ***  (branch {branch})"
-    elif state == "not-beta":
-        label = f"### NOT beta — branch {branch} — check PYTHONPATH ###"
-    else:
-        label = "(branch undetermined — verify path manually)"
-    print(f"  mbirjax: {label}   {mpath}")
+    branch = setup.get("branch") or "(branch undetermined)"
+    print(f"  mbirjax: branch {branch}   {mpath}")
     print(f"  platform: {plat}   max devices: {max_dev}   ({dev_label})")
     if corr.get("baseline_present") and corr.get("max_abs_diff") is not None:
         print(f"  correctness: max_abs_diff={corr['max_abs_diff']:.3e}  "
@@ -376,7 +324,7 @@ def run_measure_loop(size_label, device_counts, out_file, build_and_time,
         write_worker_result(out_file, {"size": size_label, "mem_kind": mem_kind,
                                        "rows": rows, "failures": failures})
 
-    gpu_present = bool(sample_gpu_state())   # poll GPU clocks/temps DURING each timed run on a GPU node
+    gpu_present = bool(sample_gpu_health())   # poll GPU clocks/temps DURING each timed run on a GPU node
 
     for n in desc:
         devs = pick_devices(n)
@@ -412,10 +360,10 @@ def run_measure_loop(size_label, device_counts, out_file, build_and_time,
         if timed is None:   # op signalled "skip this device count"
             continue
         stats, mem_mb, mem_kind = timed
-        gpu_state = (sampler.worst() if sampler else []) or sample_gpu_state()
-        hot = throttled_gpus(gpu_state)
+        gpu_health = (sampler.worst() if sampler else []) or sample_gpu_health()
+        hot = throttled_gpus(gpu_health)
         rows.append({"n_devices": n, **stats, "mem_mb": mem_mb,
-                     "gpu_state": gpu_state, "throttled": bool(hot)})
+                     "gpu_health": gpu_health, "throttled": bool(hot)})
         print(f"  n_devices={n:2d}  min={stats['min_ms']:9.1f} ms  "
               f"mean={stats['mean_ms']:9.1f} ms  mem={mem_mb:8.1f} MB ({mem_kind})")
         if hot:
@@ -514,7 +462,7 @@ def _gi(s):
         return None
 
 
-def sample_gpu_state():
+def sample_gpu_health():
     """Per-GPU clocks (SM + memory, MHz), temps (core + HBM, C), and active throttle reasons, via
     nvidia-smi.  Returns a list of dicts (one per GPU), or ``[]`` when nvidia-smi is unavailable
     (CPU runs).  Falls back to the SM-clock-only query on drivers that lack the richer fields.
@@ -550,8 +498,8 @@ def sample_gpu_state():
     return []
 
 
-def throttled_gpus(state, temp_hot=85, mem_temp_hot=95):
-    """GPUs in ``state`` that look thermally/power throttled or thermally stressed.
+def throttled_gpus(gpu_health, temp_hot=85, mem_temp_hot=95):
+    """GPUs in ``gpu_health`` that look thermally/power throttled or thermally stressed.
 
     Flags a GPU if nvidia-smi reports ANY active thermal/power throttle reason, OR its core temp is
     >= ``temp_hot``, OR its HBM temp is >= ``mem_temp_hot``.  Temperature is the reliable signal: a
@@ -559,7 +507,7 @@ def throttled_gpus(state, temp_hot=85, mem_temp_hot=95):
     may throttle its MEMORY clock while the SM clock stays high.  Returns the suspect GPU dicts.
     """
     out = []
-    for g in state:
+    for g in gpu_health:
         t, mt = g.get("temp_c"), g.get("mem_temp_c")
         if (g.get("throttle")
                 or (t is not None and t >= temp_hot)
@@ -581,7 +529,7 @@ def _fmt_hot_gpu(g):
     return s
 
 
-def _worst_gpu_state(samples):
+def _worst_gpu_health(samples):
     """Per-GPU worst case across a list of samples (each sample = a list of GPU dicts): MIN clocks,
     MAX temps, and the union of throttle reasons ever seen.  A single post-run snapshot misses the
     throttling (the clock recovers the instant the kernel ends), so we poll DURING the work and keep
@@ -615,9 +563,9 @@ def _worst_gpu_state(samples):
 
 
 class _GpuSampler:
-    """Background poller: while a timed region runs, sample the GPU state every ``interval`` seconds
-    and keep the per-GPU worst (see _worst_gpu_state).  start() before the work, stop() after, read
-    worst().  The aggregate is [] on CPU nodes (sample_gpu_state returns [])."""
+    """Background poller: while a timed region runs, sample the GPU health every ``interval`` seconds
+    and keep the per-GPU worst (see _worst_gpu_health).  start() before the work, stop() after, read
+    worst().  The aggregate is [] on CPU nodes (sample_gpu_health returns [])."""
     def __init__(self, interval=1.0):
         self.interval = interval
         self._stop = threading.Event()
@@ -631,7 +579,7 @@ class _GpuSampler:
 
     def _run(self):
         while not self._stop.is_set():
-            s = sample_gpu_state()
+            s = sample_gpu_health()
             if s:
                 self._samples.append(s)
             self._stop.wait(self.interval)
@@ -642,7 +590,7 @@ class _GpuSampler:
             self._thread.join(timeout=3)
 
     def worst(self):
-        return _worst_gpu_state(self._samples)
+        return _worst_gpu_health(self._samples)
 
 
 def default_device_counts(max_devices):

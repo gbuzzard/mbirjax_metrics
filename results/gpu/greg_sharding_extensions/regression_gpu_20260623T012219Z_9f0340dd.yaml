@@ -174,7 +174,7 @@ cells:
   mean_ms: 4.248933992736663
   std_ms: 0.6167019095251501
   mem_mb: 20.261474609375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -204,7 +204,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -238,7 +238,7 @@ cells:
   mean_ms: 3.4817296739978096
   std_ms: 0.31344135714152405
   mem_mb: 32.956787109375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -268,7 +268,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -304,7 +304,7 @@ cells:
   mean_ms: 3.5926546649231264
   std_ms: 0.32445504396910124
   mem_mb: 58.347412109375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -334,7 +334,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -370,7 +370,7 @@ cells:
   mean_ms: 5.589685664745048
   std_ms: 0.41778337293093387
   mem_mb: 186.4365234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -400,7 +400,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -434,7 +434,7 @@ cells:
   mean_ms: 7.8278313352105515
   std_ms: 0.2865201146568184
   mem_mb: 354.4365234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -464,7 +464,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -498,7 +498,7 @@ cells:
   mean_ms: 12.952068325830624
   std_ms: 0.2874532450935145
   mem_mb: 690.4365234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -528,7 +528,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -562,7 +562,7 @@ cells:
   mean_ms: 7.585930657417824
   std_ms: 0.3772491289804284
   mem_mb: 275.4501953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -592,7 +592,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -626,7 +626,7 @@ cells:
   mean_ms: 11.190426662021006
   std_ms: 0.1657805338600253
   mem_mb: 362.68408203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -656,7 +656,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -693,7 +693,7 @@ cells:
   mean_ms: 20.254833342429873
   std_ms: 0.27586697423549034
   mem_mb: 699.55615234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -723,7 +723,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -757,7 +757,7 @@ cells:
   mean_ms: 34.01856400887482
   std_ms: 0.0
   mem_mb: 2002.45751953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -787,7 +787,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -821,7 +821,7 @@ cells:
   mean_ms: 64.20577599783428
   std_ms: 0.0
   mem_mb: 3955.45751953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -851,7 +851,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -885,7 +885,7 @@ cells:
   mean_ms: 125.66967398743145
   std_ms: 0.0
   mem_mb: 7861.45751953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -915,7 +915,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -949,7 +949,7 @@ cells:
   mean_ms: 12.126556005872166
   std_ms: 1.0521825441412826
   mem_mb: 25.916748046875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -979,7 +979,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -1016,7 +1016,7 @@ cells:
   mean_ms: 18.281881998215493
   std_ms: 0.27795300857060723
   mem_mb: 45.43359375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1046,7 +1046,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -1083,7 +1083,7 @@ cells:
   mean_ms: 33.5599516693037
   std_ms: 0.19905604164607568
   mem_mb: 87.64208984375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1113,7 +1113,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -1147,7 +1147,7 @@ cells:
   mean_ms: 230.82909333364418
   std_ms: 0.10125436934254306
   mem_mb: 256.357177734375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1177,7 +1177,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -1214,7 +1214,7 @@ cells:
   mean_ms: 504.0482770030697
   std_ms: 0.28852902225595645
   mem_mb: 589.66943359375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1244,7 +1244,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -1278,7 +1278,7 @@ cells:
   mean_ms: 1011.1676703381818
   std_ms: 0.08430964759585353
   mem_mb: 1081.217529296875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1308,7 +1308,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -1342,7 +1342,7 @@ cells:
   mean_ms: 273.30195899897564
   std_ms: 0.105283120452055
   mem_mb: 270.468505859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1372,7 +1372,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -1406,7 +1406,7 @@ cells:
   mean_ms: 592.145328662203
   std_ms: 0.13114296588066757
   mem_mb: 548.09619140625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1436,7 +1436,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -1470,7 +1470,7 @@ cells:
   mean_ms: 1096.2739126601566
   std_ms: 0.17679862397479232
   mem_mb: 1087.10009765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1500,7 +1500,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -1534,7 +1534,7 @@ cells:
   mean_ms: 9213.653222017456
   std_ms: 0.0
   mem_mb: 2889.461669921875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1564,7 +1564,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -1598,7 +1598,7 @@ cells:
   mean_ms: 16928.906592977
   std_ms: 0.0
   mem_mb: 6648.45068359375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1628,7 +1628,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -1662,7 +1662,7 @@ cells:
   mean_ms: 34033.801104000304
   std_ms: 0.0
   mem_mb: 11151.2314453125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1692,7 +1692,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -1726,7 +1726,7 @@ cells:
   mean_ms: 11.167247333408644
   std_ms: 0.6098647681458066
   mem_mb: 52.561767578125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1756,7 +1756,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 52
@@ -1791,7 +1791,7 @@ cells:
   mean_ms: 15.630474003652731
   std_ms: 0.32555852775408994
   mem_mb: 302.56591796875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1821,7 +1821,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 104
@@ -1856,7 +1856,7 @@ cells:
   mean_ms: 22.428765999696527
   std_ms: 0.2608155107627658
   mem_mb: 785.73828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1886,7 +1886,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 208
@@ -1923,7 +1923,7 @@ cells:
   mean_ms: 174.09501733103147
   std_ms: 0.9916167360944447
   mem_mb: 360.320556640625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -1953,7 +1953,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 34
@@ -1988,7 +1988,7 @@ cells:
   mean_ms: 359.0455180092249
   std_ms: 0.28345885771574875
   mem_mb: 1280.330078125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2018,7 +2018,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -2055,7 +2055,7 @@ cells:
   mean_ms: 660.300412341409
   std_ms: 0.2888360604849741
   mem_mb: 6642.977294921875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2085,7 +2085,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 448
@@ -2122,7 +2122,7 @@ cells:
   mean_ms: 204.66314164999253
   std_ms: 0.4440435587133553
   mem_mb: 454.656005859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2152,7 +2152,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 34
@@ -2190,7 +2190,7 @@ cells:
   mean_ms: 430.56990900853026
   std_ms: 0.13783859037652385
   mem_mb: 1053.87353515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2220,7 +2220,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -2255,7 +2255,7 @@ cells:
   mean_ms: 703.8910039991606
   std_ms: 0.26775969462034066
   mem_mb: 4025.97412109375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2285,7 +2285,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 449
@@ -2320,7 +2320,7 @@ cells:
   mean_ms: 4811.313098995015
   std_ms: 0.0
   mem_mb: 3386.771240234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2350,7 +2350,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 63
@@ -2387,7 +2387,7 @@ cells:
   mean_ms: 11050.37042699405
   std_ms: 0.0
   mem_mb: 5973.392822265625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2417,7 +2417,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 129
@@ -2454,7 +2454,7 @@ cells:
   mean_ms: 22543.51922997739
   std_ms: 0.0
   mem_mb: 24641.80712890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2484,7 +2484,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 129
@@ -2519,7 +2519,7 @@ cells:
   mean_ms: 553.9253579918295
   std_ms: 0.0
   mem_mb: 111.109619140625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2549,7 +2549,7 @@ cells:
   - 160
   - 208
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -2583,7 +2583,7 @@ cells:
   mean_ms: 327.34203900326975
   std_ms: 0.0
   mem_mb: 418.63720703125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2613,7 +2613,7 @@ cells:
   - 160
   - 208
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -2650,7 +2650,7 @@ cells:
   mean_ms: 384.6628630126361
   std_ms: 0.0
   mem_mb: 1037.5771484375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2680,7 +2680,7 @@ cells:
   - 160
   - 208
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -2714,7 +2714,7 @@ cells:
   mean_ms: 2202.90807200945
   std_ms: 0.0
   mem_mb: 1270.544189453125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2744,7 +2744,7 @@ cells:
   - 384
   - 448
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -2780,7 +2780,7 @@ cells:
   mean_ms: 4043.315529997926
   std_ms: 0.0
   mem_mb: 2682.229248046875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2810,7 +2810,7 @@ cells:
   - 384
   - 448
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -2844,7 +2844,7 @@ cells:
   mean_ms: 7745.122388005257
   std_ms: 0.0
   mem_mb: 9423.57177734375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2874,7 +2874,7 @@ cells:
   - 384
   - 448
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -2908,7 +2908,7 @@ cells:
   mean_ms: 2523.24687098735
   std_ms: 0.0
   mem_mb: 1358.971435546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -2938,7 +2938,7 @@ cells:
   - 385
   - 449
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -2972,7 +2972,7 @@ cells:
   mean_ms: 4702.868994005257
   std_ms: 0.0
   mem_mb: 2882.717041015625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3002,7 +3002,7 @@ cells:
   - 385
   - 449
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -3038,7 +3038,7 @@ cells:
   mean_ms: 8338.486074004322
   std_ms: 0.0
   mem_mb: 6943.2890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3068,7 +3068,7 @@ cells:
   - 385
   - 449
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -3104,7 +3104,7 @@ cells:
   mean_ms: 63355.0227600208
   std_ms: 0.0
   mem_mb: 14474.556884765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3134,7 +3134,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -3168,7 +3168,7 @@ cells:
   mean_ms: 121998.8969170081
   std_ms: 0.0
   mem_mb: 28829.655029296875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3198,7 +3198,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -3232,7 +3232,7 @@ cells:
   mean_ms: 276574.2788639909
   std_ms: 0.0
   mem_mb: 60676.895751953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3262,7 +3262,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -3296,7 +3296,7 @@ cells:
   mean_ms: 5.2873559955817955
   std_ms: 0.5018814226451266
   mem_mb: 21.0244140625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3326,7 +3326,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -3363,7 +3363,7 @@ cells:
   mean_ms: 4.878873995039612
   std_ms: 0.4750063847339753
   mem_mb: 33.7197265625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3393,7 +3393,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -3430,7 +3430,7 @@ cells:
   mean_ms: 5.522532990047087
   std_ms: 0.5243439494313508
   mem_mb: 59.1103515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3460,7 +3460,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -3496,7 +3496,7 @@ cells:
   mean_ms: 7.5856850113874925
   std_ms: 0.5922270111154981
   mem_mb: 190.377685546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3526,7 +3526,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -3560,7 +3560,7 @@ cells:
   mean_ms: 9.815424321762597
   std_ms: 0.23050432873486212
   mem_mb: 358.377685546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3590,7 +3590,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -3624,7 +3624,7 @@ cells:
   mean_ms: 14.358583672825867
   std_ms: 0.37477058520521467
   mem_mb: 694.377685546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3654,7 +3654,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -3690,7 +3690,7 @@ cells:
   mean_ms: 9.33290800700585
   std_ms: 0.44169188497873374
   mem_mb: 197.077880859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3720,7 +3720,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -3756,7 +3756,7 @@ cells:
   mean_ms: 13.125928671797737
   std_ms: 0.1882353120310368
   mem_mb: 365.891357421875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3786,7 +3786,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -3820,7 +3820,7 @@ cells:
   mean_ms: 21.223576991663624
   std_ms: 0.21973090828344488
   mem_mb: 703.518310546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3850,7 +3850,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -3886,7 +3886,7 @@ cells:
   mean_ms: 37.094747996889055
   std_ms: 0.0
   mem_mb: 2025.348388671875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3916,7 +3916,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -3952,7 +3952,7 @@ cells:
   mean_ms: 67.46957800351083
   std_ms: 0.0
   mem_mb: 3982.162841796875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -3982,7 +3982,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -4016,7 +4016,7 @@ cells:
   mean_ms: 129.95365099050105
   std_ms: 0.0
   mem_mb: 7888.162841796875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4046,7 +4046,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -4080,7 +4080,7 @@ cells:
   mean_ms: 47.98925666060919
   std_ms: 0.5068685657168742
   mem_mb: 219.920166015625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4110,7 +4110,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -4148,7 +4148,7 @@ cells:
   mean_ms: 25.45040934152591
   std_ms: 0.4705425772969287
   mem_mb: 438.833251953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4178,7 +4178,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -4215,7 +4215,7 @@ cells:
   mean_ms: 41.77500532629589
   std_ms: 0.12660743662469673
   mem_mb: 798.134033203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4245,7 +4245,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -4281,7 +4281,7 @@ cells:
   mean_ms: 500.24089534417726
   std_ms: 22.350378084918056
   mem_mb: 1452.803955078125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4311,7 +4311,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -4347,7 +4347,7 @@ cells:
   mean_ms: 682.9201446574492
   std_ms: 14.277746198903241
   mem_mb: 2625.13232421875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4377,7 +4377,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -4411,7 +4411,7 @@ cells:
   mean_ms: 1260.1855983375572
   std_ms: 0.08768875590795772
   mem_mb: 4613.7294921875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4441,7 +4441,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -4475,7 +4475,7 @@ cells:
   mean_ms: 514.7424053381352
   std_ms: 16.31461903557015
   mem_mb: 1471.977783203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4505,7 +4505,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -4539,7 +4539,7 @@ cells:
   mean_ms: 730.7307459996082
   std_ms: 10.790263115110251
   mem_mb: 2594.78173828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4569,7 +4569,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -4605,7 +4605,7 @@ cells:
   mean_ms: 1369.8921506584156
   std_ms: 0.16952773320142092
   mem_mb: 4625.46337890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4635,7 +4635,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -4669,7 +4669,7 @@ cells:
   mean_ms: 14972.224047000054
   std_ms: 0.0
   mem_mb: 8005.949462890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4699,7 +4699,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -4735,7 +4735,7 @@ cells:
   mean_ms: 21899.16856601485
   std_ms: 0.0
   mem_mb: 15749.036376953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4765,7 +4765,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -4801,7 +4801,7 @@ cells:
   mean_ms: 40971.25572999357
   std_ms: 0.0
   mem_mb: 26162.518798828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4831,7 +4831,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -4865,7 +4865,7 @@ cells:
   mean_ms: 14.770390659881135
   std_ms: 0.15074196406933285
   mem_mb: 84.273681640625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4895,7 +4895,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 52
@@ -4933,7 +4933,7 @@ cells:
   mean_ms: 25.91990500028866
   std_ms: 0.08603825523767655
   mem_mb: 303.273681640625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -4963,7 +4963,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 104
@@ -4998,7 +4998,7 @@ cells:
   mean_ms: 23.641260670653235
   std_ms: 0.15897041199440334
   mem_mb: 906.783935546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5028,7 +5028,7 @@ cells:
   - 160
   - 208
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 208
@@ -5065,7 +5065,7 @@ cells:
   mean_ms: 355.4220506630372
   std_ms: 0.11138659620583533
   mem_mb: 391.91259765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5095,7 +5095,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 34
@@ -5133,7 +5133,7 @@ cells:
   mean_ms: 735.9796180098783
   std_ms: 0.13071957047661692
   mem_mb: 1195.24462890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5163,7 +5163,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -5201,7 +5201,7 @@ cells:
   mean_ms: 643.8950550024553
   std_ms: 0.10470316788616718
   mem_mb: 5358.959716796875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5231,7 +5231,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 448
@@ -5268,7 +5268,7 @@ cells:
   mean_ms: 284.3723423429765
   std_ms: 0.09614379177901544
   mem_mb: 400.26123046875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5298,7 +5298,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 34
@@ -5333,7 +5333,7 @@ cells:
   mean_ms: 666.9812846618394
   std_ms: 0.21284764026838834
   mem_mb: 966.6015625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5363,7 +5363,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -5400,7 +5400,7 @@ cells:
   mean_ms: 618.0977866655061
   std_ms: 0.43566391602589216
   mem_mb: 3377.95947265625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5430,7 +5430,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 449
@@ -5465,7 +5465,7 @@ cells:
   mean_ms: 11205.183879006654
   std_ms: 0.0
   mem_mb: 3203.664794921875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5495,7 +5495,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 63
@@ -5532,7 +5532,7 @@ cells:
   mean_ms: 21768.168784998124
   std_ms: 0.0
   mem_mb: 5952.175048828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5562,7 +5562,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 129
@@ -5599,7 +5599,7 @@ cells:
   mean_ms: 18610.944352985825
   std_ms: 0.0
   mem_mb: 20729.7958984375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5629,7 +5629,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 129
@@ -5664,7 +5664,7 @@ cells:
   mean_ms: 629.936458019074
   std_ms: 0.0
   mem_mb: 289.306884765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5694,7 +5694,7 @@ cells:
   - 160
   - 208
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -5731,7 +5731,7 @@ cells:
   mean_ms: 391.22525000129826
   std_ms: 0.0
   mem_mb: 575.568603515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5761,7 +5761,7 @@ cells:
   - 160
   - 208
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -5798,7 +5798,7 @@ cells:
   mean_ms: 441.2490179820452
   std_ms: 0.0
   mem_mb: 1158.8994140625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5828,7 +5828,7 @@ cells:
   - 160
   - 208
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -5862,7 +5862,7 @@ cells:
   mean_ms: 4095.1097880024463
   std_ms: 0.0
   mem_mb: 2347.34228515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5892,7 +5892,7 @@ cells:
   - 384
   - 448
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -5926,7 +5926,7 @@ cells:
   mean_ms: 6570.019553997554
   std_ms: 0.0
   mem_mb: 4448.6259765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -5956,7 +5956,7 @@ cells:
   - 384
   - 448
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -5993,7 +5993,7 @@ cells:
   mean_ms: 8672.960855998099
   std_ms: 0.0
   mem_mb: 8139.552978515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6023,7 +6023,7 @@ cells:
   - 384
   - 448
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -6057,7 +6057,7 @@ cells:
   mean_ms: 4214.442868018523
   std_ms: 0.0
   mem_mb: 2390.899658203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6087,7 +6087,7 @@ cells:
   - 385
   - 449
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -6121,7 +6121,7 @@ cells:
   mean_ms: 6494.78614598047
   std_ms: 0.0
   mem_mb: 4510.124755859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6151,7 +6151,7 @@ cells:
   - 385
   - 449
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -6188,7 +6188,7 @@ cells:
   mean_ms: 9028.491122997366
   std_ms: 0.0
   mem_mb: 8279.311279296875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6218,7 +6218,7 @@ cells:
   - 385
   - 449
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -6254,7 +6254,7 @@ cells:
   mean_ms: 120236.36947301566
   std_ms: 0.0
   mem_mb: 18680.727783203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6284,7 +6284,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -6318,7 +6318,7 @@ cells:
   mean_ms: 205752.1243590163
   std_ms: 0.0
   mem_mb: 37044.83154296875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6348,7 +6348,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -6382,7 +6382,7 @@ cells:
   mean_ms: 263920.6868929905
   std_ms: 0.0
   mem_mb: 72026.67749023438
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6412,7 +6412,7 @@ cells:
   - 992
   - 1008
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -6446,7 +6446,7 @@ cells:
   mean_ms: 4.666791656442608
   std_ms: 0.60222090106262
   mem_mb: 1.2001953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6476,7 +6476,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -6512,7 +6512,7 @@ cells:
   mean_ms: 3.7068643335563443
   std_ms: 0.2799095124804406
   mem_mb: 2.2880859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6542,7 +6542,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -6578,7 +6578,7 @@ cells:
   mean_ms: 3.2745753317916146
   std_ms: 0.2728480769777343
   mem_mb: 4.192626953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6608,7 +6608,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -6644,7 +6644,7 @@ cells:
   mean_ms: 4.756821009020011
   std_ms: 0.3939143932313749
   mem_mb: 15.527587890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6674,7 +6674,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -6708,7 +6708,7 @@ cells:
   mean_ms: 3.9071836799848825
   std_ms: 0.24664808216262737
   mem_mb: 17.528076171875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6738,7 +6738,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -6774,7 +6774,7 @@ cells:
   mean_ms: 3.6553579945272454
   std_ms: 0.3332880571793681
   mem_mb: 21.031005859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6804,7 +6804,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -6840,7 +6840,7 @@ cells:
   mean_ms: 4.932924668537453
   std_ms: 0.5627814923353499
   mem_mb: 18.60107421875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6870,7 +6870,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -6904,7 +6904,7 @@ cells:
   mean_ms: 3.958013995240132
   std_ms: 0.35612470895899545
   mem_mb: 20.61669921875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -6934,7 +6934,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -6970,7 +6970,7 @@ cells:
   mean_ms: 3.7153213343117386
   std_ms: 0.30591939522274325
   mem_mb: 24.147216796875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7000,7 +7000,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -7036,7 +7036,7 @@ cells:
   mean_ms: 14.699206997950872
   std_ms: 1.11446598720206
   mem_mb: 5.0732421875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7066,7 +7066,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -7103,7 +7103,7 @@ cells:
   mean_ms: 6.981812339896957
   std_ms: 0.7665492312068122
   mem_mb: 9.63330078125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7133,7 +7133,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -7169,7 +7169,7 @@ cells:
   mean_ms: 1.1512119866286714
   std_ms: 0.2588636953789709
   mem_mb: 17.09423828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7199,7 +7199,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -7233,7 +7233,7 @@ cells:
   mean_ms: 29.96129300057267
   std_ms: 4.7784680783270055
   mem_mb: 26.73779296875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7263,7 +7263,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -7300,7 +7300,7 @@ cells:
   mean_ms: 10.961739986669272
   std_ms: 0.2227410903414193
   mem_mb: 50.43310546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7330,7 +7330,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -7364,7 +7364,7 @@ cells:
   mean_ms: 2.59096099762246
   std_ms: 0.132640516054267
   mem_mb: 82.779052734375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7394,7 +7394,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -7430,7 +7430,7 @@ cells:
   mean_ms: 33.68491966587802
   std_ms: 1.2717442289831278
   mem_mb: 29.89697265625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7460,7 +7460,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -7496,7 +7496,7 @@ cells:
   mean_ms: 13.565223664045334
   std_ms: 0.30805022248794856
   mem_mb: 55.620849609375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7526,7 +7526,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -7562,7 +7562,7 @@ cells:
   mean_ms: 2.9735379988172403
   std_ms: 0.09823274371439455
   mem_mb: 100.05078125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7592,7 +7592,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -7626,7 +7626,7 @@ cells:
   mean_ms: 8.477970336874327
   std_ms: 0.47957615652363333
   mem_mb: 1.088134765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7656,7 +7656,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 16
@@ -7691,7 +7691,7 @@ cells:
   mean_ms: 4.302731996479754
   std_ms: 0.3229628505357817
   mem_mb: 1.506103515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7721,7 +7721,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 32
@@ -7759,7 +7759,7 @@ cells:
   mean_ms: 3.1242830057938895
   std_ms: 0.3052653600772845
   mem_mb: 2.63134765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7789,7 +7789,7 @@ cells:
   - 65
   - 65
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 65
@@ -7824,7 +7824,7 @@ cells:
   mean_ms: 7.326869003009051
   std_ms: 0.5209955345946203
   mem_mb: 16.040283203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7854,7 +7854,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 64
@@ -7891,7 +7891,7 @@ cells:
   mean_ms: 3.6114036629442126
   std_ms: 0.45579011085641014
   mem_mb: 26.658447265625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7921,7 +7921,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 128
@@ -7956,7 +7956,7 @@ cells:
   mean_ms: 3.6216486672249935
   std_ms: 0.2238297522648614
   mem_mb: 95.973388671875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -7986,7 +7986,7 @@ cells:
   - 256
   - 256
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 256
@@ -8023,7 +8023,7 @@ cells:
   mean_ms: 8.12338400282897
   std_ms: 0.266570445043226
   mem_mb: 16.343017578125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8053,7 +8053,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 64
@@ -8091,7 +8091,7 @@ cells:
   mean_ms: 4.485758681160708
   std_ms: 0.4002068290333409
   mem_mb: 22.628662109375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8121,7 +8121,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 128
@@ -8159,7 +8159,7 @@ cells:
   mean_ms: 3.72499732960326
   std_ms: 0.25825183303388216
   mem_mb: 113.251953125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8189,7 +8189,7 @@ cells:
   - 257
   - 257
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 257
@@ -8226,7 +8226,7 @@ cells:
   mean_ms: 3.1036373305444918
   std_ms: 0.39710713196716896
   mem_mb: 6.402099609375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8256,7 +8256,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -8292,7 +8292,7 @@ cells:
   mean_ms: 2.669436992922177
   std_ms: 0.31174988962741157
   mem_mb: 9.285888671875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8322,7 +8322,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -8358,7 +8358,7 @@ cells:
   mean_ms: 2.4597670029227934
   std_ms: 0.27628656277874264
   mem_mb: 14.215087890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8388,7 +8388,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -8424,7 +8424,7 @@ cells:
   mean_ms: 3.797266341280192
   std_ms: 0.4898396605861142
   mem_mb: 30.10888671875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8454,7 +8454,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -8491,7 +8491,7 @@ cells:
   mean_ms: 3.753360011614859
   std_ms: 0.23328328490948766
   mem_mb: 51.10888671875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8521,7 +8521,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -8555,7 +8555,7 @@ cells:
   mean_ms: 5.001974321203306
   std_ms: 0.24283730202235393
   mem_mb: 93.10888671875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8585,7 +8585,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -8619,7 +8619,7 @@ cells:
   mean_ms: 5.492644335996981
   std_ms: 0.44410038412522757
   mem_mb: 186.4384765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8649,7 +8649,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -8683,7 +8683,7 @@ cells:
   mean_ms: 7.662519676766048
   std_ms: 0.2919036884988668
   mem_mb: 354.4384765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8713,7 +8713,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -8749,7 +8749,7 @@ cells:
   mean_ms: 12.99033400331003
   std_ms: 0.38146653817150195
   mem_mb: 690.4384765625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8779,7 +8779,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -8815,7 +8815,7 @@ cells:
   mean_ms: 7.6643910045580315
   std_ms: 0.6715198215988586
   mem_mb: 193.11767578125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8845,7 +8845,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -8879,7 +8879,7 @@ cells:
   mean_ms: 11.211425667473426
   std_ms: 0.25177452295426417
   mem_mb: 361.93115234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8909,7 +8909,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -8943,7 +8943,7 @@ cells:
   mean_ms: 19.554817331178736
   std_ms: 0.3217158100772189
   mem_mb: 699.55810546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -8973,7 +8973,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -9009,7 +9009,7 @@ cells:
   mean_ms: 24.557978661808495
   std_ms: 1.2798957147198005
   mem_mb: 95.70361328125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9039,7 +9039,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -9076,7 +9076,7 @@ cells:
   mean_ms: 10.390973999164999
   std_ms: 0.5258985283823174
   mem_mb: 186.86328125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9106,7 +9106,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -9144,7 +9144,7 @@ cells:
   mean_ms: 8.516476324681813
   std_ms: 0.14442219402782971
   mem_mb: 357.84716796875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9174,7 +9174,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -9210,7 +9210,7 @@ cells:
   mean_ms: 67.69736568094231
   std_ms: 1.263451866038853
   mem_mb: 396.79150390625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9240,7 +9240,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -9274,7 +9274,7 @@ cells:
   mean_ms: 70.76793000063238
   std_ms: 1.8654440070502254
   mem_mb: 800.425537109375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9304,7 +9304,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -9338,7 +9338,7 @@ cells:
   mean_ms: 119.28812400825943
   std_ms: 0.1578015985280836
   mem_mb: 1444.305908203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9368,7 +9368,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -9402,7 +9402,7 @@ cells:
   mean_ms: 825.0104533314394
   std_ms: 14.792235396116142
   mem_mb: 2731.234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9432,7 +9432,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -9469,7 +9469,7 @@ cells:
   mean_ms: 1182.5023756634134
   std_ms: 18.34775090981207
   mem_mb: 5177.515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9499,7 +9499,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -9535,7 +9535,7 @@ cells:
   mean_ms: 2270.1379529898986
   std_ms: 0.16335615301443052
   mem_mb: 9710.48486328125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9565,7 +9565,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -9599,7 +9599,7 @@ cells:
   mean_ms: 822.2838390017083
   std_ms: 32.54883471616596
   mem_mb: 2757.331298828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9629,7 +9629,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -9666,7 +9666,7 @@ cells:
   mean_ms: 1329.941612338492
   std_ms: 61.48714001102081
   mem_mb: 5179.2060546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9696,7 +9696,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -9730,7 +9730,7 @@ cells:
   mean_ms: 2365.321771678282
   std_ms: 0.05252493275128315
   mem_mb: 9734.751220703125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9760,7 +9760,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -9794,7 +9794,7 @@ cells:
   mean_ms: 8.569344334925214
   std_ms: 0.8249103276252728
   mem_mb: 20.2578125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9824,7 +9824,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 28
@@ -9862,7 +9862,7 @@ cells:
   mean_ms: 4.975860996637493
   std_ms: 0.16134937538726798
   mem_mb: 98.778076171875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9892,7 +9892,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 56
@@ -9930,7 +9930,7 @@ cells:
   mean_ms: 8.418937330134213
   std_ms: 0.12460966034030933
   mem_mb: 371.79833984375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -9960,7 +9960,7 @@ cells:
   - 97
   - 113
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 113
@@ -9995,7 +9995,7 @@ cells:
   mean_ms: 26.263573672622442
   std_ms: 0.13866077823626888
   mem_mb: 150.8173828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10025,7 +10025,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 56
@@ -10063,7 +10063,7 @@ cells:
   mean_ms: 39.57457967529384
   std_ms: 0.07502155710935067
   mem_mb: 425.52880859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10093,7 +10093,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -10130,7 +10130,7 @@ cells:
   mean_ms: 38.01346165710129
   std_ms: 0.21354089822024525
   mem_mb: 1197.518310546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10160,7 +10160,7 @@ cells:
   - 192
   - 224
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 224
@@ -10197,7 +10197,7 @@ cells:
   mean_ms: 338.50268300739117
   std_ms: 0.271614884836429
   mem_mb: 417.921630859375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10227,7 +10227,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 34
@@ -10264,7 +10264,7 @@ cells:
   mean_ms: 661.3042503304314
   std_ms: 0.11319170800697176
   mem_mb: 967.252685546875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10294,7 +10294,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -10329,7 +10329,7 @@ cells:
   mean_ms: 580.4859580142269
   std_ms: 0.17957740371983902
   mem_mb: 5358.959228515625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10359,7 +10359,7 @@ cells:
   - 384
   - 448
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 448
@@ -10394,7 +10394,7 @@ cells:
   mean_ms: 287.8896826587152
   std_ms: 0.16264885407554383
   mem_mb: 423.583740234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10424,7 +10424,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   back_band_len: 34
@@ -10459,7 +10459,7 @@ cells:
   mean_ms: 692.118995328201
   std_ms: 0.07580481463771456
   mem_mb: 812.009033203125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10489,7 +10489,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   back_band_len: 112
@@ -10524,7 +10524,7 @@ cells:
   mean_ms: 538.8398720048523
   std_ms: 0.7653693511886479
   mem_mb: 3377.9609375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10554,7 +10554,7 @@ cells:
   - 385
   - 449
   trials: 3
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   back_band_len: 449
@@ -10591,7 +10591,7 @@ cells:
   mean_ms: 2403.3939970249776
   std_ms: 0.0
   mem_mb: 53.7822265625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10621,7 +10621,7 @@ cells:
   - 241
   - 257
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -10657,7 +10657,7 @@ cells:
   mean_ms: 1636.3170149852522
   std_ms: 0.0
   mem_mb: 106.529296875
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10687,7 +10687,7 @@ cells:
   - 241
   - 257
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -10725,7 +10725,7 @@ cells:
   mean_ms: 750.1445329980925
   std_ms: 0.0
   mem_mb: 229.4990234375
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10755,7 +10755,7 @@ cells:
   - 241
   - 257
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -10789,7 +10789,7 @@ cells:
   mean_ms: 2624.04265999794
   std_ms: 0.0
   mem_mb: 253.793212890625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10819,7 +10819,7 @@ cells:
   - 448
   - 384
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -10856,7 +10856,7 @@ cells:
   mean_ms: 1719.9244249786716
   std_ms: 0.0
   mem_mb: 506.62548828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10886,7 +10886,7 @@ cells:
   - 448
   - 384
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -10923,7 +10923,7 @@ cells:
   mean_ms: 984.1852860117797
   std_ms: 0.0
   mem_mb: 1449.988525390625
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -10953,7 +10953,7 @@ cells:
   - 448
   - 384
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:
@@ -10989,7 +10989,7 @@ cells:
   mean_ms: 5203.976096003316
   std_ms: 0.0
   mem_mb: 2941.31298828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -11019,7 +11019,7 @@ cells:
   - 1008
   - 992
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 4
   platform: gpu
   fingerprint:
@@ -11056,7 +11056,7 @@ cells:
   mean_ms: 3820.861924003111
   std_ms: 0.0
   mem_mb: 5870.81298828125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -11086,7 +11086,7 @@ cells:
   - 1008
   - 992
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 2
   platform: gpu
   fingerprint:
@@ -11123,7 +11123,7 @@ cells:
   mean_ms: 4070.673088019248
   std_ms: 0.0
   mem_mb: 17093.92236328125
-  gpu_state:
+  gpu_health:
   - index: 0
     sm_mhz: 1980
     mem_mhz: 2619
@@ -11153,7 +11153,7 @@ cells:
   - 1008
   - 992
   trials: 1
-  is_sharded: false
+  is_sharded: true
   n_shard_devices: 1
   platform: gpu
   fingerprint:

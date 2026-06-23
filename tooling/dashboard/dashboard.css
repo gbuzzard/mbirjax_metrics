@@ -79,6 +79,15 @@ section { margin: 26px 0; }
 .tile .warnflag.throttled { color: var(--fail); }
 .tile .warnflag.incorrect { color: var(--fail); font-weight: 700; }
 .tile .warnflag.muted { color: var(--muted); font-weight: 500; }
+/* Run-shown tile navigation: ◀/▶ step through this platform+branch's runs by time; ⇄ swaps to the
+   other platform's run of the SAME commit (disabled — greyed — when there isn't one). */
+.runnav { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.runnav button { font: inherit; font-size: 12px; line-height: 1; padding: 3px 8px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); border-radius: 5px; cursor: pointer; }
+.runnav button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.runnav button:disabled { opacity: 0.38; cursor: default; }
+.runnav .rn-pos { font-size: 11px; color: var(--muted); }
+.runnav .rn-plat { margin-left: auto; }
 
 /* Correctness banner — the dashboard-native alert (design note D5): a sticky red bar at the top that
    lists every unacknowledged correctness divergence across all branches/platforms.  Stays pinned on

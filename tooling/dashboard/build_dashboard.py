@@ -94,7 +94,7 @@ def _slim_fingerprint(fp: dict | None) -> dict | None:
     return out
 
 
-def _slim_gpu_state(gs) -> list | None:
+def _slim_gpu_health(gs) -> list | None:
     """Per-GPU clocks/temps/throttle for the page — but ONLY for cells worth flagging (any GPU at or
     over a warm threshold, or a throttle reason active); cool cells carry nothing, keeping the
     embedded JSON lean.  Short keys: i=index, t=core°C, mt=HBM°C, sm=SM MHz, mem=mem MHz, thr=reasons.
@@ -130,7 +130,7 @@ def _slim_cell(c: dict) -> dict:
         "speedup": c.get("speedup"),
         "is_sharded": c.get("is_sharded"),
         "throttled": c.get("throttled"),
-        "gpu": _slim_gpu_state(c.get("gpu_state")),
+        "gpu": _slim_gpu_health(c.get("gpu_health")),
         "failed": bool(c.get("failed", False)),
         "oom": bool(c.get("oom", False)),
         "error": c.get("error"),
