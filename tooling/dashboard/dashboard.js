@@ -79,14 +79,17 @@ const commitMinute = (r) => (r.commit_date ? r.commit_date.slice(0, 16).replace(
 // ---- correctness (severity split, design note D1/D6) -------------------------------------------
 // The "reviewed-through" watermark (a single date from results/correctness_acks.yaml): a run whose
 // commit is dated <= this is acknowledged — kept visible but greyed and dropped from the banner/badge.
-const ackThrough = M.cleared_through ? Date.parse(M.cleared_through + "T23:59:59Z") / 1000 : null;
+// Compare by the commit's LOCAL calendar date (runDateLabel -> "YYYY-MM-DD"), NOT a UTC timestamp, so it
+// matches clear_correctness.py / the build analyzer (both use commit_date[:10]).  An evening commit in a
+// negative-offset zone is "the 22nd" locally even though it's already the 23rd in UTC — a UTC compare
+// would leave it un-acknowledged and keep the banner up after clear_correctness said "nothing to clear".
 // Correctness findings are computed corpus-wide by build_dashboard (prior + cross-device + vs-main),
 // each {reference, cell, basis, discrepancies[]}.  Perf hard hits stay on gate.hard (kind != correctness).
 const runCorr = (r) => (r.correctness || []);
 const runCorrCells = (r) => new Set(runCorr(r).map((f) => f.cell)).size;   // distinct divergent configs
 const runPerfHard = (r) => (r.gate && r.gate.hard || []).filter((h) => h.kind !== "correctness");
 const runIncorrect = (r) => runCorr(r).length > 0;            // diverges on at least one cell/reference
-const runAcked = (r) => ackThrough != null && runTime(r) <= ackThrough;
+const runAcked = (r) => M.cleared_through != null && runDateLabel(r) <= M.cleared_through;
 const runAlert = (r) => runIncorrect(r) && !runAcked(r);     // unacknowledged -> drives banner/badge/markers
 // A gate basis / compared_to string is the prior RUN's filename ("prior:regression_<plat>_<ts>_<sha>.yaml").
 // Render it like a run entry — "GPU · <commit> · <commit date+time>" — by resolving its sha to that run.
@@ -527,7 +530,7 @@ function renderDetail() {
     intro = `<p>Each run is compared per config + metric against its reference run(s).  This panel shows <b>performance</b> regressions — correctness has its own tile. <b>Hard:</b> structural change, ok→fail, expected-but-absent, GPU peak-memory &gt;${pct(gc.mem_hard_pct)}. <b>Soft:</b> speedup drop &gt;${pct(gc.speedup_warn_pct)}, time &gt;${pct(gc.time_soft_pct)}, CPU memory, sweep add/drop.</p>`;
   } else if (ui_state.openTile === "correctness") {
     const ct = M.corr_tol || {};
-    intro = `<p>Correctness compares the recon <b>fingerprint</b> against four references — the <b>prior run</b> on this branch, the latest <b>main</b>, <b>single-device n=1</b> within the same run, and the <b>other platform</b> (CPU↔GPU) at the same commit. Flags a float64 {sum, mean, l2norm} relative change beyond ${ct.single ?? "?"} (single-shot) / ${ct.iter ?? "?"} (iterated VCD) / ${ct.xdev ?? "?"} (cross-device) / ${ct.xplat ?? "?"} (cross-platform), or a shape/dtype change.${ackThrough ? " Divergences on commits dated ≤ " + M.cleared_through + " are acknowledged." : ""}</p>`;
+    intro = `<p>Correctness compares the recon <b>fingerprint</b> against four references — the <b>prior run</b> on this branch, the latest <b>main</b>, <b>single-device n=1</b> within the same run, and the <b>other platform</b> (CPU↔GPU) at the same commit. Flags a float64 {sum, mean, l2norm} relative change beyond ${ct.single ?? "?"} (single-shot) / ${ct.iter ?? "?"} (iterated VCD) / ${ct.xdev ?? "?"} (cross-device) / ${ct.xplat ?? "?"} (cross-platform), or a shape/dtype change.${M.cleared_through ? " Divergences on commits dated ≤ " + M.cleared_through + " are acknowledged." : ""}</p>`;
   }
   const section = (plat) => {
     const run = runOnPlat(plat);
