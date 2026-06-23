@@ -5,11 +5,11 @@ rootdir: /Users/gbuzzard/.mbirjax/regression/lib_greg_sharding_extensions
 configfile: pytest.ini
 plugins: xdist-3.8.0
 created: 10/10 workers
-10 workers [192 items]
+10 workers [193 items]
 
 ........................................................................ [ 37%]
-...........................s.......................................s.... [ 75%]
-................................................                         [100%]
+...........................s....s....................................... [ 74%]
+.................................................                        [100%]
 =========================== short test summary info ============================
 SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
-================== 190 passed, 2 skipped in 124.36s (0:02:04) ==================
+================== 191 passed, 2 skipped in 125.83s (0:02:05) ==================
