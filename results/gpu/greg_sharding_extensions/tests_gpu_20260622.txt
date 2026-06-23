@@ -5,18 +5,12 @@ rootdir: /home/buzzard/.mbirjax/regression/lib_greg_sharding_extensions
 configfile: pytest.ini
 plugins: xdist-3.8.0
 created: 10/10 workers
-10 workers [192 items]
+10 workers [193 items]
 
-...........................................s............................ [ 37%]
-........................s.........s..................................... [ 75%]
-................................................                         [100%]
-=============================== warnings summary ===============================
-../mbirjax/viewer.py:17: 10 warnings
-  /home/buzzard/.mbirjax/regression/lib_greg_sharding_extensions/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
-    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+...............................................s........................ [ 37%]
+.........................s...............................s.............. [ 74%]
+.................................................                        [100%]
 =========================== short test summary info ============================
-SKIPPED [1] ../tests/sharding/test_hooks.py:212: GPU present: auto uses GPUs; this exercises the CPU default
+SKIPPED [1] ../tests/sharding/test_hooks.py:211: GPU present: auto uses GPUs; this exercises the CPU default
 SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
-=========== 189 passed, 3 skipped, 10 warnings in 304.03s (0:05:04) ============
+================== 190 passed, 3 skipped in 291.69s (0:04:51) ==================
