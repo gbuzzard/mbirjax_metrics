@@ -1087,8 +1087,12 @@ function init() {
   $("footer").innerHTML = `${M.runs.length} run(s) · platforms ${M.platforms.join(", ")} · branches ${M.branches.join(", ")} · regenerate with <code>action_scripts/build_dashboard.sh</code>`;
   if (!M.runs.length) { $("tiles").innerHTML = "<p class='muted'>No runs found under results/.</p>"; return; }
 
-  ui_state.platform = M.platforms.includes("gpu") ? "gpu" : M.platforms[0];
-  ui_state.branch = defaultBranch(ui_state.platform);
+  // Open on the GLOBALLY most-recent run (by commit time), whatever platform/branch it's on — so a newer
+  // CPU-only commit isn't hidden behind a stale GPU run (the old fixed "prefer gpu" default did exactly that).
+  const newest = M.runs.reduce((a, b) => (runTime(b) > runTime(a) ? b : a));
+  ui_state.platform = newest.platform;
+  ui_state.branch = newest.branch;
+  ui_state.runKey = runKey(newest);
   fillSelect("platform", M.platforms, ui_state.platform);
   fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
 
