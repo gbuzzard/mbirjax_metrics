@@ -1,0 +1,15 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_greg_sharding_extensions
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [187 items]
+
+........................................................................ [ 38%]
+...........................s......................................s..... [ 77%]
+...........................................                              [100%]
+=========================== short test summary info ============================
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+================== 185 passed, 2 skipped in 119.64s (0:01:59) ==================

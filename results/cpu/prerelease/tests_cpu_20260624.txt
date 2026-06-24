@@ -1,0 +1,13 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [175 items]
+
+........................................................................ [ 41%]
+..............ss........................................................ [ 82%]
+...............................                                          [100%]
+================== 173 passed, 2 skipped in 107.46s (0:01:47) ==================
