@@ -12,6 +12,9 @@
 # To inspect afterwards: pull the pushed results into this working repo, then run
 # `action_scripts/build_dashboard.sh`.  (Set REG_SMOKE=1 for a fast 1-cell plumbing check.)
 #
+# On a SLURM cluster, add --sbatch to SUBMIT this pass as a batch job on a GPU node (resources from
+# run_configs.env's SLURM_* knobs) instead of running it in this interactive session.
+#
 # Safe whether run with `bash`/`./` or `source`d: the work runs in a subshell so `set -e`/traps stay
 # isolated; a nonzero exit pauses (keeping the terminal open) instead of closing it.
 #
@@ -21,6 +24,21 @@
 # so a regression doesn't read as a crash.
 
 if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
+
+# --sbatch (cluster): resubmit this pass as a SLURM batch job (minus the flag) and exit, so the nightly
+# runs on a GPU compute node instead of an interactive session.  See tooling/regression/sbatch_submit.sh.
+case " $* " in *" --sbatch "*)
+  _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _REPO="$(cd "$_HERE/.." && pwd)"
+  # shellcheck disable=SC1091
+  source "$_REPO/tooling/regression/regression.env"
+  # shellcheck disable=SC1091
+  source "$_REPO/tooling/regression/sbatch_submit.sh"
+  _ARGS=(); for _a in "$@"; do [ "$_a" = "--sbatch" ] || _ARGS+=("$_a"); done
+  submit_sbatch "mbirjax-night" bash "$_HERE/run_one_night.sh" "${_ARGS[@]}"
+  _rc=$?
+  if [ "$_sourced" -eq 1 ]; then return "$_rc"; else exit "$_rc"; fi
+  ;;
+esac
 
 (
   trap 'rc=$?;

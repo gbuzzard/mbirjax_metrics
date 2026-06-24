@@ -18,7 +18,8 @@ tooling/regression/      this wrapper: run_regression.sh, lib_env.sh (shared ded
                          worktree-install mechanism, also used by action_scripts/add_run.sh),
                          regression.env, enable/disable/status_nightly.sh, recent_runs.py (status),
                          com.mbirjax.regression.plist (macOS), nightly_regression.slurm +
-                         cluster_preamble.sh.example (cluster), README.md
+                         cluster_preamble.sh.example (cluster), sbatch_submit.sh (the add_run /
+                         run_one_night --sbatch helper), README.md
 results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + records_<plat>.yaml
                          (best-ever) + tests_*.txt
 state/<plat>/<branch>    last MEASURED commit per branch (fire-on-change)

@@ -8,6 +8,8 @@
 #   action_scripts/add_run.sh <ref>        Measure <ref> (a branch, tag, or commit sha) resolved in
 #                                           the mbirjax repo at MBIRJAX_REPO (default: ../mbirjax).
 #   action_scripts/add_run.sh              Print this help and exit.
+# Add --sbatch to any of the above (on a SLURM cluster) to SUBMIT the run as a batch job on a GPU node
+# (resources from run_configs.env's SLURM_* knobs) instead of running it in this session.
 #
 # Either way it checks out the chosen commit into a throwaway git worktree (your working tree is
 # untouched) and measures it through the SAME pipeline as the nightly — the dedicated `mbirjax_regression`
@@ -22,6 +24,21 @@
 # would silently measure that one).  Hence the dedicated env + pip install -e the worktree (see lib_env.sh).
 
 if (return 0 2>/dev/null); then _sourced=1; else _sourced=0; fi
+
+# --sbatch (cluster): resubmit this exact invocation (minus the flag) as a SLURM batch job and exit, so
+# the measurement runs on a GPU compute node instead of here.  See tooling/regression/sbatch_submit.sh.
+case " $* " in *" --sbatch "*)
+  _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; _REPO="$(cd "$_HERE/.." && pwd)"
+  # shellcheck disable=SC1091
+  source "$_REPO/tooling/regression/regression.env"
+  # shellcheck disable=SC1091
+  source "$_REPO/tooling/regression/sbatch_submit.sh"
+  _ARGS=(); for _a in "$@"; do [ "$_a" = "--sbatch" ] || _ARGS+=("$_a"); done
+  submit_sbatch "mbirjax-addrun" bash "$_HERE/add_run.sh" "${_ARGS[@]}"
+  _rc=$?
+  if [ "$_sourced" -eq 1 ]; then return "$_rc"; else exit "$_rc"; fi
+  ;;
+esac
 
 (
   WT=""; SRC=""
@@ -58,6 +75,9 @@ Usage:
                                         repo at MBIRJAX_REPO (default: ../mbirjax).  <ref> also names
                                         the dashboard branch group, so prefer a branch/tag name.
   action_scripts/add_run.sh            Print this help and exit.
+
+Add --sbatch (on a SLURM cluster) to submit the measurement as a batch job on a GPU node — resources
+from run_configs.env's SLURM_* knobs — instead of running it in this session.
 
 It checks out the commit into a throwaway worktree (your working tree is untouched) and measures it
 through the same pipeline as the nightly — the dedicated mbirjax_regression conda env with the worktree
