@@ -197,6 +197,22 @@ function logFmt(v) {
   if (Math.abs(l - Math.round(l)) > 1e-6) return "";
   return v >= 1 ? String(v) : v.toString();
 }
+// Log-axis tick positions (1-9·10^k within [mn, mx]) that we hand to uPlot explicitly instead of
+// letting its built-in log splitter generate them.  On a TIGHT, log-padded scale whose bounds aren't
+// round powers of ten (e.g. a y-min of ~9.8e-5 left by the 6% pad), that splitter degrades into a
+// near-stationary increment and spends seconds building a giant tick array — it froze the GPU
+// parallel/back time panel for ~2.5s on op-switch (the new 513³ run's timings happened to land the
+// padded y-min just below 1e-4).  This generator is O(decades) and bounded.  logFmt still labels only
+// the exact powers of ten, so the look is unchanged (minor 2-9·10^k stay as faint unlabeled grid).
+function logTicks(mn, mx) {
+  if (!(mn > 0) || !(mx > 0) || !isFinite(mn) || !isFinite(mx)) return [mn, mx];
+  const out = [], hi = Math.ceil(Math.log10(mx));
+  for (let e = Math.floor(Math.log10(mn)); e <= hi; e++) {
+    const base = Math.pow(10, e);
+    for (let m = 1; m < 10; m++) { const v = m * base; if (v >= mn && v <= mx) out.push(v); }
+  }
+  return out.length ? out : [mn, mx];
+}
 
 // ---- uPlot wrapper -----------------------------------------------------------
 // specs: [{label, color, ys, dash, pointsOnly, width, psize}]
@@ -241,8 +257,14 @@ function linePlot(el, xs, specs, o) {
   if (o.xLabelText) xAxis.label = o.xLabelText;
   const yAxis = { scale: "y", stroke: axc, grid: { stroke: grc, width: 1 }, ticks: { stroke: grc, size: 4 },
     font: "11px sans-serif", size: 52 };
-  if (o.yLog) yAxis.values = (u, sp) => sp.map(logFmt);
-  else if (o.yfmt) yAxis.values = (u, sp) => sp.map((v) => v == null ? "" : o.yfmt(v));
+  if (o.yLog) {
+    yAxis.values = (u, sp) => sp.map(logFmt);
+    // Generate the log ticks ourselves (see logTicks) so uPlot's built-in log splitter — which can
+    // hang for seconds on unclean tight bounds — never runs.  Mirrors the custom x-splits above;
+    // filter:identity keeps every gridline (logFmt already blanks the minor labels).
+    yAxis.splits = (u, ai, mn, mx) => logTicks(mn, mx);
+    yAxis.filter = (u, sp) => sp;
+  } else if (o.yfmt) yAxis.values = (u, sp) => sp.map((v) => v == null ? "" : o.yfmt(v));
   if (o.yLabelText) yAxis.label = o.yLabelText;
   // uPlot's default log range snaps min/max OUT to the enclosing powers of 10.  On a drag-zoom that
   // expands the selection back out (a ~1-decade pick on the size axis snaps to the full 1e7..1e10
