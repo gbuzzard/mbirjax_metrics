@@ -82,6 +82,30 @@ def mbirjax_git_branch(pkg_path):
     return None
 
 
+def mbirjax_pkg_dir():
+    """Directory of the loaded mbirjax package, or None if it can't be determined.
+
+    Normally this is ``os.path.dirname(mbirjax.__file__)``.  But an editable install whose
+    import root resolves to a directory with no ``__init__.py`` (e.g. running
+    ``run_performance_local`` from a checkout where ``beta_root()`` is on ``PYTHONPATH``)
+    imports mbirjax as a *namespace* package, for which ``__file__`` is None.  In that case
+    fall back to the first ``__path__`` entry, which still points at the package directory —
+    so ``mbirjax_git_branch`` can find the checkout on both editable and installed layouts.
+    The nightly never hits this because it installs the worktree directly.
+    """
+    import mbirjax   # local, matching build_setup_result (not a module-level import here)
+    f = getattr(mbirjax, "__file__", None)
+    if f:
+        return os.path.dirname(f)
+    paths = getattr(mbirjax, "__path__", None)
+    if paths:
+        try:
+            return next(iter(paths))   # _NamespacePath / list of package dirs
+        except Exception:
+            pass
+    return None
+
+
 def pyproject_version(root):
     """Project version string from ``<root>/pyproject.toml`` (or None).
 
@@ -246,8 +270,8 @@ def build_setup_result(plat, max_dev, dev_label, corr):
                 dev2dev_safe = bool(mjs.is_dev2dev_safe(g))
         except Exception:   # noqa: BLE001 — best effort, never abort setup
             pass
-    pkg_path = os.path.dirname(mbirjax.__file__)
-    branch = mbirjax_git_branch(pkg_path)   # the loaded mbirjax's git branch — the real identity
+    pkg_path = mbirjax_pkg_dir()            # None on a namespace/editable layout with no __file__
+    branch = mbirjax_git_branch(pkg_path) if pkg_path else None   # the loaded mbirjax's git branch — the real identity
     result = {"platform": plat, "max_devices": max_dev, "device_label": dev_label,
               "mbirjax_path": pkg_path, "branch": branch,
               "correctness": corr, "topology": topology, "dev2dev_safe": dev2dev_safe}

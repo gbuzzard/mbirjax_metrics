@@ -186,6 +186,9 @@ function fillSelect(id, values, current, labels) {
 }
 function fmtGB(mb) { return mb == null ? "—" : (mb / 1024).toFixed(mb / 1024 < 10 ? 2 : 1) + " GB"; }
 function fmtNum(v) { if (v == null) return ""; if (v >= 100) return v.toFixed(0); if (v >= 1) return v.toFixed(1); if (v > 0) return v.toFixed(2); return "0"; }
+// Tooltip time: input is in MINUTES; show seconds when under a minute (a sub-minute run reads better as
+// "0.80 s" than "0.01 min"), minutes at or above one.  '—' for null.
+function fmtTime(min) { return min == null ? "—" : (min < 1 ? (min * 60).toFixed(2) + " s" : min.toFixed(2) + " min"); }
 // Log axes: label only exact powers of ten, blank the minor ticks (otherwise
 // uPlot tries to label every minor gridline, which reads as a stack of noise).
 function logFmt(v) {
@@ -694,7 +697,7 @@ function renderScaling() {
   const w = $("pTime").clientWidth || 460;
   // Hover tooltips: a rich cell readout (config + result) over a measured curve; a plain label+value
   // over the ideal/reference/gate overlays.  `fb` formats the overlay's y for the panel's unit.
-  const cellLine = (c) => `<span class="tdim">time</span> ${c.min_ms != null ? (c.min_ms / 1000).toFixed(2) + " s" : "—"}`
+  const cellLine = (c) => `<span class="tdim">time</span> ${c.min_ms != null ? fmtTime(c.min_ms / 60000) : "—"}`
     + `<br><span class="tdim">peak mem</span> ${fmtGB(c.mem_mb)}`
     + (c.speedup != null ? `<br><span class="tdim">speedup</span> ${c.speedup.toFixed(2)}×` : "")
     + (cellHot(c) ? `<br><span class="thr">⚠ ${hotWarn(c)}</span>` : "");
@@ -734,7 +737,7 @@ function renderScaling() {
     return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
   }).filter(Boolean);
   const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
-  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip((y) => y.toFixed(2) + " min") });
+  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip(fmtTime) });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
@@ -937,14 +940,26 @@ function renderHistory() {
     const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === spec._xs[idx]);
     if (!r) return null;
     const y = spec.ys[idx], m = spec.meta;
-    // value line: a throttle-marker spec shares its run-line's identity, so show "<plat> <geom>"
-    // rather than its internal "throttled …" label.
-    const vlabel = m.geom ? `${m.platform} ${m.geom}` : spec.label;
+    const a = m.geom ? (aggByPB[m.platform + "|" + m.branch] || {})[spec._xs[idx]] : null;
+    // Value section: on the time/memory panels (geom-bearing) show BOTH time and peak memory for the
+    // hovered run+platform+geom (the two panels share the same runs, so it's handy to read both at once);
+    // on the gate panel (no geom) show the bare count.
+    let valSection;
+    if (m.geom && a) {
+      const tv = a.time[m.geom], mv = a.mem[m.geom];
+      valSection = `<br><span class="tdim">${m.platform} ${m.geom}</span>`
+        + `<br><span class="tdim">time</span> ${fmtTime(tv)}`
+        + `<br><span class="tdim">mem</span> ${mv != null ? fmtNum(mv) + " GB" : "—"}`;
+    } else {
+      const unit = m.pick === "mem" ? " GB" : m.pick === "time" ? " min" : "";
+      valSection = (y != null ? `<br><span class="tdim">${spec.label}</span> ${fmtNum(y)}${unit}` : "");
+    }
+    // thermal warn: a hot GPU drags timing — flag if the time OR memory cell ran hot at this point.
     let warn = "";
-    if (m.geom && m.pick) {
-      const a = (aggByPB[m.platform + "|" + m.branch] || {})[spec._xs[idx]];
-      const c = a ? a[cellField(m.pick)][m.geom] : null;
-      if (c && cellHot(c)) warn = `<br><span class="thr">⚠ ${hotWarn(c)}</span>`;
+    if (m.geom && a) {
+      const tc = a.timeCell[m.geom], mc = a.memCell[m.geom];
+      const hc = (tc && cellHot(tc)) ? tc : ((mc && cellHot(mc)) ? mc : null);
+      if (hc) warn = `<br><span class="thr">⚠ ${hotWarn(hc)}</span>`;
     }
     // correctness divergence flag — the most severe, shown first (same source as the ✕ marker / tile).
     const corrN = runCorrCells(r);
@@ -952,11 +967,9 @@ function renderHistory() {
     // tests-failed flag — same info as the run-shown tile's red badge.
     const tf = (r.tests && r.tests.failed) || 0;
     const testWarn = tf ? `<br><span class="bad">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</span>` : "";
-    // unit follows the panel: minutes for the time panel, GB for memory (gate has no pick -> bare count).
-    const unit = m.pick === "mem" ? " GB" : m.pick === "time" ? " min" : "";
     return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
-      + (y != null ? `<br><span class="tdim">${vlabel}</span> ${fmtNum(y)}${unit}` : "") + warn + corrWarn + testWarn;
+      + valSection + warn + corrWarn + testWarn;
   };
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
