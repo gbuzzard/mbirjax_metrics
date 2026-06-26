@@ -730,12 +730,27 @@ function renderScaling() {
     const head = `<b>${geom} · ${op}</b> · ${size} · n=${m[1]}`;
     return c.failed ? `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " — " + c.error : ""}` : `${head}<br>${cellLine(c)}`;
   };
+  // Per-(size, n) derived metrics for the two device-axis panels — computed once so each panel's curve
+  // and its hover tooltip read the SAME number.  speedup = (n=1 time / this time) × the base n;
+  // mem÷shard = measured peak ÷ the ideal even sinogram shard (sizeVol·4 bytes ÷ n).
+  const speedupAt = (s, nd) => { const c = at(s, nd), base = at(s, ndevs[0]);
+    return (c && base && !c.failed && !base.failed && c.min_ms) ? (base.min_ms / c.min_ms) * ndevs[0] : null; };
+  const shardAt = (s, nd) => { const c = at(s, nd); if (!c || c.failed || c.mem_mb == null) return null;
+    return c.mem_mb / ((sizeVol(s) * 4 / nd) / (1024 * 1024)); };
+  // Shared by BOTH device-axis panels (speedup and mem÷shard): show both derived metrics — not just the
+  // one this panel plots — alongside the raw time/peak-mem, so either panel gives the full readout.
   const devTip = (spec, idx) => {
     const nd = ndevs[idx], size = spec.label;
     if (!/^\d+x\d+x\d+$/.test(size)) { const y = spec.ys[idx]; return y == null ? null : `n=${nd}<br>${spec.label}: ${fmtNum(y)}`; }
     const c = at(size, nd); if (!c) return null;
     const head = `<b>${geom} · ${op}</b> · ${size} · n=${nd}`;
-    return c.failed ? `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>` : `${head}<br>${cellLine(c)}`;
+    if (c.failed) return `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>`;
+    const sp = speedupAt(size, nd), sh = shardAt(size, nd);
+    return `${head}<br><span class="tdim">time</span> ${c.min_ms != null ? fmtTime(c.min_ms / 60000) : "—"}`
+      + `<br><span class="tdim">peak mem</span> ${fmtGB(c.mem_mb)}`
+      + `<br><span class="tdim">speedup</span> ${sp != null ? sp.toFixed(2) + "×" : "—"}`
+      + `<br><span class="tdim">mem ÷ shard</span> ${sh != null ? sh.toFixed(1) + "×" : "—"}`
+      + (cellHot(c) ? `<br><span class="thr">⚠ ${hotWarn(c)}</span>` : "");
   };
 
   // anchor the ideal at the fastest measured point (smallest size, most devices)
@@ -777,9 +792,8 @@ function renderScaling() {
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
   const w2 = $("pSpeed").clientWidth || 460;
-  const speedCurves = sizes.map((s, i) => { const base = at(s, ndevs[0]);
-    return { label: s, color: SIZEC[i % SIZEC.length],
-      ys: ndevs.map((nd) => { const c = at(s, nd); return c && base && !c.failed && !base.failed ? (base.min_ms / c.min_ms) * ndevs[0] : null; }) }; });
+  const speedCurves = sizes.map((s, i) => ({ label: s, color: SIZEC[i % SIZEC.length],
+    ys: ndevs.map((nd) => speedupAt(s, nd)) }));
   const speedIdeal = ndevs.slice();
   const speedFails = sizes.map((s, ci) => {
     const fi = ndevs.map((nd, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
@@ -791,8 +805,7 @@ function renderScaling() {
 
   // --- per-device memory ÷ sino shard (one curve per size; ideal 2x) ---
   const shardCurves = sizes.map((s, i) => ({ label: s, color: SIZEC[i % SIZEC.length],
-    ys: ndevs.map((nd) => { const c = at(s, nd); if (!c || c.failed || c.mem_mb == null) return null;
-      const shardMB = (sizeVol(s) * 4 / nd) / (1024 * 1024); return c.mem_mb / shardMB; }) }));
+    ys: ndevs.map((nd) => shardAt(s, nd)) }));
   const shardFails = sizes.map((s, ci) => {
     const fi = ndevs.map((nd, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
     const yy = interpFails(ndevs, shardCurves[ci].ys, fi, false, false, ndevs.map(() => 2));
