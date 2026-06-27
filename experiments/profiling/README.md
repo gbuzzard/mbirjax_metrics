@@ -16,6 +16,13 @@ analysis on both targets and NVIDIA's tools on the GPU.
 - **Env:** `source ~/miniforge3/etc/profile.d/conda.sh && conda activate mbirjax`
   (JAX 0.10.2; this Mac is CPU-only).
 
+## GPU sync to git when local changes match remote:
+```bash
+git stash -u    # stashes the tracked mods + the 2 untracked new scripts; NOT the gitignored outputs
+git pull
+git stash drop  # safe to drop — the stashed content is identical to what you just pulled
+```
+
 ## Scripts
 
 | file | what it does | which question it answers |
