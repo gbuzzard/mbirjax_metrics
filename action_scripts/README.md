@@ -24,6 +24,7 @@ each run pulls the metrics repo before measuring, edits here propagate to the ni
 | `TRACKED_BRANCHES` | all | mbirjax branches to watch; each is measured only when its remote tip moves (fire-on-change). |
 | `INSTALL_EXTRAS_cpu` / `INSTALL_EXTRAS_gpu` | all | pip extras for each branch's editable install (`test` = pytest + xdist; `cuda12` = `jax[cuda12]`). |
 | `CONDA_PYTHON` | all | Python version for the dedicated `mbirjax_regression` env — used only when the harness must create it. |
+| `JAX_LAST_REVIEWED` | all | Highest jax version assessed for the GPU forward-projection perf regression (mbirjax excludes the bad `0.10.2` in its pyproject). Each nightly checks PyPI and warns when a newer jax ships, so it gets re-tested (`tooling/scaling_tests/measure_one_cell.py`); bump it if good, or add the version to mbirjax's `jax!=…` exclusion if it regresses. |
 | `MACOS_NIGHTLY_TIME` | macOS | local 24-h `HH:MM` the launchd nightly runs. Pick a time the Mac is **awake** — a scheduled wake from sleep is a "dark wake" that won't fire a LaunchAgent. Re-run `enable_nightly.sh` after changing. |
 | `SLURM_ACCOUNT` · `SLURM_PARTITION` · `SLURM_QOS` | cluster | SLURM account / partition (`ai`, H100) / QoS (`normal`; `standby` isn't accepted on `ai`). |
 | `SLURM_GPUS_PER_NODE` | cluster | GPUs for the sweep (4 → the full n=4 sharding sweep; 2 → n=1,2 only). |

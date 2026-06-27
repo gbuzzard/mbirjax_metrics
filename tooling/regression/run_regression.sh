@@ -103,6 +103,14 @@ if [ -n "${TOKEN_FILE:-}" ] && [ -f "$TOKEN_FILE" ]; then
   git -C "$METRICS_REPO" config credential.helper "store --file=$TOKEN_FILE"
 fi
 
+# jax-release watch (best-effort, NON-FATAL, runs every night even on no-change): emit a one-line WARN
+# into the log/email when a jax newer than JAX_LAST_REVIEWED ships, so the 0.10.2-style forward-perf
+# regression gets re-tested (measure_one_cell.py) instead of silently riding in on the next clean
+# install.  Placed BEFORE the no-change exit below so it fires regardless of branch activity.
+if [ -n "${JAX_LAST_REVIEWED:-}" ] && [ -f "$HERE/check_jax_release.py" ]; then
+  python "$HERE/check_jax_release.py" "$JAX_LAST_REVIEWED" 2>/dev/null || true
+fi
+
 # ── Change detection via ls-remote (don't clone mbirjax unless something moved) ────────────────
 CHANGED_BR=(); CHANGED_SHA=()
 for BR in "${TRACKED_BRANCHES[@]}"; do
