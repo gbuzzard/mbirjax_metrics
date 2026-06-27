@@ -48,7 +48,9 @@ GEOMETRY = "cone"            # back projection's most-analyzed geometry (band pa
 # SINOGRAM size (n_views, n_rows, n_channels); the cone recon is auto-derived.  256-class as agreed.
 # (The nightly uses ASYMMETRIC sizes to surface axis swaps; symmetry is fine for a profiling dry run.)
 SIZE = (256, 256, 256)
-N_DEVICES = 1                # CPU device count for this run.  Set MBIRJAX_NUM_CPU_DEVICES to match (below).
+N_DEVICES_LIST = [1, 2]      # device counts to trace, in order.  GPU: n=1 short-circuits to the pixel
+                             # kernel; n>=2 exercises the banded reduce-scatter (NVLink).  Counts above the
+                             # number of available devices are skipped with a note.
 WARMUP = 2                   # untimed calls to trigger compilation of every band/batch shape
 TRACE_ITERS = 3              # warm iterations captured in the trace (and timed)
 TOP_N = 30                   # how many trace events to print in the summary table
@@ -57,7 +59,7 @@ TOP_N = 30                   # how many trace events to print in the summary tab
 # mbirjax reads MBIRJAX_NUM_CPU_DEVICES on its first import to size the virtual CPU
 # device mesh, so it must be set before `import mbirjax`.  setdefault respects a value
 # already set in the shell/cluster.
-os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(N_DEVICES))
+os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(max(N_DEVICES_LIST)))
 
 # Make the engine's helpers importable (they live next to the nightly engine).
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -161,12 +163,16 @@ def summarize_perfetto(trace_path, n_iters, top_n=TOP_N):
     return sorted(self_us.items(), key=lambda kv: -kv[1][0])
 
 
-def main():
+def run_one(n_devices):
+    avail = jax.devices()
+    if n_devices > len(avail):
+        print(f"\n  [skip n={n_devices}: only {len(avail)} {avail[0].platform} device(s) available]")
+        return
     size_label = "x".join(str(s) for s in SIZE)
-    devs = jax.devices()[:N_DEVICES]
+    devs = avail[:n_devices]
     plat = devs[0].platform
-    print("=" * 78)
-    print(f"  TRACE  back projection | {GEOMETRY} | {size_label} | n={N_DEVICES} {plat}")
+    print("\n" + "=" * 78)
+    print(f"  TRACE  back projection | {GEOMETRY} | {size_label} | n={n_devices} {plat}")
     print(f"  jax {jax.__version__}   devices visible: {len(jax.devices())} {plat}")
     print("=" * 78)
 
@@ -196,7 +202,7 @@ def main():
     # Trace TRACE_ITERS warm iterations.  StepTraceAnnotation delineates each iteration on the
     # timeline; create_perfetto_trace writes a Perfetto-loadable .json.gz alongside the xplane.
     out_dir = os.path.join(_HERE, "traces",
-                           f"{datetime.now():%Y%m%d_%H%M%S}_{GEOMETRY}_back_{size_label}_n{N_DEVICES}")
+                           f"{datetime.now():%Y%m%d_%H%M%S}_{GEOMETRY}_back_{size_label}_n{n_devices}")
     os.makedirs(out_dir, exist_ok=True)
     print(f"  tracing x{TRACE_ITERS} -> {out_dir}", flush=True)
     times = []
@@ -222,6 +228,11 @@ def main():
         print("\n  (no perfetto .json.gz found; xplane(s):)")
         for x in xplanes:
             print(f"    {x}")
+
+
+def main():
+    for n in N_DEVICES_LIST:
+        run_one(n)
 
 
 if __name__ == "__main__":

@@ -91,6 +91,40 @@ Outputs (gitignore candidates — they're large/derived):
 - Caveats: single-shot compile timings (noisy at tens-of-ms); **HLO line count is non-monotonic in
   size** (XLA fusion choices) — use the jaxpr eqn count as the stable complexity proxy.
 
+**GPU (2× H100, 2026-06-26) — step 1 (the three scripts ported as-is, n=1):**
+- **Platform inversion CONFIRMED.** Cone back, pixel/band: CPU 2.05× (band wins) → **GPU 0.38× (pixel
+  2.6× faster)**. Matches the lesson and re-justifies the GPU n=1 short-circuit to the pixel kernel.
+- **Static-counter reliability is itself platform-dependent.** On GPU the counters AGREE with wall time
+  (pixel does less work — 8.7 vs 19.6 GFLOP, 5.0 vs 8.9 GB, 1.1 vs 1.9 GB temp — AND is faster); the cache
+  cliff that made them mislead is CPU-only. So `cost_analysis` picks the right kernel on GPU, the wrong one
+  on CPU.
+- **GPU back trace (n=1, pixel kernel):** ~69 ms/iter, ~100% GPU-compute-bound (compute stream 68.8 ms; host
+  overlaps). Dominant kernels: **`loop_add_fusion` ≈40 ms (accumulate)** + **`loop_dynamic_update_slice_fusion`
+  ≈17 ms (scatter-write)** = ~83%. Same op families as CPU, different XLA naming/balance; uses CUDA graphs.
+  These two are the `ncu` roofline targets. (H100 ~350× faster than the Mac on pixel-256³: 69 ms vs 24 s.)
+- **GPU compile is autotuning-dominated, heavy + noisy:** 59 ms → 2406 ms (CPU was a uniform ~0.25 s); the
+  band kernel's first compile cost 2.4 s of autotuning. trace+lower stays ~0.1–0.27 s, so the batching nest
+  is a SMALLER share of GPU compile — the refactor lever is reducing distinct autotuned kernels, not trace
+  cost. Single-shot GPU compile timing is unreliable (autotuning variance).
+- **Multi-GPU back is NON-MONOTONIC, and the trace pins the cause to the band kernel's transpose.** Cone
+  back 256³: n=1 wall **72.8 ms** (pixel kernel, 1 GPU busy 69.5 ms) vs n=2 wall **94.7 ms** (band kernel,
+  EACH of 2 GPUs busy ~91 ms). So 2 GPUs are 1.3× SLOWER than 1 — reproducing the lesson's n≈2.25 back
+  crossover at 256³. Why: n≥2 drops the pixel short-circuit and runs the **band kernel**, dominated by
+  **`input_transpose_fusion`** (~58 ms aggregate) — costlier per-GPU than the pixel kernel's accumulate
+  (`loop_add_fusion` 40 ms) + scatter (`loop_dynamic_update_slice_fusion` 17 ms). The **NVLink reduce-scatter
+  is cheap** (wall ≈ max stream busy + ~3.5 ms; D2D folds into the compute stream over NV18) — comms are NOT
+  the limiter, the band kernel is. This is the "B4.5 lever" (make the band kernel GPU-competitive without
+  the CPU cliff), now pinned to a specific fusion on real hardware → next ncu target: `input_transpose_fusion`.
+- **`ncu` roofline (n=1 pixel kernel) refines "bandwidth-bound" → memory-ACCESS-PATTERN-bound.** The dominant
+  accumulate kernel `loop_add_fusion_3` (2.05 ms/launch) runs at **96% Memory throughput but only 8% DRAM/HBM**
+  and 29% L2 — it saturates the ON-CHIP memory path (L1/LSU/address generation from the scatter/gather), NOT
+  HBM bandwidth. So there is no HBM headroom to chase; the lever is fewer/coalesced memory transactions.
+  The scatter-write `loop_dynamic_update_slice_fusion` (0.44 ms) is instead **compute-bound (82% SM)**, 40%
+  DRAM — a different target. Both at 82–95% occupancy (not launch/occupancy-limited). `cost_analysis` ("5 GB
+  accessed") could not have distinguished these. Follow-ups: (1) `--set full` MemoryWorkloadAnalysis to name
+  the exact saturated pipe on the accumulate; (2) ncu the band kernel's `input_transpose_fusion` (the
+  multi-GPU limiter) — the current `ncu_back_projection.py` runs n=1 → pixel, so a band-path variant is needed.
+
 **Scoping conclusion — each tool answers a different question:**
 
 | question | tool | on Mac? |

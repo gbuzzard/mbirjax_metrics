@@ -47,6 +47,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "to
 import mbirjax            # noqa: E402,F401  device-setup-first
 import jax                # noqa: E402
 import performance_tracking as pt   # noqa: E402
+import scaling_common as sc          # noqa: E402  (YAML writer for the off-box / Samba workflow)
 
 
 def _mem(compiled):
@@ -100,7 +101,9 @@ def analyze(label, fn, args, size_label):
         os.makedirs(os.path.dirname(hlo_path), exist_ok=True)
         with open(hlo_path, "w") as f:
             f.write(compiled.as_text())
-    return tmin, mem
+    return {"size": size_label, "kernel": label, "time_min_ms": tmin,
+            "temp_mb": mem.get("temp"), "out_mb": mem.get("output"),
+            "gflops": cost.get("gflops"), "gbytes_accessed": cost.get("gbytes_accessed")}
 
 
 def main():
@@ -109,6 +112,7 @@ def main():
     print(f"  STATIC cone back kernels (pixel vs band) | n={N_DEVICES} {plat} | jax {jax.__version__}")
     print("=" * 90)
     config = pt.Config()
+    rows = []
     for size in SIZES:
         size_label = "x".join(str(s) for s in size)
         model = pt.make_model(config, GEOMETRY, size)
@@ -129,10 +133,15 @@ def main():
 
         print(f"\n  size={size_label}  recon={recon_shape}  num_pixels={num_pixels}  "
               f"num_slices={num_slices}   (full view*npix*slices stack = {stack_mb:,.0f} MB)")
-        tp, _ = analyze("pixel", pixel_fn, (sino, idx), size_label)
-        tb, _ = analyze("band", band_fn, (sino, idx), size_label)
-        print(f"    -> pixel/band time ratio = {tp / tb:.2f}x   "
-              f"(lesson: ~1x below the ~200^3 cliff, ~8x above on CPU)")
+        pr = analyze("pixel", pixel_fn, (sino, idx), size_label)
+        br = analyze("band", band_fn, (sino, idx), size_label)
+        rows += [pr, br]
+        print(f"    -> pixel/band time ratio = {pr['time_min_ms'] / br['time_min_ms']:.2f}x   "
+              f"(lesson: CPU ~1x below the ~200^3 cliff & ~8x above; GPU EXPECT <1x — pixel faster)")
+
+    plat = jax.devices()[0].platform
+    sc.save_yaml(os.path.join(sc.RESULTS_DIR, f"static_cone_back_{plat}.yaml"),
+                 {"platform": plat, "geometry": GEOMETRY, "jax": jax.__version__, "rows": rows})
 
 
 if __name__ == "__main__":
