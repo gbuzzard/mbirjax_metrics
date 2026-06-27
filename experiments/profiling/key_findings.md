@@ -9,9 +9,11 @@ tool-to-question map, and how to run each script.
 (from `lessons.md`, not re-measured) · `—` not yet investigated.
 **Platforms:** `CPU` (Mac, virtual devices) · `GPU1` (single H100) · `GPUn` (multi-H100, sharded).
 Numbers are cone, 256³, warm, n=1 unless noted.
-**JAX:** measure the PRODUCTION env — **CPU numbers below are on jax/jaxlib 0.10.1** (re-measured 2026-06-27).
-**0.10.2 is EXCLUDED** (a regression — see Cross-cutting). ⚠ **All `GPU` rows are still on 0.10.2 → SUSPECT,
-re-measure pending** (the regression hit the cone *band kernel* specifically, which several GPU findings rest on).
+**JAX:** measure the PRODUCTION env — **all numbers below are jax/jaxlib 0.10.1** (CPU + GPU re-measured 2026-06-27).
+**0.10.2 is EXCLUDED** (a regression — see Cross-cutting). The regression is **backend-AND-kernel-specific**: it
+4×-slowed the cone *back band* kernel on CPU and the cone *forward* kernel on GPU, but left GPU back and CPU
+forward untouched — so the GPU back findings (platform inversion, n=2 non-monotonicity, band-transpose L1-bound)
+are **CONFIRMED on 0.10.1**, while GPU forward dropped 599→148 ms.
 **All `mbirjax/…` paths are in the sibling library repo** (`Research/mbirjax/`), not this repo.
 
 ---
@@ -41,24 +43,24 @@ Forward and the prior follow the analogous chain.
 
 ## Coverage matrix
 
-CPU = jax 0.10.1 (production). GPU = jax 0.10.2 (⚠ stale — re-measure).
+All cells jax 0.10.1 (production), re-measured 2026-06-27.
 
 | op × geometry | CPU | GPU1 | GPUn | notes |
 |---|:--:|:--:|:--:|---|
-| **back · cone** | ✓ | ⚠ | ⚠ | CPU re-done on 0.10.1 (3.06 s, NOT gather-bound); GPU on stale 0.10.2 — band findings may reverse |
+| **back · cone** | ✓ | ✓ | ✓ | CPU 3.06 s (`multiply`/`reduce-window`, NOT gather); GPU confirmed (inversion 0.38×, n=2 non-monotonic, band L1-bound) |
 | **back · parallel** | ✓ | — | — | CPU: 524 ms, `multiply_add`-bound, no cliff |
-| **forward · cone** | ✓ | ~ | — | CPU 16.9 s `lax.map`-write-bound (regression-free); GPU1 timing only (stale) |
+| **forward · cone** | ✓ | ✓ | — | CPU 16.9 s `lax.map`-write-bound; GPU 148 ms `input_scatter`-bound (DIFFERENT bottleneck per platform) |
 | **forward · parallel** | ✓ | — | — | CPU: 1.32 s, `wrapped_scatter`-bound |
 | **qGGMRF prior** (geom-independent) | ? | — | ? | only `lessons.md`-derived hypotheses |
 
-Biggest gaps / next priorities: **re-measure ALL GPU on 0.10.1** (esp. cone-back band kernel — could reverse the
-platform inversion), **parallel beam on GPU**, **qGGMRF** (no fresh measurement).
+Biggest gaps / next priorities: **parallel beam on GPU**, **qGGMRF** (no fresh measurement), **cone forward GPU ncu**
+(`input_scatter_fusion` roofline), **512³ scale-up**.
 
 ---
 
 ## Back projection
 
-### Cone — `✓` CPU (0.10.1); `⚠` GPU1/GPUn (0.10.2 — SUSPECT, re-measure)
+### Cone — `✓` CPU/GPU1/GPUn (all 0.10.1; GPU confirmed unchanged by the regression)
 
 **Bottlenecks**
 - `CPU` (0.10.1, 256³) — `back_project_one_view_to_band` (`cone_beam.py:671`, the kernel CPU uses):
@@ -73,19 +75,21 @@ platform inversion), **parallel beam on GPU**, **qGGMRF** (no fresh measurement)
   `bitcast_gather_fusion`-dominated (~9.5 s), 29.6 GB accessed / 6554 MB temp (~12× inflated), and the cliff
   read only 2.05× (0.10.2 slowed the band too). The "gather-bound" + "2× cliff" + "band does more memory work"
   claims were 0.10.2 regression artifacts.
-- `GPU1` ⚠ **0.10.2 — SUSPECT.** (Was: pixel kernel 69 ms; accumulate `loop_add_fusion` memory-access-pattern-bound
-  96% mem-pipe/8% HBM; scatter-write `loop_dynamic_update_slice_fusion` compute-bound 82% SM.) Pixel may be
-  ~unchanged on 0.10.1 (pixel was NOT the CPU victim), but re-confirm. `[re-measure on 0.10.1]`
-- `GPUn` ⚠ **0.10.2 — SUSPECT, possibly REVERSIBLE.** (Was: non-monotonic, n=2 94.7 ms > n=1 72.8 ms; band kernel
-  `input_transpose_fusion` L1/TEX-bound 99–100%; reduce-scatter cheap ~3.5 ms.) Since the **band kernel was the
-  CPU regression victim (4× on 0.10.1)**, if the same holds on GPU the band time drops, the platform inversion
-  could shrink/REVERSE, and "n=2 slower than n=1" may vanish. **This is the highest-priority GPU re-measure.** `[re-measure on 0.10.1]`
+- `GPU1` (0.10.1, ✓ CONFIRMED — pixel was NOT a regression victim) — via the short-circuit, pixel kernel **69 ms**:
+  accumulate `loop_add_fusion` **L1-cache-bound** (96% mem-pipe, **8% HBM**, **97% L1**, 7% SM → on-chip L1/LSU
+  from the gather/scatter, not bandwidth); scatter-write `loop_dynamic_update_slice_fusion` compute-bound (82% SM).
+  Identical to 0.10.2. `[✓ trace+ncu, 0.10.1]`
+- `GPUn` (0.10.1, ✓ CONFIRMED — band held on GPU; the regression was CPU-only for back) — **non-monotonic**:
+  n=2 **94.7 ms** > n=1 **72.5 ms** (each of 2 GPUs busy ~91 ms; band 1.3× slower). Band kernel
+  `input_transpose_fusion`/`input_cosine_transpose_fusion` **L1/TEX-bound** (99.9% L1, **6% HBM**, 13–44% SM);
+  reduce-scatter `sum_band_to_owner` cheap (~3.4 ms). **Comms are not the limiter — the band transpose is.**
+  Identical to 0.10.2. `[✓ trace+ncu, 0.10.1]`
 
 **Possible improvements**
-- `GPUn` — restructure `back_project_one_view_to_band` (`cone_beam.py:671`) to avoid the transpose was the
-  proposed "B4.5 lever" — **but it rests on 0.10.2 data; re-measure the band kernel on 0.10.1 BEFORE acting**
-  (the 4× CPU regression there means the GPU transpose cost may be much smaller on production). `[hold — re-measure first]`
-- `GPU1` — coalescing the `loop_add_fusion` accumulate was the single-GPU lever (0.10.2; re-confirm). `[hold]`
+- `GPUn` — **restructure `back_project_one_view_to_band` (`cone_beam.py:671`) to avoid the transpose** (write
+  pixel-like via `dynamic_update_slice`), so it stops saturating L1 — *without* reintroducing the CPU cliff. Large
+  HBM/compute headroom; gates multi-GPU back scaling. **Confirmed real on production jax.** `[measured target — the "B4.5 lever"]`
+- `GPU1` — coalesce the `loop_add_fusion` accumulate's scattered L1/LSU transactions (no HBM headroom). `[measured]`
 - platform-gated kernel selection (`tomography_model.py:1685`: CPU→band, GPU n=1→pixel) is in place. `[done]`
 
 ### Parallel — `✓` CPU (0.10.1)
@@ -102,24 +106,23 @@ platform inversion), **parallel beam on GPU**, **qGGMRF** (no fresh measurement)
 
 ## Forward projection
 
-### Cone — `✓` CPU (0.10.1), `~` GPU1 (0.10.2 timing only)
-**Bottlenecks** — NOTE: cone forward is **unaffected by the 0.10.2 regression** (16.9 s on both 0.10.1 and
-0.10.2), so this finding is valid; the regression hit only the *band* kernel.
-- `CPU` (✓ traced, 256³, 16.9 s/iter, 0.10.1) — **dominated by `bitcast_dynamic-update-slice_fusion` ≈12.2 s/iter
-  (~72%)** = the rolled `jax.lax.map` over detector rows in `forward_project_pixel_batch_to_one_view`
-  (`cone_beam.py:470`) — the predicted `lax.map`-write materialization, **CONFIRMED**. Secondary: cone
-  coordinate math `cosine_divide_fusion` ≈3.2 s (~19%) + the sinogram `wrapped_scatter` ≈1.0 s (~6%). The
-  `lax.map`-write makes cone forward **13× the parallel forward** (1.3 s, scatter-bound — below) on the same jax. `[✓ trace]`
-- `GPU1` ⚠ **0.10.2 — re-measure.** Was: warm **599 ms = ~8.7× the cone back pixel-kernel (69 ms)** via the
-  **forward driver** (`projectors._sparse_forward_project`, `projectors.py:332`) — the dominant GPU projector
-  cost, un-traced. Hypothesis stands (the `:470` `lax.map` likely serializes worse on GPU), but re-take on 0.10.1. `[~ timing, exp 3]`
+### Cone — `✓` CPU + GPU1 (0.10.1). **The bottleneck is PLATFORM-DIVERGENT.**
+**Bottlenecks** — cone forward is `lax.map`-write-bound on CPU but `scatter`-bound on GPU; the 0.10.2 regression
+hit it on GPU (4×) but NOT CPU.
+- `CPU` (✓ traced, 256³, 16.9 s/iter, 0.10.1 — unaffected by the regression) — **dominated by
+  `bitcast_dynamic-update-slice_fusion` ≈12.2 s/iter (~72%)** = the rolled `jax.lax.map` over detector rows in
+  `forward_project_pixel_batch_to_one_view` (`cone_beam.py:470`). Secondary: cone coordinate math
+  `cosine_divide_fusion` ≈3.2 s (~19%) + the sinogram `wrapped_scatter` ≈1.0 s (~6%). 13× the parallel forward
+  (1.3 s) on the same jax. `[✓ trace]`
+- `GPU1` (✓ traced, 256³, **148 ms**, 0.10.1) — **dominated by `input_scatter_fusion` ≈37 ms** (the scatter
+  INTO the sinogram), with `loop_dynamic_update_slice_fusion` (the `:470` `lax.map`) ≈12 ms secondary +
+  `loop_divide_fusion` ≈8 ms. So on GPU the **sinogram scatter dominates, not the `lax.map`** — opposite of CPU.
+  ⚠ **Was a 0.10.2 victim: 599 ms → 148 ms (4×) on 0.10.1.** `[✓ trace]`
 
-**Possible improvements**
-- **Restructure the rolled `jax.lax.map` over detector rows (`cone_beam.py:470`) to avoid the
-  `dynamic_update_slice` materialization** — the same `lax.map`-rolling root cause as the back pixel-kernel.
-  This is a **real, jax-version-independent CPU bottleneck** (it survived the 0.10.1 re-measure). `[hypothesis — CPU measured]`
-- **Next experiment:** trace + ncu forward on GPU1 (0.10.1) to confirm the `lax.map` serialization is the cause
-  (and whether a `vmap`/restructured accumulation removes it).
+**Possible improvements** — the lever is platform-specific:
+- `CPU` — restructure the rolled `jax.lax.map` over detector rows (`cone_beam.py:470`) to avoid the
+  `dynamic_update_slice` materialization. `[CPU measured]`
+- `GPU` — the `input_scatter_fusion` (sinogram scatter) is the target; ncu it next for a roofline. `[GPU measured; ncu pending]`
 
 ### Parallel — `✓` CPU (0.10.1)
 **Bottlenecks**
@@ -155,12 +158,15 @@ platform inversion), **parallel beam on GPU**, **qGGMRF** (no fresh measurement)
 
 ## Cross-cutting (span all ops)
 
-- **⚠ jax 0.10.2 REGRESSION — measure the production env.** 0.10.2 (now excluded) compiled the cone *band*
-  kernel (`back_project_one_view_to_band`) into a `bitcast_gather`-heavy program that was **4× slower (11.8→2.94 s)
-  with ~12× the memory traffic (29.6→2.5 GB, 6554→591 MB temp)** vs production 0.10.1. The pixel kernel and cone
-  forward were untouched. Three of my earlier cone-back "findings" were this artifact (gather-bound; 2× not 8×
-  cliff; band heavier than pixel). LESSON: profiling must run the **production env + its pins**; stamp the jax
-  version on every result and gate on it. **All GPU rows are still 0.10.2 → re-measure.**
+- **⚠ jax 0.10.2 REGRESSION — backend-AND-kernel-specific; measure the production env.** 0.10.2 (now excluded)
+  slowed **different kernels on different backends**: on **CPU** it compiled the cone *back band* kernel
+  (`back_project_one_view_to_band`) `bitcast_gather`-heavy, **4× slower (11.8→2.94 s), ~12× memory traffic
+  (29.6→2.5 GB)**; on **GPU** it 4×-slowed the cone *forward* kernel (599→148 ms). It left **GPU back** (pixel
+  69 ms + band 180 ms — unchanged, ncu-confirmed) and **CPU forward** (16.9 s — unchanged) alone. So you CANNOT
+  assume a kernel hit on one backend is hit on the other (and cone forward's bottleneck itself differs by
+  backend — CPU `lax.map`, GPU scatter). LESSON: profiling must run the **production env + its pins**; stamp the
+  jax version on every result and gate on it (the `run_gpu_all.sh` guard now does). Earlier cone-back CPU
+  "findings" (gather-bound; 2×-not-8× cliff; band heavier than pixel) were the 0.10.2 artifact, now corrected.
 - **Compile time** (CPU 0.10.1) — ~0.18–0.24 s/op/shape, size-invariant, XLA-dominated; trace+lower (the batching
   nest `sum_/concatenate_function_in_batches` in `projectors.py`) ~0.1 s. (GPU was autotuning-dominated, 59 ms→2.4 s,
   noisy — on 0.10.2, re-confirm.) Matters for small/many-shape/first-call (VCD per-subset, tests). Refactor lever =
@@ -174,12 +180,13 @@ platform inversion), **parallel beam on GPU**, **qGGMRF** (no fresh measurement)
 
 ## Open experiments (to fill the matrix)
 
-0. **⚠ RE-MEASURE ALL GPU on 0.10.1** (confirm cluster `mbirjax` env is 0.10.1 first) — same scripts. TOP
-   priority: cone-back GPU1 (pixel) + GPUn (band) — the band kernel was the CPU regression victim, so the
-   platform inversion and n=2 non-monotonicity may shrink/reverse. Then cone-forward GPU1, ncu re-runs.
-1. **Cone forward** ncu (CPU & GPU1) of `forward_project_pixel_batch_to_one_view` (`cone_beam.py:275`) — CPU
-   trace done (`lax.map`-write-bound, regression-free); GPU1 still un-traced.
+~~0. RE-MEASURE ALL GPU on 0.10.1~~ — **DONE 2026-06-27** (`run_gpu_all.sh`); GPU back confirmed, GPU forward
+   corrected (4× faster). Cone back+forward rows are now ✓ on 0.10.1.
+1. **Cone forward GPU ncu** — roofline the `input_scatter_fusion` (the GPU bottleneck) of
+   `forward_project_pixel_batch_to_one_view` (`cone_beam.py:275`); update `ncu_back_projection.py`-style regex.
 2. **Parallel beam on GPU** back + forward (`parallel_beam.py:286` / `:222`) — CPU done; GPU is the gap.
 3. **qGGMRF** trace + ncu of `qggmrf_grad_and_hessian_per_cylinder` (`qggmrf.py:136`) single-device.
 4. **512³ scale-up** of the cone-back picture (inversion depth at production size, on 0.10.1).
 5. `ncu --set full` on the cone-back GPU1 `loop_add_fusion` — name the exact saturated pipe (L1 vs LSU vs atomics).
+6. **Faster ncu:** bracket the profiled region with `cudaProfilerStart/Stop` + `ncu --profile-from-start off`
+   (the 8-min runs were mostly ncu instrumenting JAX's compile-time autotuning during warmup).

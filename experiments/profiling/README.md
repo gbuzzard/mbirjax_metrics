@@ -1,9 +1,10 @@
 # Fine-grained projector profiling
 
-> ⚠ **NUMBERS BELOW ARE PARTLY STALE (jax 0.10.2).** Profiling must run the **production env + its pins**;
-> the early runs used jax **0.10.2**, since **EXCLUDED** for a regression that slowed the cone *band* kernel
-> ~4×. CPU was re-measured on **0.10.1** on 2026-06-27; **GPU is still 0.10.2 and SUSPECT.** This README is the
-> methodology/history — for the **corrected, authoritative inventory** see [`key_findings.md`](key_findings.md).
+> ⚠ **SOME NUMBERS IN THIS README ARE STALE (jax 0.10.2).** Profiling must run the **production env + its pins**;
+> the early runs used jax **0.10.2**, since **EXCLUDED** for a backend-AND-kernel-specific regression (4×-slowed
+> the cone *band* kernel on CPU and the cone *forward* kernel on GPU). Everything was re-measured on **0.10.1**
+> (2026-06-27): GPU back findings **CONFIRMED**, GPU forward 599→148 ms, CPU cone-back corrected. This README is
+> the methodology/history — for the **corrected, authoritative inventory** see [`key_findings.md`](key_findings.md).
 
 Investigation into **where time and memory actually go inside the mbirjax projection
 kernels** — a level below the coarse min-time + peak-memory the regression engine records.
