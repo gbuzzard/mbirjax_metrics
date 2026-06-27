@@ -29,15 +29,13 @@ def is_host_runtime(name):
             or name.startswith("end:") or name in ("back_project", "forward_project"))
 
 
-def summarize_perfetto(trace_path, n_iters, top_n=30):
-    """Self-time summary of a Perfetto/Chrome-trace JSON: by TRACK, then by FUSION/KERNEL FAMILY.
+def fusion_self_time(trace_path):
+    """Per-event SELF-TIME (exclusive, microseconds) from a Perfetto/Chrome-trace JSON.
 
-    Args:
-        trace_path: path to the `perfetto_trace.json.gz` written by `jax.profiler.trace`.
-        n_iters: number of traced iterations (the per-iter columns divide by this).
-        top_n: rows to print in the family table.
-
-    Returns the self-time leaderboard (list of (name, [self_us, count])), heaviest first.
+    The pure computation behind summarize_perfetto AND the region-attribution join.  Within one
+    (pid, tid) track the ph='X' events strictly nest, so self-time = dur - sum(direct children dur),
+    computed with a stack sweep.  Returns ``(events, tracks, n_events)`` where ``events`` maps
+    name -> [self_us, count] and ``tracks`` maps the timeline label -> self_us.
     """
     with gzip.open(trace_path, "rt") as f:
         data = json.load(f)
@@ -62,10 +60,10 @@ def summarize_perfetto(trace_path, n_iters, top_n=30):
         label = tname.get(key, pname.get(key[0], "?"))
         stack = []   # [ts, end, name, child_total_us]
 
-        def _pop(s):
+        def _pop(s, _label=label):
             st = max(0.0, (s[1] - s[0]) - s[3])
             self_us[s[2]][0] += st; self_us[s[2]][1] += 1
-            track_self[label] += st
+            track_self[_label] += st
 
         for e in evs:
             ts, dur = float(e["ts"]), float(e["dur"]); end = ts + dur
@@ -76,9 +74,22 @@ def summarize_perfetto(trace_path, n_iters, top_n=30):
             stack.append([ts, end, e.get("name", "?"), 0.0])
         while stack:
             _pop(stack.pop())
+    return dict(self_us), dict(track_self), len(events)
 
+
+def summarize_perfetto(trace_path, n_iters, top_n=30):
+    """Self-time summary of a Perfetto/Chrome-trace JSON: by TRACK, then by FUSION/KERNEL FAMILY.
+
+    Args:
+        trace_path: path to the `perfetto_trace.json.gz` written by `jax.profiler.trace`.
+        n_iters: number of traced iterations (the per-iter columns divide by this).
+        top_n: rows to print in the family table.
+
+    Returns the self-time leaderboard (list of (name, [self_us, count])), heaviest first.
+    """
+    self_us, track_self, n_events = fusion_self_time(trace_path)
     n = max(n_iters, 1)
-    print(f"\n  trace events: {len(events)} total   (self-time, exclusive; per-iter = /{n})")
+    print(f"\n  trace events: {n_events} total   (self-time, exclusive; per-iter = /{n})")
 
     print(f"\n  === SELF-TIME by TRACK (compute threads/streams vs host/dispatch) ===")
     print(f"  {'self_ms':>10}  {'/iter':>8}  track")

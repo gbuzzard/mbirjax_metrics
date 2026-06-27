@@ -32,16 +32,11 @@ import os
 import sys
 import time
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-GEOMETRY = "cone"
-SIZES = [(128, 128, 128), (256, 256, 256)]   # below / above the ~200^3 cliff
-WARMUP = 1
-TIMED = 3
-N_DEVICES = 1                                 # single device: isolate the KERNEL, not sharding
-DUMP_HLO = True
-
-os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(N_DEVICES))
+# Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+from profiling_config import GEOMETRY, SIZES, N_DEVICES, WARMUP, STATIC_TRIALS as TIMED  # noqa: E402
+DUMP_HLO = True   # always dump the compiled HLO (fixed behavior, not a run knob)
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
 import mbirjax            # noqa: E402,F401  device-setup-first

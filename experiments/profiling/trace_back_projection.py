@@ -40,29 +40,14 @@ import glob
 import time
 from datetime import datetime
 
-# ── CONFIG (edit here) ────────────────────────────────────────────────────────
-GEOMETRY = "cone"            # back projection's most-analyzed geometry (band path; cone cliff lives here)
-# SINOGRAM size (n_views, n_rows, n_channels); the cone recon is auto-derived.  256-class as agreed.
-# (The nightly uses ASYMMETRIC sizes to surface axis swaps; symmetry is fine for a profiling dry run.)
-SIZE = (256, 256, 256)
-N_DEVICES_LIST = [1, 2]      # device counts to trace, in order.  GPU: n=1 short-circuits to the pixel
-                             # kernel; n>=2 exercises the banded reduce-scatter (NVLink).  Counts above the
-                             # number of available devices are skipped with a note.
-WARMUP = 2                   # untimed calls to trigger compilation of every band/batch shape
-TRACE_ITERS = 3              # warm iterations captured in the trace (and timed)
-TOP_N = 30                   # how many trace events to print in the summary table
-
-# ── Device-setup-first: choose the CPU device count BEFORE importing mbirjax ──
-# mbirjax reads MBIRJAX_NUM_CPU_DEVICES on its first import to size the virtual CPU
-# device mesh, so it must be set before `import mbirjax`.  setdefault respects a value
-# already set in the shell/cluster.
-os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(max(N_DEVICES_LIST)))
-
-# Make the engine's helpers importable (they live next to the nightly engine).
+# Config now lives in profiling.env (see profiling_config.py).  Importing it also sets
+# MBIRJAX_NUM_CPU_DEVICES (device-setup-first), so it must precede `import mbirjax`.
 _HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+from profiling_config import GEOMETRY, SIZE, N_DEVICES_LIST, WARMUP, TRACE_ITERS, TOP_N  # noqa: E402
+
 _SCALING = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests"))
 sys.path.insert(0, _SCALING)
-sys.path.insert(0, _HERE)                 # so the JAX-free trace summarizer is importable
 from trace_utils import summarize_perfetto   # noqa: E402
 
 import mbirjax            # noqa: E402,F401 — device-setup side effect; must precede `import jax`

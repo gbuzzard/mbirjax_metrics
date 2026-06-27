@@ -26,14 +26,10 @@ import os
 import sys
 import time
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-GEOMETRY = "cone"
-SIZES = [(128, 128, 128), (256, 256, 256)]
-N_DEVICES = 1
-WARM_TRIALS = 3
-
-os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(N_DEVICES))
+# Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+from profiling_config import GEOMETRY, SIZES, N_DEVICES, COMPILE_TRIALS as WARM_TRIALS  # noqa: E402
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
 import mbirjax            # noqa: E402,F401  device-setup-first

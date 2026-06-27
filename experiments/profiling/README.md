@@ -53,10 +53,13 @@ python experiments/profiling/trace_back_projection.py        # exp 1 (trace)
 python experiments/profiling/static_cone_back_kernels.py     # exp 2 (static + cliff)
 ```
 
-Run parameters are clearly-labeled constants at the top of each script (no CLI args, so a run is
-reproducible from the file). To trace the **multi-device** path, set `N_DEVICES = 4` in
-`trace_back_projection.py` — it sets `MBIRJAX_NUM_CPU_DEVICES` to match via `setdefault`, so 4
-virtual CPU devices appear and the trace shows the thread-pool fan-out + reduce-scatter.
+Run parameters live in one place — **`profiling.env`** (KEY=VALUE, like the regression's
+`run_configs.env`), parsed by `profiling_config.py`; the scripts `from profiling_config import ...`
+instead of each carrying a CONFIG block. Edit `profiling.env` to change `SIZE` / `N_DEVICES_LIST` /
+`WARMUP` / etc. for all scripts at once. A same-named environment variable **overrides** the file
+for a one-off, e.g. `SIZE=512x512x512 python experiments/profiling/trace_back_projection.py` or
+`N_DEVICES_LIST=1,2,4 python …` (which sizes the CPU mesh automatically). The default `SIZE` is the
+dashboard's **asymmetric** `200x208x160` (symmetric sizes like 256³ can mask axis/stride effects).
 
 Outputs (gitignore candidates — they're large/derived):
 - `traces/<tag>/.../perfetto_trace.json.gz` — open at <https://ui.perfetto.dev>; the script also

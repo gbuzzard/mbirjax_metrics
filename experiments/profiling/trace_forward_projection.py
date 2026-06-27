@@ -19,19 +19,14 @@ import glob
 import time
 from datetime import datetime
 
-# ── CONFIG (edit here) ────────────────────────────────────────────────────────
-GEOMETRY = "cone"
-SIZE = (256, 256, 256)       # match the back trace + inventory (256³); cone recon auto-derived
-N_DEVICES_LIST = [1]         # start single-device (CPU); add 2/4 once the kernel structure is clear
-WARMUP = 2                   # untimed calls to compile every batch shape
-TRACE_ITERS = 2              # warm iters captured (forward @256³ is ~16.8 s/call on CPU — keep small)
-TOP_N = 30
-
-os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(max(N_DEVICES_LIST)))
+# Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES
+# (device-setup-first), so it must precede `import mbirjax`.
 _HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+from profiling_config import GEOMETRY, SIZE, N_DEVICES_LIST, WARMUP, TRACE_ITERS, TOP_N  # noqa: E402
+
 _SCALING = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests"))
 sys.path.insert(0, _SCALING)
-sys.path.insert(0, _HERE)                 # so the JAX-free trace summarizer is importable
 from trace_utils import summarize_perfetto   # noqa: E402
 
 import mbirjax            # noqa: E402,F401 — device-setup-first

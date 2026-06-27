@@ -39,18 +39,12 @@ import os
 import sys
 import time
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-GEOMETRY = "cone"
-SIZE = (256, 256, 256)       # match the exp-1/exp-2 GPU size; bump to 512^3 once the flow is confirmed
-N_DEVICES = 1                # n=1 GPU -> the pixel kernel (the GPU-optimal back path)
-WARMUP = 2                   # compile every shape BEFORE the profiled region
-PROFILE_CALLS = 2            # warm calls ncu profiles (keep small — ncu replays each kernel many times)
-
-os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(N_DEVICES))
+# Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
-sys.path.insert(0, _HERE)                 # so cuda_profiler is importable
+sys.path.insert(0, _HERE)
+from profiling_config import GEOMETRY, SIZE, N_DEVICES, WARMUP, PROFILE_CALLS  # noqa: E402
 from cuda_profiler import profiler_range   # noqa: E402
+sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
 import mbirjax            # noqa: E402,F401  device-setup-first
 import jax                # noqa: E402
