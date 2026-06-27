@@ -1,0 +1,16 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [199 items]
+
+.........................................s.............................. [ 36%]
+.................s...................................................... [ 72%]
+..s....................................................                  [100%]
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:211: GPU present: auto uses GPUs; this exercises the CPU default
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+================== 196 passed, 3 skipped in 268.96s (0:04:28) ==================
