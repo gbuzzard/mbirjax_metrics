@@ -48,6 +48,9 @@ def main():
 
     dc = sorted(set(args.device_counts))
     print(f"\n=== {args.geometry} | {args.op} | {args.size} @ n={dc} ===")
+    # Record the compile/runtime stack with every measurement -- this is the variable to bisect when a
+    # perf shift survives pinning the code (jax/jaxlib + the bundled CUDA/cuDNN/cuBLAS).
+    print(f"toolchain: {pt.sc.toolchain_info()}")
     fd, tmp = tempfile.mkstemp(suffix=".yaml", prefix="perf_adhoc_")
     os.close(fd)
     try:
