@@ -265,6 +265,34 @@ def beta_root():
                                         os.pardir, os.pardir, os.pardir))
 
 
+def compile_cache_dir():
+    """Persistent XLA compilation-cache directory (``~/.mbirjax/jax_compile_cache``), created if absent.
+
+    Shared by every worker subprocess (and the inline path) so compiled XLA executables persist across
+    the per-config subprocesses AND across nightly runs.  The nightly recompiles the SAME shapes every
+    run, so once the cache is warm the warmup call loads the executable from disk instead of recompiling
+    — which is most of the lull after each ``[measure …]`` line.  jax keys the cache on jaxlib version +
+    XLA flags + the HLO, so a new jax or a changed op invalidates exactly its own entries (never stale
+    kernels).  Compilation happens in WARMUP, never in the timed trials, so this trims setup latency
+    only — the measured ``min_ms`` is unchanged.  (Grows over time; prune ``~/.mbirjax/jax_compile_cache``
+    if it gets large.)
+    """
+    d = os.path.expanduser(os.path.join("~", ".mbirjax", "jax_compile_cache"))
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        pass
+    return d
+
+
+def compile_cache_env():
+    """Env vars that enable the persistent compile cache — for a worker subprocess or this process."""
+    return {
+        "JAX_COMPILATION_CACHE_DIR": compile_cache_dir(),
+        "JAX_PERSISTENT_CACHE_MIN_COMPILE_TIME_SECS": "0",   # cache even sub-second compiles
+    }
+
+
 def build_worker_env(mem_fraction=0.9, preallocate=True, lib_root=None):
     """Orchestrator side: the environment every worker subprocess inherits.
 
@@ -287,6 +315,7 @@ def build_worker_env(mem_fraction=0.9, preallocate=True, lib_root=None):
         "PYTHONPATH": root + (os.pathsep + existing if existing else ""),
         "XLA_PYTHON_CLIENT_PREALLOCATE": "true" if preallocate else "false",
         "XLA_PYTHON_CLIENT_MEM_FRACTION": str(mem_fraction),
+        **compile_cache_env(),   # reuse compiled kernels across subprocesses + nightly runs
     }
 
 

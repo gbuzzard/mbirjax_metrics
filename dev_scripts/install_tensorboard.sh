@@ -7,10 +7,11 @@
 # change what is measured.  Installing them here (in mbirjax_metrics) instead of in the mbirjax
 # repo's installer keeps the library's env definition untouched while letting us use them here.
 #
-# This is the home for any other ORTHOGONAL extra (pprof, perfetto trace_processor, ...).  The hard
-# rule: nothing installed here may move jax/jaxlib — the profiling MEASURES the production jax, so a
-# version bump would corrupt results.  The script verifies jax/jaxlib are unchanged and warns loudly
-# if they moved (so you can pin/rollback).  Idempotent.
+# This is the home for any other ORTHOGONAL extra (pprof, perfetto trace_processor, ...).  Guiding
+# principle: profiling MEASURES THE PRODUCTION ENVIRONMENT, including whatever pins it uses.  So the
+# hard rule here is that an extra must not move jax/jaxlib (or anything else load-bearing) — if it
+# does, this env is no longer the production env we mean to measure.  The script snapshots jax/jaxlib
+# and aborts loudly if an install moved them (so you can roll the extra back).  Idempotent.
 #
 # Usage:
 #   conda activate mbirjax      # the env you profile in

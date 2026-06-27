@@ -105,6 +105,10 @@ updates; a second immediate run should report no changed branch (fire-on-change 
   (the `ai` H100 partition rejects `standby`). Most of the cost is the measurement sweeps — fire-on-change
   exits in seconds otherwise.
 - Per-branch **test** results are logged but **not gated/diffed** (the perf engine is the alert path).
+- **Compile cache:** workers share a persistent XLA cache at `~/.mbirjax/jax_compile_cache` so the same
+  shapes aren't recompiled every run (cuts the lull after each `[measure …]`). It's keyed on jaxlib
+  version + HLO, so it never serves stale kernels; it only trims warmup/setup time, not the measured
+  `min_ms`. Safe to delete anytime; it just grows over time.
 - The **engine** gate compares each run only against **this branch's own previous run**
   (commit-over-commit). The **dashboard** layers on the broader correctness checks (vs `main`,
   single-vs-multi-device, and CPU↔GPU) and the perf "compare against" overlays — all derived from the
