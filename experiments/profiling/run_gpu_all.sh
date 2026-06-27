@@ -53,30 +53,32 @@ run "STEP 1: static cone back kernels — pixel vs band (the PLATFORM INVERSION)
 run "STEP 2: compile-time attribution (trace/lower/compile, GPU autotuning)"          python -u $P/compile_time_projectors.py
 run "STEP 3: trace cone BACK (n=1 short-circuit pixel; n=2 banded reduce-scatter)"    python -u $P/trace_back_projection.py
 run "STEP 4: trace cone FORWARD (GPU1) — gap from the first GPU pass, included here"  python -u $P/trace_forward_projection.py
+run "STEP 5: region breakdown (profile_measure — trace+HLO -> self-time per named_scope region)" python -u $P/profile_measure.py
 
 # ── Nsight Compute roofline (needs ncu on PATH + GPU perf-counter permission) ──
 mkdir -p $P/ncu
 if [ "$HAVE_NCU" = "1" ]; then
-  echo; echo "############### STEP 5: ncu roofline — n=1 PIXEL kernel (loop_add / dynamic_update_slice) ###############"
+  echo; echo "############### STEP 6: ncu roofline — n=1 PIXEL kernel (loop_add / dynamic_update_slice) ###############"
   ncu --profile-from-start off --set basic --kernel-name "regex:add_fusion|dynamic_update_slice" \
       --launch-count 6 --target-processes all \
       --csv --log-file $P/ncu/back_pixel_256.csv \
       python $P/ncu_back_projection.py || echo "  >>> ncu PIXEL failed (ERR_NVGPUCTRPERM = counters locked; see README)"
 
-  echo; echo "############### STEP 6: ncu roofline — BAND kernel transpose (input_transpose_fusion) ###############"
+  echo; echo "############### STEP 7: ncu roofline — BAND kernel transpose (input_transpose_fusion) ###############"
   ncu --profile-from-start off --set basic --kernel-name "regex:transpose_fusion|input_transpose" \
       --launch-count 6 --target-processes all \
       --csv --log-file $P/ncu/back_band_256.csv \
       python $P/ncu_band_kernel.py || echo "  >>> ncu BAND failed (ERR_NVGPUCTRPERM = counters locked; see README)"
 else
-  echo; echo "############### STEPS 5-6 (ncu) SKIPPED — ncu not on PATH ###############"
+  echo; echo "############### STEPS 6-7 (ncu) SKIPPED — ncu not on PATH ###############"
 fi
 
 echo; echo "############### DONE ###############"
 echo "  results: tooling/scaling_tests/results/{gpu_inventory,static_cone_back_gpu,compile_time_gpu}.yaml"
+echo "           $P/results/profile_gpu_*.yaml   (the per-named-region breakdown)"
 echo "  traces : $P/traces/    hlo: $P/hlo/    ncu: $P/ncu/"
 echo
 echo "  Optional / open experiments (edit a constant at the top of the script, then re-run that one):"
 echo "    * parallel beam on GPU : set GEOMETRY=\"parallel\" in trace_back_projection.py / trace_forward_projection.py"
 echo "    * 512^3 scale-up       : set SIZE=(512,512,512) in the trace / static scripts"
-echo "    * ncu --set full       : swap --set basic -> --set full on STEP 5 to name the exact saturated pipe"
+echo "    * ncu --set full       : swap --set basic -> --set full on STEP 6 to name the exact saturated pipe"

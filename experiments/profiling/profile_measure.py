@@ -96,14 +96,21 @@ def measure_cell(model, op, plat, devs):
             with jax.profiler.StepTraceAnnotation(op, step_num=i):
                 t0 = time.perf_counter(); jax.block_until_ready(run()); times.append((time.perf_counter() - t0) * 1e3)
     hlo = jax.jit(f).lower(*args).compile().as_text()
-    regions = region_breakdown(_find_perfetto(out_dir), hlo)
+    wall = round(min(times), 3)
+    # Region 'ms' is the WALL-ATTRIBUTED share (pct x wall), NOT raw trace self-time: on CPU the
+    # intra-op-thread TraceMe spans overlap, so raw self-times overcount (their sum >> wall).  The
+    # SHARE (pct) is stable across that overlap, and pct x wall gives an interpretable absolute that
+    # sums to ~wall on both platforms.  (On GPU the single compute stream barely overlaps, so this
+    # nearly equals the raw self-time anyway.)
+    raw = region_breakdown(_find_perfetto(out_dir), hlo)
+    regions = {r: {"pct": v["pct"], "ms": round(v["pct"] / 100.0 * wall, 1)} for r, v in raw.items()}
 
     size_label = "x".join(str(s) for s in SIZE)
     key = f"{GEOMETRY}|{op}|{size_label}|{N_DEVICES}"
-    rec = {"wall_ms": round(min(times), 3), "regions": regions}
-    print(f"  {key}:  wall={rec['wall_ms']:.1f} ms")
+    rec = {"wall_ms": wall, "regions": regions}
+    print(f"  {key}:  wall={wall:.1f} ms")
     for r, v in regions.items():
-        print(f"      {v['pct']:5.1f}%  {v['self_ms']:9.1f} ms  {r}")
+        print(f"      {v['pct']:5.1f}%  {v['ms']:8.1f} ms  {r}")
     return key, rec
 
 
