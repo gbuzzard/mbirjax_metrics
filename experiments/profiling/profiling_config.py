@@ -59,8 +59,15 @@ def _sizes(s):
 
 GEOMETRY       = _get("GEOMETRY", "cone")
 OPS            = _strs(_get("OPS", "forward,back"))
-SIZE           = _size(_get("SIZE", "200x208x160"))
-SIZES          = _sizes(_get("SIZES", "128x112x96,200x208x160"))
+# Per-platform sizes (CPU can't run the big GPU sizes; no cross-platform cell needed here).  Resolve
+# with size_for(platform) / sizes_for(platform) AFTER the script knows its platform (post `import jax`),
+# since this module is JAX-free and can't detect the device itself.
+SIZE_CPU       = _size(_get("SIZE_CPU", "200x208x160"))
+SIZE_GPU       = _size(_get("SIZE_GPU", "512x448x384"))
+SIZES_CPU      = _sizes(_get("SIZES_CPU", "128x112x96,200x208x160"))
+SIZES_GPU      = _sizes(_get("SIZES_GPU", "200x208x160,512x448x384"))
+_SIZE_OVR      = _get("SIZE", "").strip()    # un-suffixed SIZE/SIZES = one-off override for BOTH platforms
+_SIZES_OVR     = _get("SIZES", "").strip()
 N_DEVICES      = int(_get("N_DEVICES", "1"))
 N_DEVICES_LIST = _ints(_get("N_DEVICES_LIST", "1,2"))
 WARMUP         = int(_get("WARMUP", "2"))
@@ -73,3 +80,19 @@ TOP_N          = int(_get("TOP_N", "30"))
 # Device-setup-first: size the CPU virtual-device mesh before any `import mbirjax`.  setdefault
 # respects a value already set by the shell/cluster.
 os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(max([N_DEVICES, *N_DEVICES_LIST])))
+
+
+def size_for(platform):
+    """The single problem size for this platform — SIZE_GPU on gpu, SIZE_CPU otherwise; an
+    un-suffixed SIZE override (env/`.env`) wins for both."""
+    if _SIZE_OVR:
+        return _size(_SIZE_OVR)
+    return SIZE_GPU if platform == "gpu" else SIZE_CPU
+
+
+def sizes_for(platform):
+    """The size SWEEP for this platform (static/compile scripts) — SIZES_GPU on gpu else SIZES_CPU;
+    an un-suffixed SIZES override wins for both."""
+    if _SIZES_OVR:
+        return _sizes(_SIZES_OVR)
+    return SIZES_GPU if platform == "gpu" else SIZES_CPU

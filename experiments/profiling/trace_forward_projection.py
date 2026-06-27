@@ -23,7 +23,7 @@ from datetime import datetime
 # (device-setup-first), so it must precede `import mbirjax`.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
-from profiling_config import GEOMETRY, SIZE, N_DEVICES_LIST, WARMUP, TRACE_ITERS, TOP_N  # noqa: E402
+from profiling_config import GEOMETRY, size_for, N_DEVICES_LIST, WARMUP, TRACE_ITERS, TOP_N  # noqa: E402
 
 _SCALING = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests"))
 sys.path.insert(0, _SCALING)
@@ -39,9 +39,10 @@ def run_one(n_devices):
     if n_devices > len(avail):
         print(f"\n  [skip n={n_devices}: only {len(avail)} {avail[0].platform} device(s) available]")
         return
-    size_label = "x".join(str(s) for s in SIZE)
     devs = avail[:n_devices]
     plat = devs[0].platform
+    SIZE = size_for(plat)                       # per-platform size (CPU small, GPU large)
+    size_label = "x".join(str(s) for s in SIZE)
     print("\n" + "=" * 78)
     print(f"  TRACE  forward projection | {GEOMETRY} | {size_label} | n={n_devices} {plat}")
     print(f"  jax {jax.__version__}   devices visible: {len(jax.devices())} {plat}")

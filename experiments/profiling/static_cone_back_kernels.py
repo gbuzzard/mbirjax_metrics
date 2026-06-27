@@ -35,7 +35,7 @@ import time
 # Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
-from profiling_config import GEOMETRY, SIZES, N_DEVICES, WARMUP, STATIC_TRIALS as TIMED  # noqa: E402
+from profiling_config import GEOMETRY, sizes_for, N_DEVICES, WARMUP, STATIC_TRIALS as TIMED  # noqa: E402
 DUMP_HLO = True   # always dump the compiled HLO (fixed behavior, not a run knob)
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
@@ -103,6 +103,7 @@ def analyze(label, fn, args, size_label):
 
 def main():
     plat = jax.devices()[0].platform
+    SIZES = sizes_for(plat)                     # per-platform size sweep (CPU small, GPU large)
     print("=" * 90)
     print(f"  STATIC cone back kernels (pixel vs band) | n={N_DEVICES} {plat} | jax {jax.__version__}")
     print("=" * 90)

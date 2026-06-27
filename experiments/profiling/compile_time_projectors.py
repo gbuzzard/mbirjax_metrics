@@ -29,7 +29,7 @@ import time
 # Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
-from profiling_config import GEOMETRY, SIZES, N_DEVICES, COMPILE_TRIALS as WARM_TRIALS  # noqa: E402
+from profiling_config import GEOMETRY, sizes_for, N_DEVICES, COMPILE_TRIALS as WARM_TRIALS  # noqa: E402
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
 import mbirjax            # noqa: E402,F401  device-setup-first
@@ -94,6 +94,7 @@ def cold_warm(fn, args):
 
 def main():
     plat = jax.devices()[0].platform
+    SIZES = sizes_for(plat)                     # per-platform size sweep (CPU small, GPU large)
     jax.block_until_ready(jnp.ones(8).sum())   # init the backend BEFORE the loop (keep it out of size-1 cold)
     print("=" * 100)
     print(f"  COMPILE-TIME attribution | {GEOMETRY} | n={N_DEVICES} {plat} | jax {jax.__version__}")

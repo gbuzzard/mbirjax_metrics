@@ -31,7 +31,7 @@ import datetime as _dt
 # Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
-from profiling_config import GEOMETRY, OPS, SIZE, N_DEVICES, WARMUP, TRACE_ITERS  # noqa: E402
+from profiling_config import GEOMETRY, OPS, size_for, N_DEVICES, WARMUP, TRACE_ITERS  # noqa: E402
 from region_attribution import region_breakdown   # noqa: E402
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
@@ -75,8 +75,9 @@ def _find_perfetto(out_dir):
     return next((c for c in cands if "perfetto" in os.path.basename(c).lower()), cands[0] if cands else None)
 
 
-def measure_cell(model, op, plat, devs):
-    """Trace + lower the matching driver, join to regions; return (cell_key, cell_record)."""
+def measure_cell(model, op, plat, devs, SIZE):
+    """Trace + lower the matching driver, join to regions; return (cell_key, cell_record).  SIZE is the
+    per-platform size the model was built with (so the sinogram input matches the recon)."""
     recon_shape = tuple(int(x) for x in model.get_params("recon_shape"))
     idx = jax.device_put(pt.make_indices(model), devs[0])
     num_pixels, num_slices = len(idx), recon_shape[2]
@@ -117,6 +118,7 @@ def measure_cell(model, op, plat, devs):
 def main():
     devs = jax.devices()[:N_DEVICES]
     plat = devs[0].platform
+    SIZE = size_for(plat)                       # per-platform size (CPU small, GPU large)
     sha, cdate = _mbirjax_provenance()
     try:
         import jaxlib; jaxlib_v = jaxlib.__version__
@@ -131,7 +133,7 @@ def main():
         model = pt.make_model(pt.Config(), GEOMETRY, SIZE)
         if hasattr(model, "configure_devices"):
             model.configure_devices(devs)
-        key, rec = measure_cell(model, op, plat, devs)
+        key, rec = measure_cell(model, op, plat, devs, SIZE)
         cells[key] = rec
 
     record = {

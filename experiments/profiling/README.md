@@ -55,11 +55,15 @@ python experiments/profiling/static_cone_back_kernels.py     # exp 2 (static + c
 
 Run parameters live in one place — **`profiling.env`** (KEY=VALUE, like the regression's
 `run_configs.env`), parsed by `profiling_config.py`; the scripts `from profiling_config import ...`
-instead of each carrying a CONFIG block. Edit `profiling.env` to change `SIZE` / `N_DEVICES_LIST` /
-`WARMUP` / etc. for all scripts at once. A same-named environment variable **overrides** the file
-for a one-off, e.g. `SIZE=512x512x512 python experiments/profiling/trace_back_projection.py` or
-`N_DEVICES_LIST=1,2,4 python …` (which sizes the CPU mesh automatically). The default `SIZE` is the
-dashboard's **asymmetric** `200x208x160` (symmetric sizes like 256³ can mask axis/stride effects).
+instead of each carrying a CONFIG block. Edit `profiling.env` to change the knobs for all scripts at
+once. Sizes are **per platform** (CPU can't run the big GPU sizes; profiling has no cross-platform
+cell, so they're independent — simpler than the regression): `SIZE_CPU=200x208x160` (the dashboard
+CPU-max), `SIZE_GPU=512x448x384` (the next dashboard GPU size, where the band/capacity/multi-GPU
+effects show). Each script resolves its size by detected platform via `profiling_config.size_for()`.
+A same-named environment variable **overrides** the file for a one-off, and the **un-suffixed** `SIZE`
+forces a size on *both* platforms, e.g. `SIZE=1024x1008x992 python experiments/profiling/profile_measure.py`
+or `N_DEVICES_LIST=1,2,4 python …` (which sizes the CPU mesh automatically). Sizes are kept
+**asymmetric** on purpose (symmetric sizes like 256³ can mask axis/stride effects).
 
 Outputs (gitignore candidates — they're large/derived):
 - `traces/<tag>/.../perfetto_trace.json.gz` — open at <https://ui.perfetto.dev>; the script also

@@ -42,7 +42,7 @@ import time
 # Config lives in profiling.env (see profiling_config.py); importing it sets MBIRJAX_NUM_CPU_DEVICES.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
-from profiling_config import GEOMETRY, SIZE, N_DEVICES, WARMUP, PROFILE_CALLS  # noqa: E402
+from profiling_config import GEOMETRY, size_for, N_DEVICES, WARMUP, PROFILE_CALLS  # noqa: E402
 from cuda_profiler import profiler_range   # noqa: E402
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
@@ -56,6 +56,7 @@ def main():
     if plat != "gpu":
         print(f"  WARNING: backend is {plat}, not gpu — ncu profiling is a GPU-only step.")
     devs = jax.devices()[:N_DEVICES]
+    SIZE = size_for(plat)                       # per-platform size (CPU small, GPU large)
     size_label = "x".join(str(s) for s in SIZE)
     print(f"  ncu driver: {GEOMETRY} back | {size_label} | n={N_DEVICES} {plat}")
 
