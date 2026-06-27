@@ -122,6 +122,47 @@ def pyproject_version(root):
         return None
 
 
+def toolchain_info():
+    """Versions of the compile/runtime stack that govern kernel performance, recorded per run.
+
+    The mbirjax git commit identifies the *measured code*; this identifies the *compiler/runtime* that
+    turns it into GPU kernels — so a night-to-night perf shift can be attributed to a toolchain change
+    (e.g. a new ``jax[cuda12]`` resolved by the nightly's reinstall) rather than the code.  Motivated by
+    the 2026-06-27 GPU run where forward projection slowed 3-9x with byte-identical source (see lessons).
+
+    All fields best-effort -> None when unreadable (CUDA fields are None on CPU builds).  CUDA/cuDNN/
+    cuBLAS are integer codes from jaxlib's bundled bindings (e.g. 12030 = CUDA 12.3, 90300 = cuDNN 9.3.0).
+    """
+    info = {"jax": None, "jaxlib": None, "cuda": None, "cudnn": None, "cublas": None,
+            "xla_flags": os.environ.get("XLA_FLAGS")}
+    try:
+        import jax
+        info["jax"] = getattr(jax, "__version__", None)
+    except Exception:
+        pass
+    try:
+        import jaxlib
+        info["jaxlib"] = (getattr(jaxlib, "__version__", None)
+                          or getattr(getattr(jaxlib, "version", None), "__version__", None))
+    except Exception:
+        pass
+    try:                                       # GPU builds only; internal binding, so fully guarded
+        from jax._src.lib import cuda_versions as _cv
+        if _cv is not None:
+            def _v(name):
+                fn = getattr(_cv, name, None)
+                try:
+                    return fn() if callable(fn) else None
+                except Exception:
+                    return None
+            info["cuda"] = _v("cuda_runtime_get_version")
+            info["cudnn"] = _v("cudnn_get_version")
+            info["cublas"] = _v("cublas_get_version")
+    except Exception:
+        pass
+    return info
+
+
 # ── Subprocess orchestration (worker isolation) ───────────────────────────────
 def run_worker(script_path, worker_args, extra_env=None):
     """Run an op driver in --worker mode as an isolated subprocess.

@@ -1117,6 +1117,7 @@ def run(config):
         "kind": "regression", "date": config.date, "platform": plat,
         "sharding_by_geom": shard_by_geom,
         "device_label": dev_label, **prov,
+        "toolchain": sc.toolchain_info(),   # jax/jaxlib/CUDA stack — attributes a perf shift to the toolchain
         "config": config.to_dict(), "device_counts": sorted(swept_counts), "cells": cells,
     }
 
@@ -1136,6 +1137,15 @@ def run(config):
 
     out_path = os.path.join(config.out_dir, f"regression_{plat}_{file_tag}.yaml")
     sc.save_yaml(out_path, result)
+    # Browsable companion next to the run YAML: <name>_table.yaml, a geometry/op/size/n table of this
+    # run.  Written here so it lands in results/ and the nightly's `git add results` commits+pushes it
+    # alongside the data.  Best-effort: a formatting hiccup must never fail the measurement run.
+    try:
+        import regression_to_table
+        regression_to_table.write_table(regression_to_table.load_yaml(out_path),
+                                        os.path.splitext(out_path)[0] + "_table.yaml")
+    except Exception as e:   # noqa: BLE001
+        print(f"[warn] companion _table.yaml not written: {e}")
     _print_summary(cells)
     if new_lines:
         print(f"\n  {len(new_lines)} NEW RECORD(S) this run:")

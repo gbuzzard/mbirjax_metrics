@@ -20,7 +20,9 @@ tooling/regression/      this wrapper: run_regression.sh, lib_env.sh (shared ded
                          com.mbirjax.regression.plist (macOS), nightly_regression.slurm +
                          cluster_preamble.sh.example (cluster), sbatch_submit.sh (the add_run /
                          run_one_night --sbatch helper), README.md
-results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + records_<plat>.yaml
+results/<plat>/<branch>/ regression_<plat>_<commit-time>_<sha8>.yaml (time series) + a sibling
+                         _table.yaml (browsable geometry/op/size/n view, auto-written per run by the
+                         engine via tooling/scaling_tests/regression_to_table.py) + records_<plat>.yaml
                          (best-ever) + tests_*.txt
 state/<plat>/<branch>    last MEASURED commit per branch (fire-on-change)
 ```
