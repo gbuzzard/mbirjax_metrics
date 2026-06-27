@@ -17,13 +17,16 @@ Run it UNDER ncu (on the cluster, GPU env).  Start SMALL — SpeedOfLight only, 
 kernels, a few launches — then widen if needed:
 
     mkdir -p experiments/profiling/ncu
-    ncu --set basic \
+    ncu --profile-from-start off --set basic \
         --kernel-name "regex:add_fusion|dynamic_update_slice" \
         --launch-count 6 --target-processes all \
         --csv --log-file experiments/profiling/ncu/back_pixel_256.csv \
         python experiments/profiling/ncu_back_projection.py
 
 Notes / likely iteration (ncu flags are version-sensitive — Nsight 2025.1 here):
+  * `--profile-from-start off` + the script's cudaProfilerStart/Stop (cuda_profiler.profiler_range)
+    scope profiling to the warm region, skipping JAX import + compile/warmup — the bulk of the old
+    ~8 min wall time.  Without it, ncu instruments the whole process (incl. compile autotuning).
   * `--set basic` ≈ SpeedOfLight (compute vs memory throughput %) — the roofline read; `--set full`
     adds occupancy/memory-workload/scheduler (much slower, do later if SoL is ambiguous).
   * `--kernel-name regex:...` targets only the two kernels; drop it (with a small --launch-count) if
@@ -46,6 +49,8 @@ PROFILE_CALLS = 2            # warm calls ncu profiles (keep small — ncu repla
 os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(N_DEVICES))
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
+sys.path.insert(0, _HERE)                 # so cuda_profiler is importable
+from cuda_profiler import profiler_range   # noqa: E402
 
 import mbirjax            # noqa: E402,F401  device-setup-first
 import jax                # noqa: E402
@@ -68,13 +73,15 @@ def main():
     sino = pt.to_device(model, pt.make_sinogram(config, SIZE), "sino")
     run_fn = lambda: model.sparse_back_project(sino, idx)
 
-    for _ in range(WARMUP):                 # compile (ncu will also see these kernels; ignore them)
+    for _ in range(WARMUP):                 # compile OUTSIDE the profiled region (ncu --profile-from-start off skips it)
         jax.block_until_ready(run_fn())
     t0 = time.perf_counter()
-    for _ in range(PROFILE_CALLS):          # the region of interest for ncu
-        jax.block_until_ready(run_fn())
+    with profiler_range():                  # ncu profiles ONLY this region (cudaProfilerStart/Stop)
+        for _ in range(PROFILE_CALLS):
+            r = run_fn()
+        jax.block_until_ready(r)            # finish the profiled kernels before cudaProfilerStop
     dt = (time.perf_counter() - t0) / PROFILE_CALLS * 1e3
-    print(f"  warm time ~{dt:.1f} ms/call  (profiled {PROFILE_CALLS} call(s))")
+    print(f"  warm time ~{dt:.1f} ms/call  (profiled region: {PROFILE_CALLS} call(s))")
 
 
 if __name__ == "__main__":

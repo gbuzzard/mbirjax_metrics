@@ -18,7 +18,7 @@ multi-device path, without the reduce-scatter / 2-device profiling complexity.
 Run UNDER ncu (cluster, GPU env).  Target the transpose fusion:
 
     mkdir -p experiments/profiling/ncu
-    ncu --set basic \
+    ncu --profile-from-start off --set basic \
         --kernel-name "regex:transpose_fusion|input_transpose" \
         --launch-count 6 --target-processes all \
         --csv --log-file experiments/profiling/ncu/back_band_256.csv \
@@ -42,6 +42,8 @@ PROFILE_CALLS = 2
 os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(N_DEVICES))
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
+sys.path.insert(0, _HERE)                 # so cuda_profiler is importable
+from cuda_profiler import profiler_range   # noqa: E402
 
 import mbirjax            # noqa: E402,F401  device-setup-first
 import jax                # noqa: E402
@@ -72,13 +74,15 @@ def main():
     run_fn = lambda: pf.sparse_back_project_band(sino, idx, 0, num_slices)
     print(f"  ncu BAND driver: {GEOMETRY} back | {size_label} | n={N_DEVICES} {plat} | num_slices={num_slices}")
 
-    for _ in range(WARMUP):
+    for _ in range(WARMUP):                 # compile OUTSIDE the profiled region (ncu --profile-from-start off skips it)
         jax.block_until_ready(run_fn())
     t0 = time.perf_counter()
-    for _ in range(PROFILE_CALLS):
-        jax.block_until_ready(run_fn())
+    with profiler_range():                  # ncu profiles ONLY this region (cudaProfilerStart/Stop)
+        for _ in range(PROFILE_CALLS):
+            r = run_fn()
+        jax.block_until_ready(r)            # finish the profiled kernels before cudaProfilerStop
     dt = (time.perf_counter() - t0) / PROFILE_CALLS * 1e3
-    print(f"  warm time ~{dt:.1f} ms/call  (profiled {PROFILE_CALLS} call(s))")
+    print(f"  warm time ~{dt:.1f} ms/call  (profiled region: {PROFILE_CALLS} call(s))")
 
 
 if __name__ == "__main__":

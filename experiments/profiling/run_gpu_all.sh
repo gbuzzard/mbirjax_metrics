@@ -58,13 +58,13 @@ run "STEP 4: trace cone FORWARD (GPU1) — gap from the first GPU pass, included
 mkdir -p $P/ncu
 if [ "$HAVE_NCU" = "1" ]; then
   echo; echo "############### STEP 5: ncu roofline — n=1 PIXEL kernel (loop_add / dynamic_update_slice) ###############"
-  ncu --set basic --kernel-name "regex:add_fusion|dynamic_update_slice" \
+  ncu --profile-from-start off --set basic --kernel-name "regex:add_fusion|dynamic_update_slice" \
       --launch-count 6 --target-processes all \
       --csv --log-file $P/ncu/back_pixel_256.csv \
       python $P/ncu_back_projection.py || echo "  >>> ncu PIXEL failed (ERR_NVGPUCTRPERM = counters locked; see README)"
 
   echo; echo "############### STEP 6: ncu roofline — BAND kernel transpose (input_transpose_fusion) ###############"
-  ncu --set basic --kernel-name "regex:transpose_fusion|input_transpose" \
+  ncu --profile-from-start off --set basic --kernel-name "regex:transpose_fusion|input_transpose" \
       --launch-count 6 --target-processes all \
       --csv --log-file $P/ncu/back_band_256.csv \
       python $P/ncu_band_kernel.py || echo "  >>> ncu BAND failed (ERR_NVGPUCTRPERM = counters locked; see README)"
