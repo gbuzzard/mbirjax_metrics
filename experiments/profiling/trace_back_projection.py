@@ -36,11 +36,8 @@ Reproducibility: all run parameters are clearly-labeled constants at the top
 """
 import os
 import sys
-import gzip
-import json
 import glob
 import time
-from collections import defaultdict
 from datetime import datetime
 
 # ── CONFIG (edit here) ────────────────────────────────────────────────────────
@@ -65,102 +62,13 @@ os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", str(max(N_DEVICES_LIST)))
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SCALING = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests"))
 sys.path.insert(0, _SCALING)
+sys.path.insert(0, _HERE)                 # so the JAX-free trace summarizer is importable
+from trace_utils import summarize_perfetto   # noqa: E402
 
 import mbirjax            # noqa: E402,F401 — device-setup side effect; must precede `import jax`
 import jax                # noqa: E402
 import performance_tracking as pt   # noqa: E402  (reuses make_model/make_sinogram/... — the SAME inputs as the nightly)
 
-
-def _is_host_runtime(name):
-    """True for host-side Python frames / runtime wrappers (vs an XLA fusion/op).
-
-    These are wait/dispatch/orchestration events (`$api.py:... block_until_ready`, the worker
-    thread `_bootstrap`, `ThunkExecutor::Execute`, `SlinkyThreadPool::Await`, our own
-    StepTraceAnnotation), NOT compute.  We bucket them separately so the compute fusions
-    (bitcast_gather_fusion, broadcast_atan2_fusion, ...) stand out.
-    """
-    return (name.startswith("$") or "::" in name or ".py:" in name
-            or name in ("back_project",) or name.startswith("end:"))
-
-
-def summarize_perfetto(trace_path, n_iters, top_n=TOP_N):
-    """Self-time (exclusive) summary of a Perfetto/Chrome-trace JSON.
-
-    The trace is the Chrome Trace Event format: ph='X' complete events with ts/dur
-    (microseconds) and pid/tid identifying a timeline track.  Within one track the events
-    strictly nest, so we compute SELF-TIME = dur - sum(direct children dur) with a stack
-    sweep.  Self-time avoids the trap of the naive sum, where wrapper events (the whole-op
-    StepTraceAnnotation, block_until_ready, the worker thread's lifetime) dominate because
-    they CONTAIN everything.
-
-    Three views, most useful first:
-      * by TRACK — where the wall time lived (the host:CPU dispatch track vs the tf_XLAEigen
-        intra-op worker threads that do the real compute).
-      * by FUSION FAMILY — the .N variants of each XLA fusion merged (the compute op classes).
-      * by EVENT NAME — the raw leaderboard (host-runtime waits included, for completeness).
-
-    NOTE (honest caveat): on the CPU backend a fusion's TraceMe span covers dispatch+execute
-    and can overlap the worker threads, so the per-fusion seconds are a reliable RANKING but
-    not exact exclusive time; the TRACK view is the truer compute/wait split.
-    """
-    with gzip.open(trace_path, "rt") as f:
-        data = json.load(f)
-    events = data["traceEvents"] if isinstance(data, dict) else data
-    pname, tname = {}, {}
-    for e in events:
-        if e.get("ph") == "M" and e.get("name") == "process_name":
-            pname[e.get("pid")] = e.get("args", {}).get("name", "")
-        if e.get("ph") == "M" and e.get("name") == "thread_name":
-            tname[(e.get("pid"), e.get("tid"))] = e.get("args", {}).get("name", "")
-
-    by_tid = defaultdict(list)
-    for e in events:
-        if e.get("ph") == "X" and e.get("dur") is not None:
-            by_tid[(e.get("pid"), e.get("tid"))].append(e)
-
-    self_us = defaultdict(lambda: [0.0, 0])   # name -> [self_us, count]
-    track_self = defaultdict(float)           # track label -> self_us
-    for key, evs in by_tid.items():
-        evs.sort(key=lambda e: (e["ts"], -e["dur"]))   # parent before child on ties
-        label = tname.get(key, pname.get(key[0], "?"))
-        stack = []   # [ts, end, name, child_total_us]
-        def _pop(s):
-            st = max(0.0, (s[1] - s[0]) - s[3])
-            self_us[s[2]][0] += st; self_us[s[2]][1] += 1
-            track_self[label] += st
-        for e in evs:
-            ts, dur = float(e["ts"]), float(e["dur"]); end = ts + dur
-            while stack and stack[-1][1] <= ts:
-                _pop(stack.pop())
-            if stack:
-                stack[-1][3] += dur
-            stack.append([ts, end, e.get("name", "?"), 0.0])
-        while stack:
-            _pop(stack.pop())
-
-    n = max(n_iters, 1)
-    print(f"\n  trace events: {len(events)} total   (self-time, exclusive; per-iter = /{n})")
-
-    print(f"\n  === SELF-TIME by TRACK (compute threads vs host/dispatch) ===")
-    print(f"  {'self_ms':>10}  {'/iter':>8}  track")
-    print("  " + "-" * 60)
-    for lab, us in sorted(track_self.items(), key=lambda kv: -kv[1])[:12]:
-        print(f"  {us / 1e3:>10.1f}  {us / 1e3 / n:>8.1f}  {lab[:48]}")
-
-    fam = defaultdict(lambda: [0.0, 0])
-    for name, (us, cnt) in self_us.items():
-        if _is_host_runtime(name):
-            key = "[host/runtime] " + (name.split(":")[0] if ".py:" in name else name.split("::")[0])[:28]
-        else:
-            tail = name.rsplit(".", 1)[-1]
-            key = name.rsplit(".", 1)[0] if tail.isdigit() else name
-        fam[key][0] += us; fam[key][1] += cnt
-    print(f"\n  === SELF-TIME by FUSION FAMILY (xla compute; .N variants merged) ===")
-    print(f"  {'self_ms':>10}  {'/iter':>8}  name")
-    print("  " + "-" * 60)
-    for name, (us, cnt) in sorted(fam.items(), key=lambda kv: -kv[1][0])[:top_n]:
-        print(f"  {us / 1e3:>10.1f}  {us / 1e3 / n:>8.1f}  {name[:48]}")
-    return sorted(self_us.items(), key=lambda kv: -kv[1][0])
 
 
 def run_one(n_devices):
