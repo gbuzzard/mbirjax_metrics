@@ -28,7 +28,7 @@ _DEFAULT_ROOTS = ("cone", "parallel", "translation", "multiaxis", "qggmrf", "pro
 # place tied to the scope vocabulary: it is a tiny set of leaf words, and a new kind of leaf scope
 # just needs its word added here (reused phase words like vertical_fan need no change).  Everything
 # above (roots, intermediate segments band/pixel/...) is still discovered freely from the HLO.
-_PHASE_LEAVES = {"vertical_fan", "horizontal_fan", "assemble", "coord_math"}
+_PHASE_LEAVES = {"vertical_fan", "horizontal_fan", "assemble", "coord_math", "view_reduce"}
 
 
 def _to_region(scope_path):
