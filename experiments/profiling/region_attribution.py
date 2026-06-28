@@ -44,16 +44,25 @@ def _to_region(scope_path):
 
 
 def _base_name(fusion_name):
-    """Strip a trailing ``.N`` instance suffix so ``broadcast_multiply_fusion.3`` -> ``..._fusion``."""
-    head, _, tail = fusion_name.rpartition(".")
-    return head if (head and tail.isdigit()) else fusion_name
+    """Strip a trailing instance suffix so trace kernel names join to the HLO fusion base name on
+    BOTH backends: XLA:CPU uses ``.N`` (``ynn_fusion.1``) while the GPU/CUPTI kernel names use ``_N``
+    (``loop_add_fusion_3``).  Stripping only ``.N`` (the old behavior) left every GPU fusion unmatched
+    -> ~68% '(unmapped)'.  Only a trailing dot/underscore + digits is removed (an instance index);
+    real names never end that way."""
+    return re.sub(r'[._]\d+$', '', fusion_name)
 
 
-def hlo_fusion_regions(hlo_text, roots=_DEFAULT_ROOTS):
-    """Map each XLA fusion base-name -> its named_scope region, read from HLO op_name metadata.
+def hlo_fusion_scopes(hlo_text, roots=_DEFAULT_ROOTS):
+    """Map each XLA fusion base-name -> ``{region: n_HLO_instances}`` from the HLO op_name metadata.
 
-    Returns ``{fusion_base_name: region_or_None}``.  The region is the named_scope path embedded in
-    the fusion's op_name (e.g. ``cone/back/band/vertical_fan``); fusions with no scope map to None.
+    Most bases fall in exactly ONE region.  A base in >1 region is a COLLISION: ``_base_name`` strips
+    the per-instance suffix to join the trace to the HLO, but that same stripping makes two instances
+    in DIFFERENT scopes (e.g. an accumulate ``loop_add_fusion`` in both horizontal_fan and vertical_fan
+    on GPU) share one base name — so their trace self-time can't be split apart and is lumped into one
+    region.  A base seen only OUTSIDE any scope maps to an EMPTY dict (region None / '(unmapped)').
+    Trace fusion-instance suffixes don't line up with HLO ones (CUDA-graph capture renames kernels;
+    indices don't correspond), so full-name matching can't disambiguate — hence we SURFACE collisions
+    (find_collisions) rather than silently trust the lump.
     """
     root_alt = "|".join(re.escape(r) for r in roots)
     scope_re = re.compile(rf'((?:{root_alt})(?:/[A-Za-z0-9_]+)+)')
@@ -63,13 +72,24 @@ def hlo_fusion_regions(hlo_text, roots=_DEFAULT_ROOTS):
         m = fusion_re.search(line)
         if not m:
             continue
-        base = _base_name(m.group(1))
+        counts = out.setdefault(_base_name(m.group(1)), {})
         scope = scope_re.search(m.group(2))
-        # Keep the first non-None region we see for a base name (fusions of a base share a scope).
-        out.setdefault(base, None)
-        if scope and out[base] is None:
-            out[base] = _to_region(scope.group(1))
+        if scope:
+            region = _to_region(scope.group(1))
+            counts[region] = counts.get(region, 0) + 1
     return out
+
+
+def hlo_fusion_regions(hlo_text, roots=_DEFAULT_ROOTS):
+    """Map each XLA fusion base-name -> its named_scope region, read from HLO op_name metadata.
+
+    Returns ``{fusion_base_name: region_or_None}``; fusions with no scope map to None.  When a base
+    spans >1 region (a COLLISION, see hlo_fusion_scopes) it is assigned to the region holding the MOST
+    HLO instances (majority; ties -> first seen) — the best single guess — and find_collisions reports
+    that the assigned region's number is then uncertain by up to the colliding base's self-time.
+    """
+    return {base: (max(counts, key=counts.get) if counts else None)
+            for base, counts in hlo_fusion_scopes(hlo_text, roots).items()}
 
 
 def attribute_regions(trace_path, hlo_text, roots=_DEFAULT_ROOTS):
@@ -100,3 +120,29 @@ def region_breakdown(trace_path, hlo_text, roots=_DEFAULT_ROOTS):
     total = sum(region_us.values()) or 1.0
     return {r: {"self_ms": round(us / 1e3, 3), "pct": round(100.0 * us / total, 1)}
             for r, us in region_us.items()}
+
+
+def find_collisions(trace_path, hlo_text, roots=_DEFAULT_ROOTS):
+    """Fusion base-names whose HLO instances span >1 region (see hlo_fusion_scopes) — the cases where
+    the base-name join CAN'T cleanly split self-time, so the assigned region's number is uncertain.
+
+    Returns ``[{base, pct, assigned, scopes}]`` sorted by pct desc (pct = the base's share of total
+    attributed compute, same denominator as region_breakdown's pct; ``scopes`` = {region: n_instances},
+    ``assigned`` = the region the join credited it to).  Empty list = clean attribution.  This SURFACES
+    the limitation so a collided region's number is never silently trusted; the caller can scale pct by
+    wall to a ms 'amount at stake' alongside the region ms it shares units with.
+    """
+    scopes = hlo_fusion_scopes(hlo_text, roots)
+    assigned = hlo_fusion_regions(hlo_text, roots)
+    events, _tracks, _n = fusion_self_time(trace_path)
+    base_us = {}
+    for name, (us, _cnt) in events.items():
+        if is_host_runtime(name):
+            continue
+        b = _base_name(name)
+        base_us[b] = base_us.get(b, 0.0) + us
+    total = sum(base_us.values()) or 1.0
+    out = [{"base": base, "pct": round(100.0 * base_us.get(base, 0.0) / total, 1),
+            "assigned": assigned[base], "scopes": dict(counts)}
+           for base, counts in scopes.items() if len(counts) > 1]
+    return sorted(out, key=lambda d: -d["pct"])

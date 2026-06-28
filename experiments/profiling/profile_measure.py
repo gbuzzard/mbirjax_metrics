@@ -32,7 +32,7 @@ import datetime as _dt
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 from profiling_config import GEOMETRY, OPS, size_for, N_DEVICES, WARMUP, TRACE_ITERS  # noqa: E402
-from region_attribution import region_breakdown   # noqa: E402
+from region_attribution import region_breakdown, find_collisions   # noqa: E402
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 
 import mbirjax            # noqa: E402,F401  device-setup-first
@@ -103,15 +103,25 @@ def measure_cell(model, op, plat, devs, SIZE):
     # SHARE (pct) is stable across that overlap, and pct x wall gives an interpretable absolute that
     # sums to ~wall on both platforms.  (On GPU the single compute stream barely overlaps, so this
     # nearly equals the raw self-time anyway.)
-    raw = region_breakdown(_find_perfetto(out_dir), hlo)
+    perfetto = _find_perfetto(out_dir)
+    raw = region_breakdown(perfetto, hlo)
     regions = {r: {"pct": v["pct"], "ms": round(v["pct"] / 100.0 * wall, 1)} for r, v in raw.items()}
+    # Collisions: bases whose HLO instances span >1 region, so the join lumps their self-time into one
+    # region (the majority) and that region's number is uncertain by up to this much.  Recorded on the
+    # cell (same wall-attributed ms units as regions) so a collided number is never silently trusted.
+    collisions = [{**c, "ms": round(c["pct"] / 100.0 * wall, 1)} for c in find_collisions(perfetto, hlo)]
 
     size_label = "x".join(str(s) for s in SIZE)
     key = f"{GEOMETRY}|{op}|{size_label}|{N_DEVICES}"
     rec = {"wall_ms": wall, "regions": regions}
+    if collisions:
+        rec["collisions"] = collisions
     print(f"  {key}:  wall={wall:.1f} ms")
     for r, v in regions.items():
         print(f"      {v['pct']:5.1f}%  {v['ms']:8.1f} ms  {r}")
+    for c in collisions:
+        print(f"      ⚠ collision: {c['base']} ({c['ms']:.1f} ms) spans {c['scopes']}"
+              f" -> credited to {c['assigned']}; that region's ms uncertain by up to this much")
     return key, rec
 
 
