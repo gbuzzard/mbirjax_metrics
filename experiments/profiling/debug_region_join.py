@@ -112,6 +112,23 @@ def main():
         for b in sorted(region_bases[region], key=lambda x: -trace_us.get(x, 0.0)):
             print(f"      in_trace={b in trace_us!s:5}  {trace_us.get(b,0.0)/1e3:8.2f} ms   {b}")
 
+    # (D) WHY is a base unmapped? show the unmapped fusions' HLO op_name(s).  A fusion is unmapped
+    # when its op_name carries no recognized <root>/... scope -- on GPU XLA can give a FUSED reduce a
+    # representative op_name from an unscoped constituent (the 'input_' fusions read inputs), even
+    # though the jnp.sum itself was inside a named_scope (which CPU keeps but GPU may drop).
+    base_ops = collections.defaultdict(set)
+    for line in hlo.splitlines():
+        mm = re.search(r'%([A-Za-z0-9_.\-]*fusion)[.\d]* = .*?op_name="([^"]*)"', line)
+        if mm:
+            base_ops[_base_name(mm.group(1))].add(mm.group(2))
+    print("\n(D) unmapped fusion bases -> trace ms + distinct HLO op_name(s):")
+    for b in sorted(region_bases.get("(unscoped)", []), key=lambda x: -trace_us.get(x, 0.0)):
+        for op in sorted(base_ops.get(b, {"(none)"})):
+            print(f"      {b:26} {trace_us.get(b, 0.0)/1e3:8.2f} ms   op_name={op}")
+    vr = [l.strip() for l in hlo.splitlines() if "view_reduce" in l]
+    print(f"\n    HLO lines mentioning 'view_reduce': {len(vr)}"
+          + ("" if not vr else "\n    e.g. " + vr[0][:140]))
+
 
 if __name__ == "__main__":
     main()
