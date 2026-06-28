@@ -20,12 +20,13 @@ import tempfile
 import collections
 
 GEOMETRY = "cone"
-SIZE = (256, 256, 256)   # any representative size; symmetric is fine for a diagnostic
+SIZE = None   # None -> per-platform profiling size (size_for, matches profile_measure); set a tuple to override
 
 os.environ.setdefault("MBIRJAX_NUM_CPU_DEVICES", "1")
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir, "tooling", "scaling_tests")))
 sys.path.insert(0, _HERE)
+from profiling_config import size_for   # noqa: E402  (sets MBIRJAX_NUM_CPU_DEVICES; import before jax)
 from trace_utils import fusion_self_time, is_host_runtime   # noqa: E402
 from region_attribution import hlo_fusion_regions, _base_name, _to_region  # noqa: E402
 
@@ -36,15 +37,16 @@ import performance_tracking as pt   # noqa: E402
 
 def main():
     plat = jax.devices()[0].platform
-    m = pt.make_model(pt.Config(), GEOMETRY, SIZE)
+    size = SIZE or size_for(plat)                            # match profile_measure's per-platform cell
+    m = pt.make_model(pt.Config(), GEOMETRY, size)
     if hasattr(m, "configure_devices"):
         m.configure_devices(jax.devices()[:1])
     dev = jax.devices()[0]
     idx = jax.device_put(pt.make_indices(m), dev)
-    sino = jax.device_put(pt.make_sinogram(pt.Config(), SIZE), dev)
+    sino = jax.device_put(pt.make_sinogram(pt.Config(), size), dev)
     pf = m.projector_functions
     run = lambda: pf.sparse_back_project(sino, idx)          # PIXEL driver (GPU n=1 back path)
-    print(f"=== back PIXEL driver | {GEOMETRY} {SIZE} | {plat} | jax {jax.__version__} ===")
+    print(f"=== back PIXEL driver | {GEOMETRY} {size} | {plat} | jax {jax.__version__} ===")
 
     for _ in range(2):
         jax.block_until_ready(run())
@@ -92,10 +94,11 @@ def main():
             for full, sc in sorted(hlo_full):
                 if _base_name(full) == base:
                     print(f"        {full:36} -> {sc}")
-            print("    TRACE full names -> self_ms:")
-            for name, (us, _c) in sorted(ev.items(), key=lambda kv: -kv[1][0]):
+            print("    TRACE full names -> self_ms  (xN = trace event count; the band loop executes"
+                  " many times, the horizontal accumulate once):")
+            for name, (us, c) in sorted(ev.items(), key=lambda kv: -kv[1][0]):
                 if not is_host_runtime(name) and _base_name(name) == base:
-                    print(f"        {name:36}    {us/1e3:8.2f} ms")
+                    print(f"        {name:36}    {us/1e3:8.2f} ms   x{c}")
 
     # (B) per region: HLO bases, and whether each is present in the trace + its time
     f2r = hlo_fusion_regions(hlo)
