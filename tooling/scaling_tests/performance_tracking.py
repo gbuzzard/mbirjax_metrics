@@ -950,9 +950,11 @@ def _find_prior(out_dir, plat, current_tag):
     """
     import glob
     cur_name = f"regression_{plat}_{current_tag}.yaml"
+    # Exclude the sibling *_table.yaml dumps: they match this glob and, since '_table.yaml' sorts AFTER
+    # '.yaml', the prior run's table would otherwise be picked as the prior run (gate vs a non-run).
     befores = sorted(n for n in (os.path.basename(f)
                      for f in glob.glob(os.path.join(out_dir, f"regression_{plat}_*.yaml")))
-                     if n < cur_name)
+                     if n < cur_name and not n.endswith("_table.yaml"))
     return os.path.join(out_dir, befores[-1]) if befores else None
 
 
