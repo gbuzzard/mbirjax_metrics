@@ -437,7 +437,11 @@ def collect_data() -> dict:
             continue
         for branch_dir_path in sorted(p for p in plat_dir.glob("*") if p.is_dir()):
             branch_dir = branch_dir_path.name
-            run_files = sorted(branch_dir_path.glob(f"regression_{platform}_*.yaml"))
+            # NB: exclude the sibling *_table.yaml (the browsable per-run dump written next to each run)
+            # — it matches this glob but is NOT a run record, and parsing it as one yields a phantom
+            # branch (no top-level git_branch -> dir-slug fallback) and a garbage date.
+            run_files = sorted(f for f in branch_dir_path.glob(f"regression_{platform}_*.yaml")
+                               if not f.name.endswith("_table.yaml"))
             if not run_files:
                 continue
             for rf in run_files:
