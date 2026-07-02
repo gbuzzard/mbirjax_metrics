@@ -40,6 +40,7 @@ import io
 import re
 import contextlib
 import argparse
+import datetime
 import tempfile
 import dataclasses
 from dataclasses import dataclass, field
@@ -144,6 +145,12 @@ class Config:
     out_dir: str = ""      # stable nightly dir, or results/manual/<tag> (required at run time)
     date: str = ""         # stamped by the orchestrator (never datetime.now() in a worker)
     run_tag: str = ""
+    # Dependency-canary provenance (tooling/regression/dependency_canary_plan.md).  dep_gen = the identity
+    # of the installed dependency set (monotonic per platform); when >0 the run filename gets a `_gNNNN`
+    # suffix so multiple runs of ONE commit with different deps don't collide (gen 0 = the historical
+    # name, no suffix).  run_reason records what triggered this run.  Default = a plain code run.
+    dep_gen: int = 0
+    run_reason: str = "commit"   # "commit" | "jax-step" | "code-step" | "deps-step"
     lib_root: str = ""     # library checkout to MEASURE (PYTHONPATH + provenance); "" -> beta_root()
                            # (this harness's own checkout).  The nightly sets it to a per-branch worktree.
 
@@ -1120,6 +1127,11 @@ def run(config):
         "sharding_by_geom": shard_by_geom,
         "device_label": dev_label, **prov,
         "toolchain": sc.toolchain_info(),   # jax/jaxlib/CUDA stack — attributes a perf shift to the toolchain
+        "dep_gen": config.dep_gen, "run_reason": config.run_reason,   # dependency-canary provenance
+        # WHEN this run was measured (local ISO, like git_commit_date).  Stamped here in the orchestrator
+        # (not a worker), once per run.  The dashboard plots a dep-canary re-run at this time rather than
+        # the (older) commit time, so it doesn't stack on the commit's original point.
+        "measured_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
         "config": config.to_dict(), "device_counts": sorted(swept_counts), "cells": cells,
     }
 
@@ -1128,16 +1140,20 @@ def run(config):
     # the YAML.  Done before the write so the dated file records its own verdict; the exit code is
     # set by main() from result.gate.  Prior-run is the SOLE gate reference — cross-branch
     # comparison (vs main/prerelease) and best-ever drift are surfaced on the dashboard, not gated.
+    # dep_gen>0 (a dependency-canary re-run of this commit with a different dep set) appends `_gNNNN` so
+    # it doesn't overwrite the commit's other-deps run; gen 0 keeps the historical name.  `_gNNNN` sorts
+    # AFTER `.yaml`, so _find_prior still returns the correct immediately-preceding run (plan §3).
+    gen_tag = f"{file_tag}_g{config.dep_gen:04d}" if config.dep_gen else file_tag
     gate_dict = None
     if config.compare_to_prior:
         refs = []
-        pp = _find_prior(config.out_dir, plat, file_tag)
+        pp = _find_prior(config.out_dir, plat, gen_tag)
         if pp:
             refs.append((f"prior:{os.path.basename(pp)}", sc.load_yaml(pp)))
         gate_dict = gate_run(result, refs, config)
         result["gate"] = gate_dict
 
-    out_path = os.path.join(config.out_dir, f"regression_{plat}_{file_tag}.yaml")
+    out_path = os.path.join(config.out_dir, f"regression_{plat}_{gen_tag}.yaml")
     sc.save_yaml(out_path, result)
     # Browsable companion next to the run YAML: <name>_table.yaml, a geometry/op/size/n table of this
     # run.  Written here so it lands in results/ and the nightly's `git add results` commits+pushes it

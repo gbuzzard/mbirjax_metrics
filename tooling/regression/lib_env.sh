@@ -66,3 +66,16 @@ reg_plat_extras() {   # platform signal only — no jax import here
 reg_install_lib() {   # $1=worktree  $2=extras ; caller logs/redirects/handles the exit code
   pip install -e "$1[$2]"
 }
+
+# Dependency canary: force jax/jaxlib to the latest on PyPI (NOT the other deps).  No exclusion is passed
+# — the per-branch `reg_install_lib` that follows re-resolves against the branch's pyproject and pulls an
+# excluded version (e.g. 0.10.2) back down, so the `jax!=…` list stays single-sourced there.  The cuda
+# extra is derived from the run's extras so the matching CUDA plugin wheels come along on GPU.
+reg_upgrade_jax() {   # $1=extras (e.g. "cuda12,test") ; caller logs/redirects/handles the exit code
+  local jax_pkg="jax"
+  case ",$1," in
+    *,cuda12,*) jax_pkg="jax[cuda12]" ;;
+    *,cuda13,*) jax_pkg="jax[cuda13]" ;;
+  esac
+  pip install -U "$jax_pkg" jaxlib
+}

@@ -400,8 +400,14 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
         "branch_dir": branch_dir,
         "date": date,
         "commit_date": doc.get("git_commit_date"),  # ISO commit time (None on older runs)
+        "measured_at": doc.get("measured_at"),       # ISO time this run was MEASURED (None on older runs)
         "commit": (doc.get("git_commit") or "")[:10],
         "commit_full": doc.get("git_commit") or "",
+        # Dependency-canary provenance: dep_gen>0 marks a re-measure of a commit with a NEWER dep set (a
+        # jax bump), so two runs can share a commit; run_reason names why; jax is the version measured.
+        "dep_gen": int(doc.get("dep_gen") or 0),
+        "run_reason": doc.get("run_reason") or "commit",
+        "jax": (doc.get("toolchain") or {}).get("jax") if isinstance(doc.get("toolchain"), dict) else None,
         "version": doc.get("mbirjax_version"),
         "dirty": bool(doc.get("git_dirty", False)),
         "device_label": doc.get("device_label"),

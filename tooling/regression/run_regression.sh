@@ -126,6 +126,29 @@ for BR in "${TRACKED_BRANCHES[@]}"; do
     CHANGED_BR+=("$BR"); CHANGED_SHA+=("$SHA")
   fi
 done
+
+# ── Dependency canary: a NEW jax counts as a change (dependency_canary_plan.md) ────────────────
+# Guarded by DEP_CANARY_ENABLED (default 0 -> this whole feature is inert; the nightly is unchanged).
+# When PyPI's latest jax differs from state/jax_seen, bump the dep-generation counter and ensure the
+# canary branch is measured (even if its tip didn't move) so the new jax is re-measured + attributed.
+NEW_JAX=0; DEP_GEN=""; PYPI_JAX=""
+if [ "${DEP_CANARY_ENABLED:-0}" = "1" ] && [ -f "$HERE/check_jax_release.py" ]; then
+  CANARY="${DEP_CANARY_BRANCH:-main}"
+  PYPI_JAX="$(python "$HERE/check_jax_release.py" --print-latest 2>/dev/null || true)"
+  SEEN="$(cat "$STATE/jax_seen" 2>/dev/null || true)"
+  if [ -n "$PYPI_JAX" ] && [ "$PYPI_JAX" != "$SEEN" ]; then
+    NEW_JAX=1
+    DEP_GEN="$(( $(cat "$STATE/depgen" 2>/dev/null || echo 0) + 1 ))"
+    log "dep-canary: jax $PYPI_JAX on PyPI (was ${SEEN:-none}) -> dep-gen $DEP_GEN; upgrade + re-measure $CANARY."
+    _in=0; for _b in "${CHANGED_BR[@]}"; do [ "$_b" = "$CANARY" ] && _in=1; done
+    if [ "$_in" = "0" ]; then
+      _csha="$(git ls-remote "$MBIRJAX_URL" "refs/heads/$CANARY" 2>/dev/null | awk '{print $1}')"
+      [ -n "$_csha" ] && { CHANGED_BR+=("$CANARY"); CHANGED_SHA+=("$_csha"); \
+        log "dep-canary: added $CANARY @ ${_csha:0:8} (tip unchanged) for the jax re-measure."; }
+    fi
+  fi
+fi
+
 [ "${#CHANGED_BR[@]}" -gt 0 ] || { log "no tracked branch changed — done."; exit 0; }
 
 # Per changed branch: a SHALLOW, SINGLE-BRANCH clone of just the branch tip (no history, no other
@@ -134,6 +157,15 @@ done
 # provenance.  The big experiments/ tree is gitignored, so it is never cloned.
 DATE="$(date '+%Y%m%d')"
 GATE_FAIL=0
+
+# dep-canary: force jax/jaxlib to latest in the shared env BEFORE the branch loop, so every branch this
+# night measures the new jax (the per-branch editable install re-resolves + pulls an excluded version
+# back down — §4).  Non-fatal; skipped in smoke.
+if [ "$NEW_JAX" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ]; then
+  log "dep-canary: upgrading jax/jaxlib to latest in $CONDA_ENV ..."
+  reg_upgrade_jax "$EXTRAS" >/dev/null 2>&1 || log "dep-canary: WARN jax upgrade failed — using current jax."
+fi
+
 for i in "${!CHANGED_BR[@]}"; do
   BR="${CHANGED_BR[$i]}"; SLUG="${BR//\//_}"
   WT="$WORK_DIR/lib_$SLUG"; rm -rf "$WT"
@@ -181,8 +213,13 @@ for i in "${!CHANGED_BR[@]}"; do
   # each run against this branch's own prior run; cross-branch + best-ever drift are shown on the
   # dashboard.  run_nightly.py prints to stdout, so the engine output shows live on a manual run
   # (and lands in the cron/slurm log unattended).
+  # dep-canary provenance: the canary branch's run this night is the jax re-measure at dep-gen NNNN.
+  # Empty for every other run -> run_nightly.py ignores them -> dep_gen 0 / run_reason "commit".
+  DGEN=""; RREASON=""
+  if [ "$NEW_JAX" = "1" ] && [ "$BR" = "${DEP_CANARY_BRANCH:-main}" ]; then DGEN="$DEP_GEN"; RREASON="jax-step"; fi
   log "$BR: running perf engine (output follows)..."
   if REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
+       REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" \
        python "$HARNESS_DIR/scaling_tests/run_nightly.py"; then
     log "$BR: engine ok."
   else
@@ -194,6 +231,14 @@ for i in "${!CHANGED_BR[@]}"; do
   [ "${REG_SMOKE:-0}" = "1" ] || echo "$SHA" >"$STATE/$SLUG"
   rm -rf "$WT"                  # drop the throwaway library clone
 done
+
+# dep-canary: record the PyPI jax we acted on + the new dep-gen LAST (a crash mid-run re-fires next
+# time, like the branch state above).  jax_seen is the PyPI-latest we've SEEN, so an excluded release
+# won't re-fire nightly; the actual installed jax lives in each run's toolchain block.
+if [ "$NEW_JAX" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ]; then
+  echo "$PYPI_JAX" >"$STATE/jax_seen"
+  echo "$DEP_GEN"  >"$STATE/depgen"
+fi
 
 # ── Publish to the metrics repo (conflict-safe; NON-FATAL) ────────────────────────────────────
 # CPU (Mac) and GPU (cluster) write DISJOINT paths (results/<plat>/, state/<plat>/, *_<plat>.yaml),

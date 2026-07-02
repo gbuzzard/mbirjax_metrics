@@ -46,6 +46,15 @@ def main():
     if run_tag:
         overrides["run_tag"] = run_tag
 
+    # Dependency-canary provenance passed by run_regression.sh (plan §5): dep_gen is the installed
+    # dependency-set generation (>0 -> the run file gets a `_gNNNN` suffix); run_reason names the step.
+    dep_gen = os.environ.get("REG_DEP_GEN")
+    if dep_gen:
+        overrides["dep_gen"] = int(dep_gen)
+    run_reason = os.environ.get("REG_RUN_REASON")
+    if run_reason:
+        overrides["run_reason"] = run_reason
+
     if os.environ.get("REG_SMOKE") == "1":
         # Fast plumbing smoke (NOT a real measurement): a trivial 1-cell sweep to shake out the
         # wrapper end-to-end (clone -> worktree -> install -> engine -> results/state) in seconds.

@@ -34,14 +34,27 @@ def _is_newer(latest, reviewed):
             return latest != reviewed   # last resort: any difference
 
 
+def _pypi_latest():
+    try:
+        with urllib.request.urlopen(PYPI, timeout=15) as r:
+            return json.load(r)["info"]["version"]
+    except Exception:
+        return None   # offline / proxy hiccup
+
+
 def main(argv):
+    # `--print-latest`: emit just the latest PyPI jax version (nothing on failure) for the dependency
+    # canary's fingerprint (run_regression.sh compares it to state/jax_seen).
+    if len(argv) > 1 and argv[1] == "--print-latest":
+        v = _pypi_latest()
+        if v:
+            print(v)
+        return 0
     reviewed = (argv[1].strip() if len(argv) > 1 else "")
     if not reviewed:
         return 0
-    try:
-        with urllib.request.urlopen(PYPI, timeout=15) as r:
-            latest = json.load(r)["info"]["version"]
-    except Exception:
+    latest = _pypi_latest()
+    if latest is None:
         return 0   # offline / proxy hiccup -> stay silent, never fail the nightly
     if _is_newer(latest, reviewed):
         print(f"[jax-watch] NEW jax on PyPI: {latest}  (last reviewed: {reviewed}).  Re-test it with "

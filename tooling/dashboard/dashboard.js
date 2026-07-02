@@ -66,12 +66,17 @@ function currentRun() {
 }
 // A run's position in time: the commit's date when recorded, else the collection
 // date.  Lets older prerelease checkouts sit at their real point on the timeline.
-const runTime = (r) => (r.commit_date ? Date.parse(r.commit_date) / 1000 : dateToUnix(r.date));
+// x-position on the history timeline.  Normally the commit time — but a dependency-canary re-run
+// (dep_gen>0) shares its commit's time, so plot it at when it was MEASURED (measured_at, else its
+// collection date), otherwise it would stack on / overwrite the commit's original point (aggByPB and
+// the tooltip both key runs by runTime).
+const runTime = (r) => (r.dep_gen ? (r.measured_at ? Date.parse(r.measured_at) / 1000 : dateToUnix(r.date))
+                                  : (r.commit_date ? Date.parse(r.commit_date) / 1000 : dateToUnix(r.date)));
 // Unique handle for a picked run.  The collection `date` (YYYYMMDD) is NOT unique — two commits
 // measured the same day share it — so a click resolved by date alone returned the earlier-committed
 // run even though the tooltip (which keys on commit time) named the one clicked.  Key on the commit
 // too: commit-sha # collection-date # commit-time disambiguates same-day commits and re-measures.
-const runKey = (r) => (r.commit_full || r.commit || "?") + "#" + (r.date || "") + "#" + (r.commit_date || "");
+const runKey = (r) => (r.commit_full || r.commit || "?") + "#" + (r.date || "") + "#" + (r.commit_date || "") + "#g" + (r.dep_gen || 0);
 const runDateLabel = (r) => (r.commit_date ? r.commit_date.slice(0, 10) : dateLabel(r.date));
 // Commit date AND time, to the minute (e.g. "2026-06-17 23:00") — the unambiguous run stamp.
 // ISO is "YYYY-MM-DDTHH:MM:SS±zz"; slice to the minute and swap the T for a space.
@@ -1002,9 +1007,14 @@ function renderHistory() {
     // tests-failed flag — same info as the run-shown tile's red badge.
     const tf = (r.tests && r.tests.failed) || 0;
     const testWarn = tf ? `<br><span class="bad">⚠ ${tf} test${tf > 1 ? "s" : ""} failed</span>` : "";
+    // toolchain / dependency-canary: show the jax version (when recorded), and flag a dep-canary
+    // re-measure — a point that shares its commit but was re-run on a newer dep set (see runTime).
+    const jaxNote = r.jax
+      ? `<br><span class="tdim">jax</span> ${r.jax}${r.dep_gen ? ` · dep-canary re-measure (gen ${r.dep_gen})` : ""}`
+      : "";
     return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
-      + valSection + warn + corrWarn + testWarn;
+      + jaxNote + valSection + warn + corrWarn + testWarn;
   };
   // All three history plots share one x (commit time): a sync group links their zoom so dragging
   // any one re-ranges all three to the same window (and a double-click reset clears all three).
