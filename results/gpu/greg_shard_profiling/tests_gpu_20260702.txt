@@ -1,0 +1,22 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_shard_profiling
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [203 items]
+
+......................................s................................. [ 35%]
+...................................s.................................... [ 70%]
+.....................................................s.....              [100%]
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17: 10 warnings
+  /home/buzzard/.mbirjax/regression/lib_greg_shard_profiling/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:211: GPU present: auto uses GPUs; this exercises the CPU default
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+=========== 200 passed, 3 skipped, 10 warnings in 276.43s (0:04:36) ============
