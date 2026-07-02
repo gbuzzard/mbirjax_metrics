@@ -15,6 +15,7 @@ const PLATC = { gpu: "#185fa5", cpu: "#BA7517" };                     // history
 const IDEAL = "#9b9b94", FAILC = "#E24B4A", REFC = "#1f1f1d"; // ideal=grey, gate=red, reference=near-black
 const THROTC = "#E8950C";                                    // amber: a GPU ran hot / throttled (timing unreliable)
 const CORRC = "#a32d2d";                                      // deep red: a CORRECTNESS divergence (more severe than a perf hit)
+const DEPC = "#7F77DD";                                       // violet: a DEPENDENCY change (jax bump / deps refresh) — a ruler change, not a series
 const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" if a GPU core>=85C / HBM>=95C / any throttle reason
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
@@ -365,6 +366,11 @@ function linePlot(el, xs, specs, o) {
         ctx.lineCap = "round";
         ctx.lineWidth = 4 * dpr; ctx.strokeStyle = "#fff"; cross();        // halo for contrast
         ctx.lineWidth = 2.2 * dpr; ctx.strokeStyle = m.color || CORRC; cross();
+      } else if (m.shape === "diamond") {                    // a dep-canary RE-MEASURE: a diamond in the series colour
+        const r = h * 1.05;
+        ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath();
+        ctx.fillStyle = m.color || DEPC; ctx.fill();
+        ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = "#fff"; ctx.stroke();  // white edge so it reads over the circle point
       } else {                                               // a FAILING-TESTS flag: a red triangle
         ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x - h, y + h); ctx.lineTo(x + h, y + h); ctx.closePath();
         ctx.fillStyle = m.color || FAILC; ctx.fill();
@@ -403,6 +409,37 @@ function linePlot(el, xs, specs, o) {
     };
     hooks.drawClear = [(u) => drawNow(u, false)];
     hooks.draw = hooks.draw ? [(u) => drawNow(u, true), ...hooks.draw] : [(u) => drawNow(u, true)];
+  }
+  // Dependency-change rules (o.depMarks: [{x, label, color}]) — a dashed full-height guide at each dep-set
+  // onset (a jax bump / periodic deps refresh: a "ruler change" that shifts every series at once), with a
+  // small label chip at the top naming it.  Drawn FIRST in the draw chain so it sits UNDER the point
+  // markers/rings (thin + semi-transparent -> never obscures a curve).  Pairs with the diamond re-measure
+  // glyphs (o.marks shape:"diamond") that sit on the affected series at the same x.
+  if (o.depMarks && o.depMarks.length) {
+    const drawDeps = (u) => {
+      const ctx = u.ctx, dpr = u.pxRatio || 1, top = u.bbox.top, bot = u.bbox.top + u.bbox.height;
+      const L = u.bbox.left, R = u.bbox.left + u.bbox.width;
+      ctx.save();
+      ctx.font = Math.round(10 * dpr) + "px " + (cs.fontFamily || "sans-serif");
+      ctx.textBaseline = "top";
+      o.depMarks.forEach((d) => {
+        const x = u.valToPos(d.x, "x", true);
+        if (!isFinite(x) || x < L - 1 || x > R + 1) return;
+        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5 * dpr;
+        ctx.setLineDash([5 * dpr, 4 * dpr]);
+        ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+        if (d.label) {
+          const tw = ctx.measureText(d.label).width, px = 4 * dpr, ch = 15 * dpr;
+          let cx = x + 3 * dpr;
+          if (cx + tw + 2 * px > R) cx = x - tw - 2 * px - 3 * dpr;   // flip left near the right edge
+          ctx.fillStyle = bg; ctx.globalAlpha = 0.85; ctx.fillRect(cx, top, tw + 2 * px, ch); ctx.globalAlpha = 1;
+          ctx.fillStyle = d.color || DEPC; ctx.fillText(d.label, cx + px, top + 3 * dpr);
+        }
+      });
+      ctx.restore();
+    };
+    hooks.draw = hooks.draw ? [drawDeps, ...hooks.draw] : [drawDeps];
   }
   const opts = {
     width: o.width || el.clientWidth || 320, height: o.height || 210,
@@ -1036,8 +1073,49 @@ function renderHistory() {
     }));
     return out;
   };
-  const allMarks = (pick) => [...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
-  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true });
+  // Dependency-canary re-measure glyphs: a violet diamond on every dep_gen>0 run's drawn point — a
+  // re-measure of an existing commit on a NEWER dep set, distinct from a normal commit circle.
+  const depDiamonds = (pick) => {
+    const out = [];
+    M.platforms.forEach((plat) => branches.forEach((b) => {
+      const agg = aggByPB[plat + "|" + b]; if (!agg) return;
+      runsFor(plat, b).forEach((r) => {
+        if (!r.dep_gen) return;
+        const a = agg[runTime(r)]; if (!a) return;
+        let y = null;
+        for (const gm of group.geoms) { if (a[pick][gm] != null) { y = a[pick][gm]; break; } }
+        // Fixed dep-change violet (not the platform colour) so it matches the rule + legend — the
+        // platform is already unambiguous from WHICH line the diamond sits on (cf. the amber thermal marks).
+        if (y != null) out.push({ x: runTime(r), y, shape: "diamond", color: DEPC });
+      });
+    }));
+    return out;
+  };
+  // Dependency-change rules: one dashed vertical guide per (platform, dep-generation) onset — a jax bump or
+  // the periodic full-deps refresh.  Derived from the runs themselves: gen>0 exists only on the canary
+  // branch, but a dep change is ENVIRONMENTAL, so the guide shows across all series.  x = the earliest
+  // measurement time at that generation (== runTime, so it lands exactly on the re-measure column).
+  const depChanges = () => {
+    const out = [];
+    M.platforms.forEach((plat) => {
+      const byGen = {};
+      M.runs.forEach((r) => {
+        if (r.platform !== plat || !r.dep_gen) return;
+        const g = byGen[r.dep_gen] || (byGen[r.dep_gen] = { x: Infinity, jax: null, deps: false });
+        g.x = Math.min(g.x, runTime(r));
+        if (r.jax) g.jax = r.jax;
+        if (r.run_reason === "deps-step") g.deps = true;
+      });
+      Object.keys(byGen).forEach((gk) => {
+        const g = byGen[gk];
+        out.push({ x: g.x, color: DEPC, label: g.deps ? "deps refresh" : (g.jax ? "jax " + g.jax : "dep change") });
+      });
+    });
+    return out;
+  };
+  const depMk = depChanges();
+  const allMarks = (pick) => [...depDiamonds(pick), ...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
+  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true, depMarks: depMk });
   linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time") });
   linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem") });
   const gateSpecs = [];
@@ -1046,15 +1124,22 @@ function renderHistory() {
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gatePerf : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true });
+  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true, depMarks: depMk });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
+  // Only surface the dep-canary legend entries once a dep change has actually been recorded (gen>0 runs),
+  // so a corpus that predates the canary doesn't carry unexplained keys.
+  const depLeg = depMk.length
+    ? `<span class="k"><span class="sw" style="height:0;border-top:2px dashed ${DEPC}"></span>dep change</span>`
+      + `<span class="k"><span style="display:inline-block;width:8px;height:8px;background:${DEPC};transform:rotate(45deg);margin:0 4px"></span>re-measure</span>`
+    : "";
   $("hist-legend").innerHTML =
     `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
     `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}` +
     `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
     `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
     `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span>` +
+    depLeg +
     `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
     `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span></span>`;
 }
