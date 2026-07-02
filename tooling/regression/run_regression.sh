@@ -131,25 +131,36 @@ done
 # Guarded by DEP_CANARY_ENABLED (default 0 -> this whole feature is inert; the nightly is unchanged).
 # When PyPI's latest jax differs from state/jax_seen, bump the dep-generation counter and ensure the
 # canary branch is measured (even if its tip didn't move) so the new jax is re-measured + attributed.
-NEW_JAX=0; DEP_GEN=""; PYPI_JAX=""
+# Two canary triggers (dependency_canary_plan.md §5): (a) NEW_JAX — PyPI's latest jax differs from what
+# we last measured; (b) FULL_REFRESH — the max-staleness timer (DEP_FULL_REFRESH_DAYS) elapsed.  The
+# jax-step + code-step share gen g+1 (the new jax dep set); the deps-step takes the next gen.
+NEW_JAX=0; FULL_REFRESH=0; DEP_GEN=""; FULL_GEN=""; RAN_JAX_STEP=0; PYPI_JAX=""; CANARY=""; CANARY_PREV=""; CANARY_TIP=""
 if [ "${DEP_CANARY_ENABLED:-0}" = "1" ] && [ -f "$HERE/check_jax_release.py" ]; then
-  CANARY="${DEP_CANARY_BRANCH:-main}"
+  CANARY="${DEP_CANARY_BRANCH:-main}"; _g="$(cat "$STATE/depgen" 2>/dev/null || echo 0)"
   PYPI_JAX="$(python "$HERE/check_jax_release.py" --print-latest 2>/dev/null || true)"
   SEEN="$(cat "$STATE/jax_seen" 2>/dev/null || true)"
-  if [ -n "$PYPI_JAX" ] && [ "$PYPI_JAX" != "$SEEN" ]; then
-    NEW_JAX=1
-    DEP_GEN="$(( $(cat "$STATE/depgen" 2>/dev/null || echo 0) + 1 ))"
-    log "dep-canary: jax $PYPI_JAX on PyPI (was ${SEEN:-none}) -> dep-gen $DEP_GEN; upgrade + re-measure $CANARY."
-    _in=0; for _b in "${CHANGED_BR[@]}"; do [ "$_b" = "$CANARY" ] && _in=1; done
-    if [ "$_in" = "0" ]; then
-      _csha="$(git ls-remote "$MBIRJAX_URL" "refs/heads/$CANARY" 2>/dev/null | awk '{print $1}')"
-      [ -n "$_csha" ] && { CHANGED_BR+=("$CANARY"); CHANGED_SHA+=("$_csha"); \
-        log "dep-canary: added $CANARY @ ${_csha:0:8} (tip unchanged) for the jax re-measure."; }
+  [ -n "$PYPI_JAX" ] && [ "$PYPI_JAX" != "$SEEN" ] && NEW_JAX=1
+  _last="$(cat "$STATE/last_full_refresh" 2>/dev/null || echo 0)"
+  [ $(( $(date +%s) - _last )) -gt $(( ${DEP_FULL_REFRESH_DAYS:-14} * 86400 )) ] && FULL_REFRESH=1
+  if [ "$NEW_JAX" = "1" ] || [ "$FULL_REFRESH" = "1" ]; then
+    CANARY_TIP="$(git ls-remote "$MBIRJAX_URL" "refs/heads/$CANARY" 2>/dev/null | awk '{print $1}')"
+    CANARY_PREV="$(cat "$STATE/${CANARY//\//_}" 2>/dev/null || true)"
+    DEP_GEN=$(( _g + 1 )); if [ "$NEW_JAX" = "1" ]; then FULL_GEN=$(( _g + 2 )); else FULL_GEN=$(( _g + 1 )); fi
+    # both-change: a NEW jax AND the canary tip moved -> a jax-step on the PREVIOUS tip isolates jax,
+    # then the loop measures the new tip as the code-step (§5).
+    [ "$NEW_JAX" = "1" ] && [ -n "$CANARY_PREV" ] && [ -n "$CANARY_TIP" ] && [ "$CANARY_PREV" != "$CANARY_TIP" ] && RAN_JAX_STEP=1
+    log "dep-canary: NEW_JAX=$NEW_JAX FULL=$FULL_REFRESH  jax/code-gen=$DEP_GEN deps-gen=$FULL_GEN  prev=${CANARY_PREV:0:8} tip=${CANARY_TIP:0:8}"
+    if [ "$NEW_JAX" = "1" ]; then   # ensure the canary is measured in the loop even if its tip didn't move
+      _in=0; for _b in "${CHANGED_BR[@]}"; do [ "$_b" = "$CANARY" ] && _in=1; done
+      [ "$_in" = "0" ] && [ -n "$CANARY_TIP" ] && { CHANGED_BR+=("$CANARY"); CHANGED_SHA+=("$CANARY_TIP"); \
+        log "dep-canary: added $CANARY @ ${CANARY_TIP:0:8} (tip unchanged) for the jax re-measure."; }
     fi
   fi
 fi
 
-[ "${#CHANGED_BR[@]}" -gt 0 ] || { log "no tracked branch changed — done."; exit 0; }
+# Proceed if a branch changed OR the canary has a jax / full-refresh event to run.
+[ "${#CHANGED_BR[@]}" -gt 0 ] || [ "$NEW_JAX" = "1" ] || [ "$FULL_REFRESH" = "1" ] \
+  || { log "no tracked branch changed — done."; exit 0; }
 
 # Per changed branch: a SHALLOW, SINGLE-BRANCH clone of just the branch tip (no history, no other
 # branches) straight into the work dir — small + fast, and (unlike a pip-install-from-git, which
@@ -158,12 +169,45 @@ fi
 DATE="$(date '+%Y%m%d')"
 GATE_FAIL=0
 
+# measure_commit: run the perf engine for ONE (branch, sha) at a given dep-gen/reason — the vehicle for
+# the dependency-canary steps that are NOT the plain per-branch loop below (the jax-step on the PREVIOUS
+# tip, and the full-deps step).  Clones that exact sha into a throwaway worktree (fetching it directly if
+# it is older than the tip), installs it (upgrade=full -> eager all-deps upgrade), runs run_nightly.py,
+# and cleans up.  Does NOT run tests or write branch state (the caller owns those).  Returns the engine rc.
+measure_commit() {   # $1=branch $2=sha $3=outdir $4=dep_gen $5=reason $6=upgrade(none|full)
+  local _br="$1" _sha="$2" _out="$3" _dg="$4" _reason="$5" _upg="${6:-none}" _rc=0
+  local _wt="$WORK_DIR/canary_${_br//\//_}_${_sha:0:8}"; rm -rf "$_wt"
+  if ! git clone --quiet --depth 1 --branch "$_br" --single-branch "$MBIRJAX_URL" "$_wt"; then
+    log "  dep-canary: clone of $_br failed — skip step."; rm -rf "$_wt"; return 2; fi
+  if [ "$(git -C "$_wt" rev-parse HEAD)" != "$_sha" ]; then   # older than the tip -> fetch that commit
+    if ! { git -C "$_wt" fetch --quiet --depth 1 origin "$_sha" && git -C "$_wt" checkout --quiet "$_sha"; }; then
+      log "  dep-canary: could not check out ${_sha:0:8} of $_br — skip step."; rm -rf "$_wt"; return 2; fi
+  fi
+  if [ "$_upg" = "full" ]; then
+    reg_upgrade_all "$_wt" "$EXTRAS" >"$_wt/.install.log" 2>&1 || log "  dep-canary: WARN full upgrade issue (see .install.log)."
+  elif ! reg_install_lib "$_wt" "$EXTRAS" >"$_wt/.install.log" 2>&1; then
+    log "  dep-canary: install of ${_sha:0:8} failed — skip step."; rm -rf "$_wt"; return 2; fi
+  mkdir -p "$_out"
+  REG_LIB_ROOT="$_wt" REG_OUT_DIR="$_out" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$_br" \
+    REG_DEP_GEN="$_dg" REG_RUN_REASON="$_reason" \
+    python "$HARNESS_DIR/scaling_tests/run_nightly.py" || _rc=$?
+  rm -rf "$_wt"; return "$_rc"
+}
+
 # dep-canary: force jax/jaxlib to latest in the shared env BEFORE the branch loop, so every branch this
 # night measures the new jax (the per-branch editable install re-resolves + pulls an excluded version
 # back down — §4).  Non-fatal; skipped in smoke.
 if [ "$NEW_JAX" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ]; then
   log "dep-canary: upgrading jax/jaxlib to latest in $CONDA_ENV ..."
   reg_upgrade_jax "$EXTRAS" >/dev/null 2>&1 || log "dep-canary: WARN jax upgrade failed — using current jax."
+fi
+
+# dep-canary jax-step (both-change): re-measure the PREVIOUS canary tip with the new jax (isolates jax;
+# the loop then measures the NEW tip as the code-step).  Env jax already upgraded above.
+if [ "$RAN_JAX_STEP" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ]; then
+  log "dep-canary: jax-step — re-measuring $CANARY @ ${CANARY_PREV:0:8} (previous tip) with new jax (gen $DEP_GEN)."
+  measure_commit "$CANARY" "$CANARY_PREV" "$RES/${CANARY//\//_}" "$DEP_GEN" "jax-step" none \
+    || log "dep-canary: jax-step engine returned non-zero (gate/setup) — continuing."
 fi
 
 for i in "${!CHANGED_BR[@]}"; do
@@ -215,8 +259,13 @@ for i in "${!CHANGED_BR[@]}"; do
   # (and lands in the cron/slurm log unattended).
   # dep-canary provenance: the canary branch's run this night is the jax re-measure at dep-gen NNNN.
   # Empty for every other run -> run_nightly.py ignores them -> dep_gen 0 / run_reason "commit".
+  # When RAN_JAX_STEP=1 (both jax AND the tip moved), the pre-loop jax-step already measured the PREVIOUS
+  # tip with the new jax, so THIS run of the new tip is the code-step; otherwise this is the sole canary
+  # re-measure with the new jax -> jax-step.  Same gen either way (both belong to the new jax dep set).
   DGEN=""; RREASON=""
-  if [ "$NEW_JAX" = "1" ] && [ "$BR" = "${DEP_CANARY_BRANCH:-main}" ]; then DGEN="$DEP_GEN"; RREASON="jax-step"; fi
+  if [ "$NEW_JAX" = "1" ] && [ "$BR" = "${DEP_CANARY_BRANCH:-main}" ]; then
+    DGEN="$DEP_GEN"; if [ "$RAN_JAX_STEP" = "1" ]; then RREASON="code-step"; else RREASON="jax-step"; fi
+  fi
   log "$BR: running perf engine (output follows)..."
   if REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
        REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" \
@@ -232,12 +281,23 @@ for i in "${!CHANGED_BR[@]}"; do
   rm -rf "$WT"                  # drop the throwaway library clone
 done
 
-# dep-canary: record the PyPI jax we acted on + the new dep-gen LAST (a crash mid-run re-fires next
-# time, like the branch state above).  jax_seen is the PyPI-latest we've SEEN, so an excluded release
-# won't re-fire nightly; the actual installed jax lives in each run's toolchain block.
-if [ "$NEW_JAX" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ]; then
-  echo "$PYPI_JAX" >"$STATE/jax_seen"
-  echo "$DEP_GEN"  >"$STATE/depgen"
+# dep-canary deps-step (periodic full refresh): eager-upgrade ALL deps + re-measure the CURRENT canary
+# tip so non-jax dep drift is caught on the DEP_FULL_REFRESH_DAYS timer (§5).  Own gen (FULL_GEN) so it
+# sits after any jax/code steps on the timeline.  Does its own full install; needs a known tip.
+if [ "$FULL_REFRESH" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ] && [ -n "$CANARY_TIP" ]; then
+  log "dep-canary: deps-step — full eager dep upgrade + re-measuring $CANARY @ ${CANARY_TIP:0:8} (gen $FULL_GEN)."
+  measure_commit "$CANARY" "$CANARY_TIP" "$RES/${CANARY//\//_}" "$FULL_GEN" "deps-step" full \
+    || log "dep-canary: deps-step engine returned non-zero (gate/setup) — continuing."
+fi
+
+# dep-canary: record what we acted on LAST (a crash mid-run re-fires next time, like the branch state
+# above).  jax_seen is the PyPI-latest we've SEEN, so an excluded release won't re-fire nightly; the
+# actual installed jax lives in each run's toolchain block.  depgen advances to the highest gen used;
+# last_full_refresh stamps the timer (written even if the deps-step gated, so it doesn't re-fire daily).
+if [ "${REG_SMOKE:-0}" != "1" ]; then
+  [ "$NEW_JAX" = "1" ] && echo "$PYPI_JAX" >"$STATE/jax_seen"
+  if   [ "$FULL_REFRESH" = "1" ]; then echo "$FULL_GEN" >"$STATE/depgen"; echo "$(date +%s)" >"$STATE/last_full_refresh"
+  elif [ "$NEW_JAX" = "1" ];      then echo "$DEP_GEN"  >"$STATE/depgen"; fi
 fi
 
 # ── Publish to the metrics repo (conflict-safe; NON-FATAL) ────────────────────────────────────

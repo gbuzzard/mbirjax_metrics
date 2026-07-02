@@ -196,11 +196,25 @@ is on-`main` per the request; note this fallback if §3's plumbing proves heavie
 
 ## 11. Phasing
 
-0. **Engine plumbing** (this PR): Config `dep_gen`/`run_reason`, run-doc stamping + `_g<gen>` filename
+0. **[DONE]** **Engine plumbing**: Config `dep_gen`/`run_reason`, run-doc stamping + `_g<gen>` filename
    (gen 0 = no suffix), `_find_prior` tolerant of the suffix, and `run_nightly.py` reading them from the
    env so the shell can drive it.  Testable in isolation, no behavior change at gen 0.
-1. Fingerprint + `state/<plat>/{main.deps,depgen}` + the **dep-only** canary path (no new commit).
-2. The **both-change** decomposition (§5 jax + code steps).
-3. The **timer-driven full refresh** (§5 step 3) + `DEP_FULL_REFRESH_DAYS` + `last_full_refresh`.
-4. Dashboard: run key incl. `dep_gen`, measurement-time x, labeling, records/vs-main tiebreak.
+1. **[DONE]** Fingerprint (`jax_seen` = PyPI-latest) + `state/<plat>/{jax_seen,depgen}` + the **dep-only**
+   canary path (new jax, canary tip unchanged → force `main` into the loop as the `jax-step`).
+2. **[DONE]** The **both-change** decomposition (§5 jax + code steps): `measure_commit` helper (clone tip
+   → fetch/checkout the prior sha) runs the pre-loop `jax-step` on the PREVIOUS tip; the loop then measures
+   the new tip as the `code-step` (same gen g+1).  Filenames don't collide (they lead with the *commit*
+   time+sha), and the `_gNNNN` suffix chains prior selection: gen0(A) → jaxstep A_g1 → codestep B_g1.
+3. **[DONE]** The **timer-driven full refresh** (§5 step 3) + `DEP_FULL_REFRESH_DAYS` + `last_full_refresh`:
+   post-loop `deps-step` = full eager dep upgrade (`reg_upgrade_all`) re-measuring the current tip at
+   gen g+2 (or g+1 if no new jax that night); `depgen` advances to the highest gen used, `last_full_refresh`
+   is stamped even if the step gated so it doesn't re-fire daily.
+4. **[DONE]** Dashboard: run key incl. `dep_gen` (`#g<gen>`), measurement-time x for gen>0, labeling
+   (jax version + re-measure note), records/vs-main tiebreak.
 5. Extend to `prerelease` (knob) if sharded-only dep coverage is ever wanted.
+
+**Verification (2026-07-01):** `bash -n` clean; `measure_commit`'s clone+fetch+checkout of an arbitrary
+older `main` sha verified against the real remote (GitHub serves a `--depth 1 origin <sha>` fetch);
+step-orchestration decision logic asserted across 6 cases (nothing / jax-only / both-change / full-only /
+everything / first-ever-no-prior) — all pass.  Phases 0/1/4 previously verified (engine smoke, `_find_prior`
+gen ordering, synthetic gen-1 dashboard run).

@@ -79,3 +79,10 @@ reg_upgrade_jax() {   # $1=extras (e.g. "cuda12,test") ; caller logs/redirects/h
   esac
   pip install -U "$jax_pkg" jaxlib
 }
+
+# Dependency canary, periodic FULL refresh: eager-upgrade ALL of the worktree's deps to the latest the
+# pyproject allows (numpy/scipy/etc. too, not just jax).  Uses the editable install so the `jax!=…`
+# exclusion is honored natively.  Caller logs/redirects/handles the exit code.
+reg_upgrade_all() {   # $1=worktree  $2=extras
+  pip install -e "$1[$2]" --upgrade --upgrade-strategy eager
+}
