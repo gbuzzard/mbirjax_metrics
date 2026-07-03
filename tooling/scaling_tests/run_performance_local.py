@@ -21,10 +21,10 @@ from datetime import datetime
 import performance_tracking as pt
 import scaling_common as sc
 
-# Uniform harness env (TF_CPP log level + compile cache) applied at import — BEFORE any jax init — so an
-# INLINE run (INLINE=True) is quiet + cache-warm, and every worker inherits it (see
-# scaling_common.uniform_env / apply_uniform_env).
-sc.apply_uniform_env()
+# In-process measurement env applied at import — BEFORE any jax init.  claim_gpu_pool=True so an INLINE run
+# (INLINE=True) measures under the same GPU pool + ruler as a nightly worker; a subprocess run just inherits
+# the harmless extra vars (see scaling_common.apply_env).
+sc.apply_env(claim_gpu_pool=True)
 
 
 # ── CONFIG (edit here; a subset of performance_tracking.Config) ───────────────

@@ -25,10 +25,11 @@ import tempfile
 
 import performance_tracking as pt   # sibling module; this script's dir is on sys.path[0]
 
-# Uniform harness env (TF_CPP log level + persistent XLA compile cache), applied BEFORE jax initializes so
-# this inline run is quiet + skips recompilation — the same settings every nightly worker gets (see
-# scaling_common.uniform_env / apply_uniform_env).
-pt.sc.apply_uniform_env()
+# In-process measurement env, applied BEFORE jax initializes.  claim_gpu_pool=True: this inline run measures
+# in-process, so it uses the SAME GPU pool (MEM_FRACTION=0.9 / PREALLOCATE) + log level + compile cache a
+# nightly worker gets — without it, inline fell back to jax's default ~0.75 pool and could OOM where the
+# nightly fit (see scaling_common.apply_env).
+pt.sc.apply_env(claim_gpu_pool=True)
 
 
 def main():

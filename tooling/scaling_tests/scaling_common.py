@@ -339,13 +339,36 @@ def uniform_env():
     }
 
 
-def apply_uniform_env():
-    """setdefault ``uniform_env()`` into THIS process's ``os.environ`` — the single call each entry point
-    makes as its first action (before importing jax / mbirjax).  Separate from ``uniform_env()`` because
-    ``build_worker_env`` composes a *child* subprocess's env from that dict and must NOT mutate the
-    orchestrator's own environment; this one is for the in-process (orchestrator / inline) path.  Uses
-    setdefault, so an explicit override already in the environment still wins."""
-    for k, v in uniform_env().items():
+def allocator_env(mem_fraction=0.9, preallocate=True):
+    """The GPU memory-pool knobs jax reads at backend init.  Factored out so the INLINE path and a nightly
+    worker (``build_worker_env``) use the SAME pool — historically these lived only in build_worker_env, so
+    an inline run fell back to jax's default ~0.75 fraction and could OOM where the nightly (0.9) fit.
+    Preallocating the pool up front avoids per-call cudaMalloc growth (clean timing).  Lower ``mem_fraction``
+    to probe the OOM threshold.  Returns the param values directly (build_worker_env forces them onto the
+    worker); ``apply_env`` applies them via setdefault, so an explicit env override still wins there."""
+    return {
+        "XLA_PYTHON_CLIENT_PREALLOCATE": "true" if preallocate else "false",
+        "XLA_PYTHON_CLIENT_MEM_FRACTION": str(mem_fraction),
+    }
+
+
+def apply_env(claim_gpu_pool):
+    """setdefault the in-process measurement env into ``os.environ`` — the single call each entry point makes
+    first (before importing jax / mbirjax).  ALWAYS applies ``uniform_env`` (log level + compile cache).
+
+    ``claim_gpu_pool`` is the one real difference between callers, so it is an explicit (required) flag
+    rather than two near-duplicate functions that could drift:
+      - ``True``  — this process runs measurements IN-PROCESS (measure_one_cell / run_performance_local with
+        INLINE), so it also applies ``allocator_env`` and measures under the SAME GPU pool as a worker.
+      - ``False`` — the ORCHESTRATOR (run_nightly): it must NOT preallocate the GPU, since its whole design
+        is to hold no JAX backend while the worker subprocesses measure (they get the pool via
+        ``build_worker_env``).  Applying the pool here would risk the orchestrator claiming the GPU.
+
+    setdefault throughout, so an explicit override already in the environment still wins."""
+    env = dict(uniform_env())
+    if claim_gpu_pool:
+        env.update(allocator_env())
+    for k, v in env.items():
         os.environ.setdefault(k, v)
 
 
@@ -369,8 +392,7 @@ def build_worker_env(mem_fraction=0.9, preallocate=True, lib_root=None):
     existing = os.environ.get("PYTHONPATH", "")
     return {
         "PYTHONPATH": root + (os.pathsep + existing if existing else ""),
-        "XLA_PYTHON_CLIENT_PREALLOCATE": "true" if preallocate else "false",
-        "XLA_PYTHON_CLIENT_MEM_FRACTION": str(mem_fraction),
+        **allocator_env(mem_fraction, preallocate),   # GPU memory pool — SAME helper the inline path uses
         **uniform_env(),   # TF_CPP log level + persistent compile cache — set in the worker env BEFORE its
                            # interpreter starts, so jaxlib reads them regardless of the worker's import order
     }
