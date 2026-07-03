@@ -15,7 +15,7 @@ const PLATC = { gpu: "#185fa5", cpu: "#BA7517" };                     // history
 const IDEAL = "#9b9b94", FAILC = "#E24B4A", REFC = "#1f1f1d"; // ideal=grey, gate=red, reference=near-black
 const THROTC = "#E8950C";                                    // amber: a GPU ran hot / throttled (timing unreliable)
 const CORRC = "#a32d2d";                                      // deep red: a CORRECTNESS divergence (more severe than a perf hit)
-const DEPC = "#7F77DD";                                       // violet: a DEPENDENCY change (jax bump / deps refresh) — a ruler change, not a series
+const DEPC = "#25a244";                                       // green: a DEPENDENCY change (jax bump / deps refresh) — a ruler change, not a series (kept clear of the blue/amber series)
 const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" if a GPU core>=85C / HBM>=95C / any throttle reason
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
@@ -242,6 +242,15 @@ function linePlot(el, xs, specs, o) {
   const X = padOff ? [xLo, ...xs, xHi] : xs;
   const S = padOff ? specs.map((s) => ({ ...s, ys: [null, ...s.ys, null] })) : specs;
   const data = [X, ...S.map((s) => s.ys)];
+  // Off-scale markers (dep changes + failed/OOM configs) float ABOVE the data at markY = depTopMul × the
+  // tallest data point (default 2×); the y-scale is stretched to keep that headroom (see yScale.range).
+  // Null when there are no such marks or no finite data — the draw hooks then fall back to a fixed band.
+  let markY = null;
+  if ((o.depMarks && o.depMarks.length) || (o.failMarks && o.failMarks.length)) {
+    let gmax = -Infinity;
+    S.forEach((s) => s.ys.forEach((v) => { if (v != null && isFinite(v) && v > gmax) gmax = v; }));
+    if (gmax > 0) markY = gmax * (o.depTopMul || 2);
+  }
   const series = [{}, ...S.map((s) => ({
     stroke: s.color, width: s.width == null ? 2 : s.width, dash: s.dash || undefined,
     spanGaps: true,  // bridge null cells (e.g. a failed non-dividing size) so the curve stays connected
@@ -301,9 +310,18 @@ function linePlot(el, xs, specs, o) {
   else if (o.padAll != null) xScale.range = padRange(o.padAll, o.xLog);
   else if (o.tightLog && o.xLog) xScale.range = tightLog;
   const yScale = { distr: o.yLog ? 3 : 1 };
-  if (o.yPad != null) yScale.range = padRange(o.yPad, o.yLog);
-  else if (o.padAll != null) yScale.range = padRange(o.padAll, o.yLog);
-  else if (o.tightLog && o.yLog) yScale.range = tightLog;
+  // Base y-range (data padding), then lift the top above any floating markers (markY) so they stay on
+  // screen.  Composes with padRange so the scaling panels (yPad) also make room for off-scale fail marks.
+  const baseYRange = o.yPad != null ? padRange(o.yPad, o.yLog)
+                   : o.padAll != null ? padRange(o.padAll, o.yLog)
+                   : (o.tightLog && o.yLog) ? tightLog : null;
+  if (markY != null) yScale.range = (u, mn, mx) => {
+    const hi = Math.max(mx, markY);
+    if (baseYRange) return baseYRange(u, mn, hi);
+    if (o.yLog) { const lo = (mn > 0) ? Math.pow(10, Math.floor(Math.log10(mn))) : mn; return [lo, hi * 1.25]; }
+    return [Math.min(mn, 0), hi * 1.1];
+  };
+  else if (baseYRange) yScale.range = baseYRange;
   // Truly-nearest drawn point to the cursor, in 2-D px (shared by the click-to-pick and hover-tooltip
   // handlers).  Previously this snapped to uPlot's cursor.idx — the nearest x-COLUMN — then took the
   // nearest series in y.  When two runs sit close in x (two commits a few hours apart on a multi-day
@@ -324,22 +342,42 @@ function linePlot(el, xs, specs, o) {
     }
     return (bSi > 0 && bD <= maxPx * maxPx) ? { si: bSi, di: bDi } : null;
   };
-  // Optional hover tooltip: o.tooltip(spec, idx) -> HTML string (or null to hide).
+  // Hover tooltip: o.tooltip(spec, idx) -> HTML for the nearest data point; o.depMarks / o.failMarks carry
+  // their own pre-built tooltip HTML shown when the cursor is near their top-band symbol (checked first).
   let tip = null;
-  if (o.tooltip) { tip = document.createElement("div"); tip.className = "u-tip"; }
+  if (o.tooltip || (o.depMarks && o.depMarks.length) || (o.failMarks && o.failMarks.length)) {
+    tip = document.createElement("div"); tip.className = "u-tip";
+  }
   const hooks = {};
-  if (o.tooltip) hooks.setCursor = [(u) => {
+  const placeTip = (u, html) => {                     // position the shared tip at the cursor, flipping near the right edge
+    tip.innerHTML = html; tip.style.display = "block";
+    const ob = u.over.getBoundingClientRect(), eb = el.getBoundingClientRect();
+    let lx = ob.left - eb.left + u.cursor.left + 14;
+    if (lx + tip.offsetWidth > el.clientWidth) lx = Math.max(0, ob.left - eb.left + u.cursor.left - tip.offsetWidth - 14);
+    tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + u.cursor.top + 8) + "px";
+  };
+  // nearest top-band marker (dep or fail) within ~10 CSS-px of the cursor, near the marker row, else null
+  const nearestMark = (u, marks) => {
+    if (!(marks && marks.length)) return null;
+    const my = (markY != null) ? u.valToPos(markY, "y") : 12;   // the marker row (floating, or fixed band)
+    if (Math.abs(u.cursor.top - my) > 14) return null;
+    let best = null, bd = 10;
+    marks.forEach((d) => { const dx = Math.abs(u.valToPos(d.x, "x") - u.cursor.left); if (dx < bd) { bd = dx; best = d; } });
+    return best;
+  };
+  if (tip) hooks.setCursor = [(u) => {
     const cl = u.cursor.left, ct = u.cursor.top;
     // hide while off-plot or mid drag-zoom
     if (cl == null || ct == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
+    const fail = nearestMark(u, o.failMarks);           // a failure symbol wins (most urgent), then a dep symbol
+    if (fail) { placeTip(u, fail.tip); return; }
+    const dep = nearestMark(u, o.depMarks);
+    if (dep) { placeTip(u, dep.tip); return; }
+    if (!o.tooltip) { tip.style.display = "none"; return; }
     const np = nearestPoint(u, 30), oi = np ? np.di - padOff : -1;
     const html = (np && oi >= 0 && oi < xs.length) ? o.tooltip(specs[np.si - 1], oi) : null;
     if (!html) { tip.style.display = "none"; return; }
-    tip.innerHTML = html; tip.style.display = "block";
-    const ob = u.over.getBoundingClientRect(), eb = el.getBoundingClientRect();
-    let lx = ob.left - eb.left + cl + 14;
-    if (lx + tip.offsetWidth > el.clientWidth) lx = Math.max(0, ob.left - eb.left + cl - tip.offsetWidth - 14);
-    tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + ct + 8) + "px";
+    placeTip(u, html);
   }];
   // Linked x-zoom: when one plot in a sync group zooms (or resets) its x-scale, mirror the range to
   // the others.  Propagate ONLY when a peer's range actually differs, so the cascade converges
@@ -410,32 +448,53 @@ function linePlot(el, xs, specs, o) {
     hooks.drawClear = [(u) => drawNow(u, false)];
     hooks.draw = hooks.draw ? [(u) => drawNow(u, true), ...hooks.draw] : [(u) => drawNow(u, true)];
   }
-  // Dependency-change rules (o.depMarks: [{x, label, color}]) — a dashed full-height guide at each dep-set
-  // onset (a jax bump / periodic deps refresh: a "ruler change" that shifts every series at once), with a
-  // small label chip at the top naming it.  Drawn FIRST in the draw chain so it sits UNDER the point
-  // markers/rings (thin + semi-transparent -> never obscures a curve).  Pairs with the diamond re-measure
-  // glyphs (o.marks shape:"diamond") that sit on the affected series at the same x.
+  // Top-band Y for the floating markers (markY; a fixed band as fallback).  Shared by dep + fail glyphs.
+  const bandY = (u, r) => { const t = u.bbox.top; const a = (markY != null) ? u.valToPos(markY, "y", true) : t + r + 3 * dpr; return isFinite(a) ? a : t + r + 3 * dpr; };
+  // Failed/OOM configs (o.failMarks: [{x, tip}]) — a red ⊗ (ring + ✕) FLOATING above all data with a faint
+  // red drop-line, so an OOM reads as an off-scale ceiling breach, never as a real (low) value.  Hover ->
+  // nearestMark tooltip.  Drawn first so point markers sit on top.
+  if (o.failMarks && o.failMarks.length) {
+    const drawFails = (u) => {
+      const ctx = u.ctx, dpr = u.pxRatio || 1, bot = u.bbox.top + u.bbox.height;
+      const L = u.bbox.left, R = u.bbox.left + u.bbox.width, r = 8 * dpr, my = bandY(u, r), q = r * 0.5;
+      ctx.save();
+      o.failMarks.forEach((d) => {
+        const x = u.valToPos(d.x, "x", true);
+        if (!isFinite(x) || x < L - 1 || x > R + 1) return;
+        ctx.strokeStyle = FAILC; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5 * dpr;               // faint red drop-line
+        ctx.setLineDash([5 * dpr, 4 * dpr]); ctx.beginPath(); ctx.moveTo(x, my + r); ctx.lineTo(x, bot); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(x, my, r, 0, 2 * Math.PI); ctx.fillStyle = bg; ctx.fill();       // ring
+        ctx.lineWidth = 2 * dpr; ctx.strokeStyle = FAILC; ctx.stroke();
+        ctx.lineWidth = 1.8 * dpr; ctx.beginPath();                                               // ✕ inside
+        ctx.moveTo(x - q, my - q); ctx.lineTo(x + q, my + q); ctx.moveTo(x + q, my - q); ctx.lineTo(x - q, my + q); ctx.stroke();
+      });
+      ctx.restore();
+    };
+    hooks.draw = hooks.draw ? [drawFails, ...hooks.draw] : [drawFails];
+  }
+  // Dependency-change markers (o.depMarks: [{x, tip, color}]) — a green diamond FLOATING ~2× above the
+  // tallest data point (markY; a fixed band as fallback) at each dep-set onset (a jax bump / periodic deps
+  // refresh: a "ruler change" that shifts every series at once), with a faint dashed drop-line down to the
+  // data.  Sized to match the on-curve re-measure diamonds.  No inline text — it collided when two changes
+  // shared an x; the description lives in a hover tooltip (nearestMark, above).  Drawn FIRST in the chain so
+  // it sits UNDER the point markers/rings.  Pairs with the on-curve diamond re-measure glyphs at the same x.
   if (o.depMarks && o.depMarks.length) {
     const drawDeps = (u) => {
-      const ctx = u.ctx, dpr = u.pxRatio || 1, top = u.bbox.top, bot = u.bbox.top + u.bbox.height;
-      const L = u.bbox.left, R = u.bbox.left + u.bbox.width;
+      const ctx = u.ctx, dpr = u.pxRatio || 1, bot = u.bbox.top + u.bbox.height;
+      const L = u.bbox.left, R = u.bbox.left + u.bbox.width, r = 9 * dpr, my = bandY(u, r);
       ctx.save();
-      ctx.font = Math.round(10 * dpr) + "px " + (cs.fontFamily || "sans-serif");
-      ctx.textBaseline = "top";
       o.depMarks.forEach((d) => {
         const x = u.valToPos(d.x, "x", true);
         if (!isFinite(x) || x < L - 1 || x > R + 1) return;
-        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.7; ctx.lineWidth = 1.5 * dpr;
+        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5 * dpr;   // faint drop-line
         ctx.setLineDash([5 * dpr, 4 * dpr]);
-        ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bot); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, my + r); ctx.lineTo(x, bot); ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1;
-        if (d.label) {
-          const tw = ctx.measureText(d.label).width, px = 4 * dpr, ch = 15 * dpr;
-          let cx = x + 3 * dpr;
-          if (cx + tw + 2 * px > R) cx = x - tw - 2 * px - 3 * dpr;   // flip left near the right edge
-          ctx.fillStyle = bg; ctx.globalAlpha = 0.85; ctx.fillRect(cx, top, tw + 2 * px, ch); ctx.globalAlpha = 1;
-          ctx.fillStyle = d.color || DEPC; ctx.fillText(d.label, cx + px, top + 3 * dpr);
-        }
+        ctx.beginPath();                                                                        // floating diamond
+        ctx.moveTo(x, my - r); ctx.lineTo(x + r, my); ctx.lineTo(x, my + r); ctx.lineTo(x - r, my); ctx.closePath();
+        ctx.fillStyle = d.color || DEPC; ctx.fill();
+        ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = bg; ctx.stroke();                          // white edge over the grid
       });
       ctx.restore();
     };
@@ -673,34 +732,6 @@ function refSeries(geom, op, sizes, ndevs, metric, div) {
   });
   return out;
 }
-// Interpolate a y for each failed config so it can be marked ON its curve.
-// Between two good points -> interpolate along the connecting segment (in the
-// panel's log/linear space).  At an endpoint -> extend the nearest two goods'
-// slope; with a single good point -> follow the ideal slope; no goods -> skip.
-function interpFails(xs, ys, failIdx, xLog, yLog, idealYs) {
-  if (!failIdx || !failIdx.length) return null;
-  const tx = (x) => xLog ? Math.log10(x) : x;
-  const ty = (y) => yLog ? Math.log10(y) : y;
-  const ity = (v) => yLog ? Math.pow(10, v) : v;
-  const good = []; ys.forEach((y, i) => { if (y != null) good.push(i); });
-  const out = xs.map(() => null);
-  failIdx.forEach((i) => {
-    const left = good.filter((j) => j < i).pop();
-    const right = good.find((j) => j > i);
-    if (left != null && right != null) {
-      const f = (tx(xs[i]) - tx(xs[left])) / (tx(xs[right]) - tx(xs[left]));
-      out[i] = ity(ty(ys[left]) + f * (ty(ys[right]) - ty(ys[left])));
-    } else if (good.length >= 2 && (left != null || right != null)) {
-      const g0 = (left != null) ? left : right;
-      const g1 = good.filter((j) => j !== g0).reduce((a, b) => Math.abs(b - g0) < Math.abs(a - g0) ? b : a);
-      const slope = (ty(ys[g1]) - ty(ys[g0])) / (tx(xs[g1]) - tx(xs[g0]));
-      out[i] = ity(ty(ys[g0]) + slope * (tx(xs[i]) - tx(xs[g0])));
-    } else if (good.length === 1 && idealYs && idealYs[i] != null && idealYs[good[0]] != null) {
-      out[i] = ity(ty(ys[good[0]]) + ty(idealYs[i]) - ty(idealYs[good[0]]));
-    }
-  });
-  return out.some((v) => v != null) ? out : null;
-}
 // red-ring markers for hard-gate cells of this op, on the panel whose metric matches
 function gateSeries(run, geom, op, sizes, metricWord, div) {
   const hits = run.gate.hard.filter((h) => h.cell && h.cell.startsWith(geom + "|" + op + "|") && (h.text || "").toLowerCase().includes(metricWord));
@@ -809,14 +840,15 @@ function renderScaling() {
   const timeIdeal = (showIdeal && aT && aT.min_ms != null) ? [{ label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0,
     ys: xvol.map((v) => (aT.min_ms / 60000) * Math.pow(v / aV, texp)) }] : [];
   const gT = gateSeries(run, geom, op, sizes, "time", 60000);
-  // big red dots for failed configs, placed on the curve at the failing size
-  const timeFails = ndevs.map((nd, ci) => {
-    const fi = sizes.map((s, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
-    const yy = interpFails(xvol, timeCurves[ci].ys, fi, true, true, timeIdeal.length ? timeIdeal[0].ys : null);
-    return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
+  // Failed/OOM configs -> off-scale red ⊗ markers ABOVE all curves (one per failing SIZE), NOT interpolated
+  // onto the curve (which read as a real, often-lower value — e.g. an OOM landing below a slower n=4).
+  // Shared by the time + memory panels (same failing configs).
+  const sizeFailMk = sizes.map((s, i) => {
+    const fails = ndevs.map((nd) => at(s, nd)).filter((c) => c && c.failed);
+    return fails.length ? { x: xvol[i], tip: `<b>failed at ${s}</b><br>` + fails.map((c) => `n=${c.ndev} — <span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " · " + c.error : ""}`).join("<br>") } : null;
   }).filter(Boolean);
-  const timeSpecs = [...timeFails, ...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
-  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip(fmtTime) });
+  const timeSpecs = [...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
+  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip(fmtTime), failMarks: sizeFailMk, depTopMul: 1.5 });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
@@ -824,45 +856,36 @@ function renderScaling() {
   const memIdeal = (showIdeal && aM && aM.mem_mb != null) ? [{ label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0,
     ys: xvol.map((v) => (aM.mem_mb / 1024) * (v / aV)) }] : [];
   const gM = gateSeries(run, geom, op, sizes, "memory", 1024);
-  const memFails = ndevs.map((nd, ci) => {
-    const fi = sizes.map((s, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
-    const yy = interpFails(xvol, memCurves[ci].ys, fi, true, true, memIdeal.length ? memIdeal[0].ys : null);
-    return yy ? { label: "failed n=" + nd, color: devColor(nd), ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
-  }).filter(Boolean);
-  const memSpecs = [...memFails, ...(gM ? [gM] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "mem_mb", 1024), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
-  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB") });
+  const memSpecs = [...(gM ? [gM] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "mem_mb", 1024), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
+  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB"), failMarks: sizeFailMk, depTopMul: 1.5 });
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
   const w2 = $("pSpeed").clientWidth || 460;
   const speedCurves = sizes.map((s, i) => ({ label: s, color: SIZEC[i % SIZEC.length],
     ys: ndevs.map((nd) => speedupAt(s, nd)) }));
   const speedIdeal = ndevs.slice();
-  const speedFails = sizes.map((s, ci) => {
-    const fi = ndevs.map((nd, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
-    const yy = interpFails(ndevs, speedCurves[ci].ys, fi, false, false, speedIdeal);
-    return yy ? { label: s, color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
+  // Failed configs -> off-scale markers per failing DEVICE COUNT (shared by speedup + shard).  depTopMul is
+  // smaller here (linear axes) so the marker floats just above the data instead of doubling the range.
+  const devFailMk = ndevs.map((nd) => {
+    const fails = sizes.map((s) => at(s, nd)).filter((c) => c && c.failed);
+    return fails.length ? { x: nd, tip: `<b>failed at n=${nd}</b><br>` + fails.map((c) => `${c.size} — <span class="bad">${c.oom ? "OOM" : "FAILED"}</span>`).join("<br>") } : null;
   }).filter(Boolean);
-  const speedSpecs = [...speedFails, ...speedCurves, { label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: speedIdeal }];
-  linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices", tooltip: devTip });
+  const speedSpecs = [...speedCurves, { label: "ideal", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: speedIdeal }];
+  linePlot($("pSpeed"), ndevs, speedSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(0) + "×", yLabelText: "speedup", xLabelText: "devices", tooltip: devTip, failMarks: devFailMk, depTopMul: 1.5 });
 
   // --- per-device memory ÷ sino shard (one curve per size; ideal 2x) ---
   const shardCurves = sizes.map((s, i) => ({ label: s, color: SIZEC[i % SIZEC.length],
     ys: ndevs.map((nd) => shardAt(s, nd)) }));
-  const shardFails = sizes.map((s, ci) => {
-    const fi = ndevs.map((nd, i) => { const c = at(s, nd); return (c && c.failed) ? i : -1; }).filter((i) => i >= 0);
-    const yy = interpFails(ndevs, shardCurves[ci].ys, fi, false, false, ndevs.map(() => 2));
-    return yy ? { label: s, color: SIZEC[ci % SIZEC.length], ring: FAILC, ys: yy, pointsOnly: true, fillPoints: true, psize: 11, pw: 3 } : null;
-  }).filter(Boolean);
-  const shardSpecs = [...shardFails, ...shardCurves, { label: "ideal 2×", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: ndevs.map(() => 2) }];
-  linePlot($("pShard"), ndevs, shardSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip });
+  const shardSpecs = [...shardCurves, { label: "ideal 2×", color: IDEAL, dash: [5, 4], width: 1.5, psize: 0, ys: ndevs.map(() => 2) }];
+  linePlot($("pShard"), ndevs, shardSpecs, { width: w2, padAll: 0.07, xSplits: ndevs, xLabels: Object.fromEntries(ndevs.map((n) => [n, String(n)])), yfmt: (v) => v.toFixed(1) + "×", yLabelText: "mem ÷ shard", xLabelText: "devices", tooltip: devTip, failMarks: devFailMk, depTopMul: 1.5 });
 
   renderScalingLegend(ndevs, sizes, showIdeal);
 }
 function renderScalingLegend(ndevs, sizes, showIdeal) {
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
-  // failed-config marker = curve-coloured centre with a red ring (centre shown
-  // neutral here since the colour varies per curve)
-  const ringDot = (t) => `<span class="k"><span style="width:13px;height:13px;border-radius:50%;background:var(--surface2);border:3px solid ${FAILC};box-sizing:border-box;display:inline-block"></span>${t}</span>`;
+  // failed/OOM config = a red ⊗ pinned ABOVE the curves (off-scale) — an OOM has no real value, so it
+  // never sits on a curve where it could read as a fast time.  Hover it for which config failed.
+  const ringDot = (t) => `<span class="k"><span class="cx" style="color:${FAILC}">⊗</span>${t}</span>`;
   const devs = ndevs.map((n) => k(devColor(n), "n=" + n)).join("");
   const szs = sizes.map((s, i) => k(SIZEC[i % SIZEC.length], s)).join("");
   // active comparison: solid black swatch + display name + provenance (branch @ commit)
@@ -872,10 +895,10 @@ function renderScalingLegend(ndevs, sizes, showIdeal) {
   // the second legend sits above speedup & shard (size curves).
   $("sv-legend").innerHTML =
     `<span class="grp">${devs}</span>` +
-    `<span class="grp">${showIdeal ? k(IDEAL, "ideal", true) : ""}${ringDot("failed config")}<span class="k"><span class="ring"></span>gate fail</span><span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span><span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>${refNote}</span>`;
+    `<span class="grp">${showIdeal ? k(IDEAL, "ideal", true) : ""}${ringDot("failed / OOM (off scale)")}<span class="k"><span class="ring"></span>gate fail</span><span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span><span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>${refNote}</span>`;
   $("sv-legend2").innerHTML =
     `<span class="grp">${szs}</span>` +
-    `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed config")}</span>`;
+    `<span class="grp">${k(IDEAL, "ideal", true)}${ringDot("failed / OOM (off scale)")}</span>`;
 }
 
 function renderScalingTable(run, geom, op) {
@@ -933,13 +956,13 @@ function aggregate(run, n, geoms, timeOp) {
     if (!gmSizes.length) { out.time[gm] = out.mem[gm] = out.timeCell[gm] = out.memCell[gm] = null; return; }
     const focus = Math.max(...gmSizes.map(sizeVol));
     const focusSize = gmSizes.find((s) => sizeVol(s) === focus);
+    // The HEADLINE op at the largest size drives BOTH time and memory (op-consistent), so an OOM leaves
+    // both null instead of letting memory fall back to a surviving op and read as an improvement.  The
+    // failure itself is flagged run-level by the off-scale ⊗ (failMk), which reads r.cells directly.
     const tc = run.cells.find((c) => c.geom === gm && c.op === timeOp && c.size === focusSize && c.ndev === n && !c.failed);
     out.time[gm] = tc && tc.min_ms != null ? tc.min_ms / 60000 : null;
-    out.timeCell[gm] = tc || null;
-    const mems = run.cells.filter((c) => c.geom === gm && c.size === focusSize && c.ndev === n && !c.failed && c.mem_mb != null);
-    const mc = mems.length ? mems.reduce((a, b) => (b.mem_mb > a.mem_mb ? b : a)) : null;
-    out.mem[gm] = mc ? mc.mem_mb / 1024 : null;
-    out.memCell[gm] = mc;
+    out.mem[gm] = tc && tc.mem_mb != null ? tc.mem_mb / 1024 : null;
+    out.timeCell[gm] = out.memCell[gm] = tc || null;
   });
   return out;
 }
@@ -965,6 +988,28 @@ function showRun(r, resetOpen) {
 function pickRun(spec, idx) {
   const t = spec._xs[idx];
   showRun(runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === t), true);
+}
+// Tooltip HTML for a dep-change marker: one block per dep_info entry (a canary step), ordered by gen.
+// Shows the step (jax bump / deps refresh), the jax version delta, and the per-package changes when the
+// build recorded them (older backfilled runs have none -> just the jax delta from the toolchain).
+function depTipHtml(entries) {
+  const head = (e) => e.reason === "deps-step" ? "deps refresh"
+                    : e.reason === "jax-step" ? "jax bump"
+                    : e.reason === "code-step" ? "code + new jax" : "dep change";
+  const parts = entries.slice().sort((a, b) => (a.gen || 0) - (b.gen || 0)).map((e) => {
+    const jax = (e.jax_from && e.jax_from !== e.jax_to) ? `jax ${e.jax_from} → ${e.jax_to}`
+              : (e.jax_to ? `jax ${e.jax_to}` : "");
+    let s = `<b>${head(e)}</b>${jax ? ` · ${jax}` : ""}`;
+    const ch = e.pkg_changes || [];
+    if (ch.length) {
+      s += "<br>" + ch.map((c) => `<span class="tdim">${c.name}</span> ${c.from || "∅"}→${c.to || "∅"}`).join("<br>");
+      if ((e.pkg_n || ch.length) > ch.length) s += `<br><span class="tdim">+${e.pkg_n - ch.length} more</span>`;
+    } else if (e.reason === "deps-step") {
+      s += `<br><span class="tdim">no per-package deltas recorded</span>`;
+    }
+    return s;
+  });
+  return `<b>dependency change</b><br>${parts.join('<br><span class="tdim">———</span><br>')}`;
 }
 function renderHistory() {
   // The history spans BOTH platforms and all branches; x is commit time
@@ -1091,33 +1136,49 @@ function renderHistory() {
     }));
     return out;
   };
-  // Dependency-change rules: one dashed vertical guide per (platform, dep-generation) onset — a jax bump or
-  // the periodic full-deps refresh.  Derived from the runs themselves: gen>0 exists only on the canary
-  // branch, but a dep change is ENVIRONMENTAL, so the guide shows across all series.  x = the earliest
-  // measurement time at that generation (== runTime, so it lands exactly on the re-measure column).
+  // Dependency-change markers: one top-band diamond per (platform, DAY) — the jax-step + deps-step of a
+  // single canary night share a day and collapse into ONE marker whose tooltip lists both steps (grouping
+  // per-day is what killed the old overlapping text labels).  Derived from the runs: gen>0 exists only on
+  // the canary branch, but a dep change is ENVIRONMENTAL, so the marker shows across all series.  x = the
+  // earliest re-measure time that day; the tooltip HTML is built from each run's build-time dep_info.
   const depChanges = () => {
-    const out = [];
-    M.platforms.forEach((plat) => {
-      const byGen = {};
-      M.runs.forEach((r) => {
-        if (r.platform !== plat || !r.dep_gen) return;
-        const g = byGen[r.dep_gen] || (byGen[r.dep_gen] = { x: Infinity, jax: null, deps: false });
-        g.x = Math.min(g.x, runTime(r));
-        if (r.jax) g.jax = r.jax;
-        if (r.run_reason === "deps-step") g.deps = true;
-      });
-      Object.keys(byGen).forEach((gk) => {
-        const g = byGen[gk];
-        out.push({ x: g.x, color: DEPC, label: g.deps ? "deps refresh" : (g.jax ? "jax " + g.jax : "dep change") });
-      });
+    const groups = {};
+    M.runs.forEach((r) => {
+      if (!r.dep_gen) return;
+      const x = runTime(r), key = r.platform + "|" + Math.floor(x / 86400);
+      const g = groups[key] || (groups[key] = { x: Infinity, entries: [] });
+      g.x = Math.min(g.x, x);
+      g.entries.push(r.dep_info || { reason: r.run_reason, gen: r.dep_gen, jax_to: r.jax, pkg_changes: [], pkg_n: 0 });
     });
-    return out;
+    return Object.values(groups).map((g) => ({ x: g.x, color: DEPC, tip: depTipHtml(g.entries) }));
   };
   const depMk = depChanges();
+  // ANY failed/OOM config in a run -> one off-scale red ⊗ at that run's x (run-level, like the tests /
+  // correctness marks), with a tooltip listing every failed (geom, op, size, n).  Where the headline
+  // largest-size cell is the one that OOM'd, its time+mem are null too (see aggregate), so the glyph is
+  // the only signal there — an OOM never masquerades as a fast time or a memory win.
+  const failMk = (() => {
+    const byX = {};
+    M.platforms.forEach((plat) => branches.forEach((b) => {
+      runsFor(plat, b).forEach((r) => {
+        (r.cells || []).forEach((c) => {
+          if (!c.failed) return;
+          (byX[runTime(r)] = byX[runTime(r)] || { x: runTime(r), cells: [] }).cells.push({ plat, c });
+        });
+      });
+    }));
+    return Object.values(byX).map((g) => {
+      const one = g.cells.length === 1;   // a single failure -> room to show its error message inline
+      const lines = g.cells.slice(0, 10).map(({ plat, c }) =>
+        `${plat} ${c.geom} · ${c.op} · ${c.size} · n=${c.ndev} — <span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${one && c.error ? " · " + c.error : ""}`);
+      const more = g.cells.length > 10 ? `<br><span class="tdim">+${g.cells.length - 10} more</span>` : "";
+      return { x: g.x, tip: `<b>failed config${g.cells.length > 1 ? "s" : ""}</b><br>${lines.join("<br>")}${more}` };
+    });
+  })();
   const allMarks = (pick) => [...depDiamonds(pick), ...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
   const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true, depMarks: depMk });
-  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time") });
-  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem") });
+  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk });
+  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk });
   const gateSpecs = [];
   M.platforms.forEach((plat) => branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
@@ -1130,8 +1191,10 @@ function renderHistory() {
   // Only surface the dep-canary legend entries once a dep change has actually been recorded (gen>0 runs),
   // so a corpus that predates the canary doesn't carry unexplained keys.
   const depLeg = depMk.length
-    ? `<span class="k"><span class="sw" style="height:0;border-top:2px dashed ${DEPC}"></span>dep change</span>`
-      + `<span class="k"><span style="display:inline-block;width:8px;height:8px;background:${DEPC};transform:rotate(45deg);margin:0 4px"></span>re-measure</span>`
+    ? `<span class="k"><span style="display:inline-block;width:8px;height:8px;background:${DEPC};transform:rotate(45deg);margin:0 4px"></span>dep change (hover ◆)</span>`
+    : "";
+  const failLeg = failMk.length
+    ? `<span class="k"><span class="cx" style="color:${FAILC}">⊗</span>failed config (hover)</span>`
     : "";
   $("hist-legend").innerHTML =
     `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
@@ -1139,7 +1202,7 @@ function renderHistory() {
     `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
     `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
     `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span>` +
-    depLeg +
+    depLeg + failLeg +
     `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
     `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span></span>`;
 }

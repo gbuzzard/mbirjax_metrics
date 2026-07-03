@@ -1127,6 +1127,7 @@ def run(config):
         "sharding_by_geom": shard_by_geom,
         "device_label": dev_label, **prov,
         "toolchain": sc.toolchain_info(),   # jax/jaxlib/CUDA stack — attributes a perf shift to the toolchain
+        "packages": sc.installed_packages(),   # WHOLE env {name: version} — lets a deps-step name the dep that moved
         "dep_gen": config.dep_gen, "run_reason": config.run_reason,   # dependency-canary provenance
         # WHEN this run was measured (local ISO, like git_commit_date).  Stamped here in the orchestrator
         # (not a worker), once per run.  The dashboard plots a dep-canary re-run at this time rather than

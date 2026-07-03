@@ -378,6 +378,46 @@ def _analyze_correctness(runs: list[dict]) -> dict:
             "xplat_floor": max(xplat_diffs) if xplat_diffs else None, "xplat_n": len(xplat_diffs)}
 
 
+def _pkg_diff(old: dict, new: dict) -> list[dict]:
+    """``[{name, from, to}]`` for every package added/removed/changed between two ``{name: version}`` maps
+    (sorted by name).  Empty when either side is missing — nothing meaningful to diff (e.g. a run measured
+    before ``packages`` was recorded)."""
+    if not old or not new:
+        return []
+    out = []
+    for n in sorted(set(old) | set(new)):
+        a, b = old.get(n), new.get(n)
+        if a != b:
+            out.append({"name": n, "from": a, "to": b})
+    return out
+
+
+def _annotate_dep_info(runs: list[dict]) -> None:
+    """Attach a compact ``dep_info`` to each dep_gen>0 run: what its dependency set changed RELATIVE to the
+    previous generation of the same commit (jax version delta + the per-package diff).  This is what the
+    dashboard's dep-change marker renders on hover.  Reads the private ``_pkgs`` map (dropped from the JSON
+    later); the jax delta comes from ``toolchain`` and is present even when ``_pkgs`` isn't (older runs)."""
+    by_commit: dict = {}   # (platform, branch, commit_full) -> {dep_gen: run}
+    for r in runs:
+        key = (r["platform"], r["branch"], r.get("commit_full") or "")
+        by_commit.setdefault(key, {})[r.get("dep_gen") or 0] = r
+    for r in runs:
+        g = r.get("dep_gen") or 0
+        if g <= 0:
+            continue
+        gens = by_commit.get((r["platform"], r["branch"], r.get("commit_full") or ""), {})
+        prior = next((gens[pg] for pg in sorted((k for k in gens if k < g), reverse=True)), None)
+        changes = _pkg_diff((prior or {}).get("_pkgs") or {}, r.get("_pkgs") or {})
+        r["dep_info"] = {
+            "reason": r.get("run_reason") or "commit",
+            "gen": g,
+            "jax_from": (prior or {}).get("jax"),
+            "jax_to": r.get("jax"),
+            "pkg_changes": changes[:20],   # cap so a first-ever full env doesn't bloat the tooltip
+            "pkg_n": len(changes),
+        }
+
+
 def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
     """Parse one regression_<plat>_<date>.yaml into a compact run record."""
     doc = yaml.safe_load(path.read_text()) or {}
@@ -395,6 +435,9 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
             fps[f"{c.get('geometry')}|{c.get('op')}|{c.get('size')}|{c.get('n_devices')}"] = {m: fp.get(m) for m in _FP_FIELDS}
     return {
         "_fps": fps,
+        # Full installed-package map ({name: version}), private like _fps: used to compute the dep-change
+        # marker's per-package diff, then dropped from the emitted JSON (it would bloat window.__METRICS__).
+        "_pkgs": doc.get("packages") or {},
         "platform": platform,
         "branch": branch,
         "branch_dir": branch_dir,
@@ -467,8 +510,12 @@ def collect_data() -> dict:
     # Correctness analyzer (P2/P4): annotate each run with cross-device + vs-main + cross-platform + prior
     # findings (+ the cross-device noise floor), then drop the private fingerprint index from the JSON.
     corr_stats = _analyze_correctness(runs)
+    # Dependency-canary: annotate each re-measure with what its dep set changed (marker tooltip), then drop
+    # the private fingerprint + package maps from the JSON (findings / dep_info are what's kept).
+    _annotate_dep_info(runs)
     for r in runs:
         r.pop("_fps", None)
+        r.pop("_pkgs", None)
     # Correctness "reviewed-through" watermark (design note D6): a single committed date; any correctness
     # divergence on a commit dated <= this is treated as acknowledged (greyed, dropped from the banner /
     # tab badge).  Absent file => nothing acknowledged.  The guided clear script (P3) writes this field.

@@ -163,6 +163,30 @@ def toolchain_info():
     return info
 
 
+def installed_packages():
+    """Every installed distribution as a sorted ``{name: version}`` dict.
+
+    ``toolchain_info`` records the perf-critical jax/CUDA stack; this records the WHOLE environment, so a
+    dependency-canary deps-step (or any night-to-night drift) can be attributed to the SPECIFIC package
+    that moved — numpy, scipy, an XLA plugin — not just jax.  Uses ``importlib.metadata`` (in-process, no
+    ``pip`` shell-out); names are lower-cased for stable diffing.  Best-effort -> ``{}`` if unreadable.
+    """
+    out = {}
+    try:
+        from importlib import metadata as _md
+        for dist in _md.distributions():
+            try:
+                name = (dist.metadata["Name"] or "").strip()
+            except Exception:
+                name = ""
+            if not name:
+                continue
+            out.setdefault(name.lower(), dist.version)   # first wins on the rare shadowed-install dup
+    except Exception:
+        pass
+    return dict(sorted(out.items()))
+
+
 # ── Subprocess orchestration (worker isolation) ───────────────────────────────
 def run_worker(script_path, worker_args, extra_env=None):
     """Run an op driver in --worker mode as an isolated subprocess.

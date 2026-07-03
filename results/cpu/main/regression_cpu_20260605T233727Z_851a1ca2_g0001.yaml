@@ -1,5 +1,5 @@
 kind: regression
-date: '20260702'
+date: '20260618'
 platform: cpu
 sharding_by_geom:
   parallel: false
@@ -22,7 +22,8 @@ toolchain:
   xla_flags:
 dep_gen: 1
 run_reason: jax-step
-measured_at: '2026-07-02T10:01:36-04:00'
+measured_at: '2026-06-18T02:00:00-04:00'
+backfill_note: 'canary backfill — really measured 2026-07-02T10:01:36-04:00; dated to the 2026-06-17 jax 0.10.2 release for the timeline marker'
 config:
   geometries:
   - parallel

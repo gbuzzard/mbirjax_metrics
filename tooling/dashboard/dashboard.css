@@ -153,7 +153,7 @@ section { margin: 26px 0; }
 .u-tip { position: absolute; z-index: 20; pointer-events: none; display: none;
   background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12); padding: 6px 9px; font-size: 12px;
-  line-height: 1.45; white-space: nowrap; max-width: 280px; }
+  line-height: 1.45; white-space: normal; overflow-wrap: break-word; max-width: 280px; }
 .u-tip b { font-weight: 500; }
 .u-tip .tdim { color: var(--muted); }
 .u-tip .bad { color: var(--fail); font-weight: 500; }
