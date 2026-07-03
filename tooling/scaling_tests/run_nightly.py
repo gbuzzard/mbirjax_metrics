@@ -26,6 +26,11 @@ from datetime import datetime
 
 import performance_tracking as pt   # module-level is JAX-free; workers import mbirjax lazily
 
+# Uniform harness env (TF_CPP log level + compile cache) applied at import — BEFORE main() touches jax
+# (toolchain_info) or spawns workers — so it lands in os.environ and every worker inherits it, quiet
+# regardless of import order (see scaling_common.uniform_env / apply_uniform_env).
+pt.sc.apply_uniform_env()
+
 
 def _require(name):
     val = os.environ.get(name)

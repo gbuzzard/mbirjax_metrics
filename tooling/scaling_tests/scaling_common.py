@@ -317,6 +317,38 @@ def compile_cache_env():
     }
 
 
+def uniform_env():
+    """Environment that is IDENTICAL for every harness process (orchestrator, worker, inline) and must be
+    in place BEFORE jax initializes.  We set these at the PROCESS level — inherited by worker subprocesses
+    via build_worker_env, and applied with ``os.environ.setdefault`` as the FIRST action of each entry
+    point — so behaviour no longer depends on ``import mbirjax`` winning the race against ``import jax``.
+    (mbirjax's ``_device_setup`` sets the same TF_CPP value via setdefault, but only if it is imported
+    first; a value already in the process env is read by jaxlib at import regardless of import order.)
+
+      - ``TF_CPP_MIN_LOG_LEVEL=2`` — drop jaxlib's benign C++ INFO/WARNING chatter (e.g. the multi-GPU VMM
+        ``cuMemCreate FABRIC … CUDA_ERROR_NOT_PERMITTED; will retry`` warning) while keeping ERROR/FATAL.
+        Python tracebacks / ``warnings.warn`` use a different path and still surface.
+      - the persistent XLA compile cache (``compile_cache_env``) — reuse compiled kernels across processes.
+
+    ``TF_CPP_MIN_LOG_LEVEL`` uses ``os.environ.get`` so an explicit override (export ``TF_CPP_MIN_LOG_LEVEL=0``
+    for the full jaxlib logs) still wins.  Callers merge this into a worker env, or ``setdefault`` from it.
+    """
+    return {
+        "TF_CPP_MIN_LOG_LEVEL": os.environ.get("TF_CPP_MIN_LOG_LEVEL", "2"),
+        **compile_cache_env(),
+    }
+
+
+def apply_uniform_env():
+    """setdefault ``uniform_env()`` into THIS process's ``os.environ`` — the single call each entry point
+    makes as its first action (before importing jax / mbirjax).  Separate from ``uniform_env()`` because
+    ``build_worker_env`` composes a *child* subprocess's env from that dict and must NOT mutate the
+    orchestrator's own environment; this one is for the in-process (orchestrator / inline) path.  Uses
+    setdefault, so an explicit override already in the environment still wins."""
+    for k, v in uniform_env().items():
+        os.environ.setdefault(k, v)
+
+
 def build_worker_env(mem_fraction=0.9, preallocate=True, lib_root=None):
     """Orchestrator side: the environment every worker subprocess inherits.
 
@@ -339,7 +371,8 @@ def build_worker_env(mem_fraction=0.9, preallocate=True, lib_root=None):
         "PYTHONPATH": root + (os.pathsep + existing if existing else ""),
         "XLA_PYTHON_CLIENT_PREALLOCATE": "true" if preallocate else "false",
         "XLA_PYTHON_CLIENT_MEM_FRACTION": str(mem_fraction),
-        **compile_cache_env(),   # reuse compiled kernels across subprocesses + nightly runs
+        **uniform_env(),   # TF_CPP log level + persistent compile cache — set in the worker env BEFORE its
+                           # interpreter starts, so jaxlib reads them regardless of the worker's import order
     }
 
 

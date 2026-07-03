@@ -25,9 +25,10 @@ import tempfile
 
 import performance_tracking as pt   # sibling module; this script's dir is on sys.path[0]
 
-# Use the same persistent XLA compile cache as the nightly workers, set BEFORE jax initializes, so a
-# re-run (or the second of a bisect pair) skips recompilation.
-os.environ.update(pt.sc.compile_cache_env())
+# Uniform harness env (TF_CPP log level + persistent XLA compile cache), applied BEFORE jax initializes so
+# this inline run is quiet + skips recompilation — the same settings every nightly worker gets (see
+# scaling_common.uniform_env / apply_uniform_env).
+pt.sc.apply_uniform_env()
 
 
 def main():

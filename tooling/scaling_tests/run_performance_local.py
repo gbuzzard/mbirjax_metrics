@@ -21,6 +21,11 @@ from datetime import datetime
 import performance_tracking as pt
 import scaling_common as sc
 
+# Uniform harness env (TF_CPP log level + compile cache) applied at import — BEFORE any jax init — so an
+# INLINE run (INLINE=True) is quiet + cache-warm, and every worker inherits it (see
+# scaling_common.uniform_env / apply_uniform_env).
+sc.apply_uniform_env()
+
 
 # ── CONFIG (edit here; a subset of performance_tracking.Config) ───────────────
 GEOMETRIES = ["parallel", "cone"]
