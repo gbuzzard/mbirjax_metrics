@@ -641,6 +641,20 @@ function renderTiles() {
   const platBtn = box.querySelector(".rn-plat");
   if (platBtn) platBtn.onclick = () => showRun(otherR);
 }
+// The per-cell "vs <reference>" correctness detail for ONE run — the SAME blocks used in the main
+// #detail panel and (inline) in the correctness banner, so the two can never drift.  Findings grouped
+// by cell; within a cell, one block per reference (prior / main / single-device / other-platform).
+function corrDetailBlocks(run) {
+  const fs = runCorr(run);
+  if (!fs.length) return `<p class="muted">fingerprints match the references — no divergence.</p>`;
+  const byCell = {};
+  fs.forEach((f) => { (byCell[f.cell] = byCell[f.cell] || []).push(f); });
+  return Object.keys(byCell).map((cell) => {
+    const refs = byCell[cell].map((f) =>
+      `<div class="vsref">vs ${f.basis}</div><ul class="discr">${f.discrepancies.map((d) => `<li>${d}</li>`).join("")}</ul>`).join("");
+    return `<div class="hitcell"><div class="hitcoords">${cellCoords(cell)}</div>${refs}</div>`;
+  }).join("");
+}
 function renderDetail() {
   const box = $("detail");
   if (!ui_state.openTile) { box.innerHTML = ""; return; }
@@ -663,19 +677,7 @@ function renderDetail() {
     const head = `<h4>${plat.toUpperCase()}${run ? ` · ${run.commit} · ${commitMinute(run)}` : ""}</h4>`;
     if (!run) return head + `<p class="muted">no ${plat.toUpperCase()} run for this commit.</p>`;
     if (ui_state.openTile === "correctness") {
-      const fs = runCorr(run);
-      if (!fs.length) return head + `<p class="muted">fingerprints match the references — no divergence.</p>`;
-      // Group findings by cell; within a cell, one "vs <reference>" block per reference (prior / main /
-      // single-device) with that reference's bulleted discrepancies.
-      const byCell = {};
-      fs.forEach((f) => { (byCell[f.cell] = byCell[f.cell] || []).push(f); });
-      const blocks = Object.keys(byCell).map((cell) => {
-        const coords = cellCoords(cell);
-        const refs = byCell[cell].map((f) =>
-          `<div class="vsref">vs ${f.basis}</div><ul class="discr">${f.discrepancies.map((d) => `<li>${d}</li>`).join("")}</ul>`).join("");
-        return `<div class="hitcell"><div class="hitcoords">${coords}</div>${refs}</div>`;
-      }).join("");
-      return head + blocks;
+      return head + corrDetailBlocks(run);   // shared with the banner's inline expansion
     }
     if (ui_state.openTile === "gate") {
       const hits = runPerfHard(run);
@@ -1230,6 +1232,8 @@ function setFavicon(n) {
     : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="${PLATC.gpu}"/></svg>`;
   link.href = "data:image/svg+xml," + encodeURIComponent(svg);
 }
+let bannerCollapsed = false;                 // click the summary line to reduce the banner to just that line
+const bannerOpen = new Set();                // runKeys whose full detail is expanded INLINE in the banner
 function renderBanner() {
   const box = $("corr-banner"); if (!box) return;
   // the alert inbox: the LATEST run per (platform, branch) that is unacknowledged-incorrect — not every
@@ -1239,32 +1243,34 @@ function renderBanner() {
   bad.sort((a, b) => runTime(b) - runTime(a));
   setFavicon(bad.length);
   document.title = bad.length ? `⚠(${bad.length}) mbirjax metrics` : "mbirjax metrics";
-  if (!bad.length) { box.style.display = "none"; box.innerHTML = ""; return; }
+  if (!bad.length) { box.style.display = "none"; box.innerHTML = ""; bannerOpen.clear(); return; }
+  const badKeys = new Set(bad.map(runKey));
+  [...bannerOpen].forEach((k) => { if (!badKeys.has(k)) bannerOpen.delete(k); });   // forget rows that cleared
   const since = bad.reduce((a, b) => (runTime(b) < runTime(a) ? b : a));
-  // Each run is a clickable .cb-run row: a header line + a bulleted list of its divergent configs.
-  // The click handler sits on .cb-run only, so clicks on the nested config bullets bubble up to it.
-  const item = (r) => {
-    const cells = [...new Set(runCorr(r).map((f) => f.cell).filter(Boolean))];
-    const bullets = cells.length ? cells.map((c) => `<li>${cellCoords(c)}</li>`).join("") : `<li>${runCorrCells(r)} config(s)</li>`;
-    return `<li class="cb-run" data-rk="${runKey(r)}" data-plat="${r.platform}" data-branch="${r.branch}">`
-      + `<div class="cb-runhead"><b>${r.branch}</b> · ${r.platform.toUpperCase()} · ${commitMinute(r)}</div>`
-      + `<ul class="cb-cfgs">${bullets}</ul></li>`;
+  // ONE compact line per (branch, platform) — no per-config bullets.  Clicking a line expands that run's
+  // FULL detail inline (the same blocks as the main panel; click again to collapse); clicking the summary
+  // head reduces the whole banner to just that line.  The banner is height-capped and scrolls internally
+  // (CSS), so a long list can never cover the page and pin itself there.
+  const row = (r) => {
+    const rk = runKey(r), open = bannerOpen.has(rk), n = runCorrCells(r);
+    return `<li class="cb-run">`
+      + `<div class="cb-runhead" data-rk="${rk}"><span class="cb-caret">${open ? "▾" : "▸"}</span>`
+      + ` <b>${r.branch}</b> · ${r.platform.toUpperCase()} · ${commitMinute(r)} · ${n} config${n > 1 ? "s" : ""}</div>`
+      + (open ? `<div class="cb-detail">${corrDetailBlocks(r)}</div>` : "")
+      + `</li>`;
   };
   box.style.display = "block";
-  box.innerHTML = `<div class="cb-head">✕ ${bad.length} unacknowledged correctness divergence${bad.length > 1 ? "s" : ""} since ${runDateLabel(since)}</div>`
-    + `<ul class="cb-list">${bad.map(item).join("")}</ul>`
-    + `<div class="cb-foot">vs the prior run on each branch · click a row to view it (again to hide) · clear reviewed runs with <code>action_scripts/clear_correctness.sh</code></div>`;
-  box.querySelectorAll(".cb-run").forEach((li) => li.onclick = () => {
-    // Toggle: a second click on the row whose correctness detail is already open collapses it; clicking
-    // a DIFFERENT row switches to (and opens) that run instead.
-    const isOpen = ui_state.openTile === "correctness" && ui_state.runKey === li.dataset.rk
-                   && ui_state.platform === li.dataset.plat && ui_state.branch === li.dataset.branch;
-    if (isOpen) { ui_state.openTile = null; renderAll(); return; }
-    ui_state.platform = li.dataset.plat; ui_state.branch = li.dataset.branch; ui_state.runKey = li.dataset.rk; ui_state.openTile = "correctness";
-    fillSelect("platform", M.platforms, ui_state.platform);
-    fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
-    renderAll();
-    $("tiles").scrollIntoView({ behavior: "smooth", block: "start" });
+  box.classList.toggle("collapsed", bannerCollapsed);
+  box.innerHTML =
+      `<div class="cb-head"><span class="cb-caret">${bannerCollapsed ? "▸" : "▾"}</span>`
+    + ` ✕ ${bad.length} unacknowledged correctness divergence${bad.length > 1 ? "s" : ""} since ${runDateLabel(since)}</div>`
+    + `<ul class="cb-list">${bad.map(row).join("")}</ul>`
+    + `<div class="cb-foot">click a row for details (again to hide) · click the title to collapse · clear reviewed runs with <code>action_scripts/clear_correctness.sh</code></div>`;
+  box.querySelector(".cb-head").onclick = () => { bannerCollapsed = !bannerCollapsed; renderBanner(); };
+  box.querySelectorAll(".cb-runhead").forEach((h) => h.onclick = () => {
+    const rk = h.dataset.rk;
+    if (bannerOpen.has(rk)) bannerOpen.delete(rk); else bannerOpen.add(rk);
+    renderBanner();   // self-contained: only the banner re-renders (inline), no jump to the main panel
   });
 }
 
