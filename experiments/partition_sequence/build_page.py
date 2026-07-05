@@ -30,7 +30,7 @@ DATASETS = [
     ('lilly', ['round2', 'round1'], 0.00499, [0.05, 0.02, 0.01], (225, 356, 470), (470, 470, 356)),
     ('z62', ['round2', 'round1'], 0.01235, [0.05, 0.02], (101, 512, 512), (512, 512, 512)),
     ('sic', ['round2', 'round1'], 0.00451, [0.10, 0.08], (201, 512, 512), (512, 512, 512)),
-    ('z62_2x', ['scale2x'], None, [0.05, 0.02], (201, 1024, 1024), (1024, 1024, 1024)),
+    ('z62_2x', ['scale2x'], 0.01106, [0.10, 0.08], (201, 1024, 1024), (1024, 1024, 1024)),
 ]
 SKIP = ('floor', 'chunk', 'mono', 'reference')
 
@@ -67,6 +67,22 @@ def target_cells(run, targets):
     return cells
 
 
+def reference_note(dataset):
+    # Read the actual reference run so the note reflects whether it truly hit 0.01% change
+    # (z62_2x's 1024^3 reference was capped at its iteration limit, not converged).
+    for f in glob.glob(os.path.join(HERE, 'data', '*', f'{dataset}_reference.json')):
+        rows = json.load(open(f))['rows']
+        iters, final = len(rows), rows[-1]['change_pct']
+        if final < 0.01:
+            tail = f'{iters} iterations to the 0.01% per-iteration-change threshold'
+        else:
+            tail = (f'{iters} iterations (iteration cap reached first; final change '
+                    f'{final:.4f}%, so slightly short of the 0.01% target)')
+        return (f'Reference (NRMSE is measured against it): default sequence '
+                f'<code>[0, 2, 4, 6, 7]</code>, {tail}.')
+    return ''
+
+
 def shape(s):
     return '&times;'.join(str(x) for x in s)
 
@@ -88,6 +104,7 @@ def main():
             body += (f'<tr><td>{r["name"]}</td><td class="idx">{r["seq"]}</td>'
                      f'{cells}<td>{peak}</td></tr>')
         floor_txt = f'{floor:.4f}' if floor else 'n/a'
+        ref_note = reference_note(ds)
 
         sections.append(f'''
 <section class="ds">
@@ -99,6 +116,7 @@ def main():
       NRMSE {floor_txt} &mdash; differences smaller than this are run-to-run noise, not
       schedule differences</td></tr>
   </table>
+  <p class="refnote">{ref_note}</p>
   <div class="legend" id="leg-{ds}"></div>
   <div class="row">
     <div class="plot" id="it-{ds}"></div>
@@ -163,9 +181,10 @@ h1 { font-size: 22px; } h2 { margin: 30px 0 6px; font-size: 18px; }
 .intro, .defs { max-width: 900px; color: #333; }
 .defs li { margin: 3px 0; }
 .row { display: flex; gap: 24px; flex-wrap: wrap; margin: 6px 0 10px; }
-.plot { width: 600px; height: 360px; flex: 0 0 600px; }
+.plot { width: 600px; min-height: 360px; flex: 0 0 600px; }
 .plotwrap { display: inline-block; }
-.sliderbox { font-size: 12px; color: #444; margin: 4px 0 0 60px; }
+.sliderbox { font-size: 12px; color: #444; margin: 4px 0 0 60px;
+              position: relative; z-index: 2; }
 .sliderbox input { vertical-align: middle; width: 320px; }
 /* Summary tables only (uPlot builds its own <table> internals). */
 table.sum { border-collapse: collapse; margin: 8px 0 10px; font-size: 13px; }
@@ -175,6 +194,7 @@ table.sum td.idx, table.sum th:nth-child(2) { text-align: left; }
 table.sum td.idx { color: #666; font-family: ui-monospace, monospace; font-size: 12px; }
 table.sum tr.floornote td { text-align: left; color: #666; font-style: italic;
                             background: #fafafa; }
+.refnote { color: #555; font-size: 12px; margin: 2px 0 6px; }
 .legend { max-width: 1300px; margin: 4px 0 8px; }
 .chip { display: inline-block; margin: 0 12px 5px 0; cursor: pointer; font-size: 12px;
         white-space: nowrap; }
@@ -199,12 +219,6 @@ const COLORS = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b",
                 "#e377c2","#7f7f7f","#bcbd22","#17becf","#aec7e8","#ffbb78",
                 "#98df8a","#ff9896","#c5b0d5","#c49c94"];
 const $ = id => document.getElementById(id);
-const RO = new ResizeObserver(entries => {
-  for (const e of entries) {
-    const u = e.target._u, w = Math.round(e.contentRect.width);
-    if (u && w > 0 && Math.abs(u.width - w) > 1) u.setSize({ width: w, height: 360 });
-  }
-});
 
 // uPlot's built-in log splitter can hang on tight non-power-of-10 bounds; make ticks ourselves.
 function logTicks(mn, mx) {
@@ -216,8 +230,8 @@ function logTicks(mn, mx) {
     }
   return out.length >= 2 ? out : [mn, mx];
 }
-const fmtNrmse = v => v >= 0.01 ? v.toFixed(2) : v.toExponential(0);
-// Lighten a hex color toward white (used to dim non-highlighted series).
+const fmtNrmse = v => v == null ? null : (v >= 0.01 ? v.toFixed(2) : v.toExponential(0));
+// Lighten a hex color toward white (dims non-highlighted series).
 function dim(hex) {
   const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
   const f = v => Math.round(v + (255 - v) * 0.82);
@@ -231,8 +245,8 @@ function floorLine(floor) {
     c.stroke(); c.restore();
   };
 }
-// Union-x builder: one shared x vector, each series null where it has no point there
-// (spanGaps draws through).  `keep(j)` optionally filters points (used by the time slider).
+// Union-x builder: one shared x vector; each series null where it has no point there.
+// `keep(r,j)` optionally filters points (used by the time slider).
 function buildData(runs, xKey, keep) {
   const xset = new Set();
   runs.forEach(r => r[xKey].forEach((v, j) => { if (!keep || keep(r, j)) xset.add(v); }));
@@ -246,64 +260,98 @@ function buildData(runs, xKey, keep) {
   });
   return arr;
 }
-function makePlot(el, title, xLabel, runs, dataArr, floor) {
-  let hi = -1;
-  const series = [{}];
-  runs.forEach((r, i) => {
-    const c = COLORS[i % COLORS.length];
-    series.push({ label: r.name, width: 2, spanGaps: true, points: { show: false },
-                  stroke: () => (hi < 0 || hi === i) ? c : dim(c) });
-  });
-  const u = new uPlot({
-    title, width: el.clientWidth || 600, height: 360,
-    scales: { x: { time: false }, y: { distr: 3 } },
-    axes: [ { label: xLabel },
-            { label: 'NRMSE vs reference',
-              splits: (u, ai, mn, mx) => logTicks(mn, mx),
-              values: (u, sp) => sp.map(fmtNrmse) } ],
-    series, legend: { show: false },
-    hooks: floor ? { draw: [floorLine(floor)] } : {},
-  }, dataArr, el);
-  el._u = u;
-  RO.observe(el);
-  function highlight(k) {
-    hi = k;
-    for (let i = 1; i < u.series.length; i++)
-      u.series[i].width = (k >= 0 && i - 1 === k) ? 3.5 : (k < 0 ? 2 : 1);
-    u.redraw();
+// A panel owns a mutable uPlot it can DESTROY and rebuild (some first-on-page uPlot
+// constructions fail to size; rebuilding once layout is settled fixes them).
+function makePanel(el, title, xLabel, runs, initialData, floor) {
+  const st = { hi: -1, u: null, data: initialData };
+  // Redraw the highlighted series on TOP (all series are dimmed when a highlight is active,
+  // so the hovered one must be re-stroked above them in full color).
+  function drawHi(u) {
+    if (st.hi < 0) return;
+    const s = st.hi + 1, xd = u.data[0], yd = u.data[s], c = u.ctx;
+    const dpr = u.pxRatio || window.devicePixelRatio || 1;
+    c.save(); c.lineWidth = 3.5 * dpr; c.strokeStyle = COLORS[st.hi % COLORS.length];
+    c.beginPath(); let on = false;
+    for (let i = 0; i < xd.length; i++) {
+      if (yd[i] == null) continue;  // span gaps (do NOT reset the pen)
+      const px = u.valToPos(xd[i], 'x', true), py = u.valToPos(yd[i], 'y', true);
+      if (!on) { c.moveTo(px, py); on = true; } else c.lineTo(px, py);
+    }
+    c.stroke(); c.restore();
   }
-  return { u, highlight };
+  const drawHooks = [];
+  if (floor) drawHooks.push(floorLine(floor));
+  drawHooks.push(drawHi);
+  function construct() {
+    const series = [{}];
+    runs.forEach((r, i) => {
+      const c = COLORS[i % COLORS.length];
+      series.push({ label: r.name, width: 2, spanGaps: true, points: { show: false },
+                    stroke: () => st.hi < 0 ? c : dim(c) });  // dim ALL while a highlight is active
+    });
+    st.u = new uPlot({
+      title, width: el.clientWidth || 600, height: 360,
+      scales: { x: { time: false }, y: { distr: 3 } },
+      axes: [ { label: xLabel },
+              { label: 'NRMSE vs reference',
+                splits: (u, ai, mn, mx) => logTicks(mn, mx),
+                values: (u, sp) => sp.map(fmtNrmse) } ],
+      series, legend: { show: false }, hooks: { draw: drawHooks },
+    }, st.data, el);
+    el._u = st.u;
+  }
+  construct();
+  return {
+    highlight(k) { st.hi = k; st.u.redraw(); },
+    setData(d) { st.data = d; st.u.setData(d); },
+    healIfNeeded() {  // rebuild an undersized canvas; return true once correctly sized
+      const cv = el.querySelector('canvas');
+      if (cv && cv.width >= 400) return true;
+      st.u.destroy(); el.innerHTML = ''; construct();
+      return false;
+    },
+  };
 }
 function build() {
+  const panels = [];
   for (const [ds, d] of Object.entries(DATA)) {
-    const runs = d.runs;
-    const itP = makePlot($('it-' + ds), 'NRMSE vs iteration', 'iteration', runs,
-                         buildData(runs, 'it'), d.floor);
-    const maxIt = Math.max(...runs.flatMap(r => r.it));
-    const timeData = m => buildData(runs, 't', (r, j) => r.it[j] <= m);
-    const tmP = makePlot($('tm-' + ds), 'NRMSE vs wall time (seconds)', 'seconds', runs,
-                         timeData(maxIt), d.floor);
-    // Shared legend: hover highlights the sequence in BOTH plots.
-    const leg = $('leg-' + ds);
-    runs.forEach((r, i) => {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.innerHTML = `<span class="sw" style="background:${COLORS[i % COLORS.length]}"></span>`
-                       + r.name + ` <span style="color:#999">${JSON.stringify(r.seq)}</span>`;
-      chip.onmouseenter = () => { itP.highlight(i); tmP.highlight(i); };
-      chip.onmouseleave = () => { itP.highlight(-1); tmP.highlight(-1); };
-      leg.appendChild(chip);
-    });
-    // Slider truncates the time plot at a chosen iteration.
-    const sl = $('sl-' + ds), out = $('slv-' + ds);
-    sl.max = maxIt; sl.value = maxIt; out.textContent = maxIt;
-    sl.oninput = () => { out.textContent = sl.value; tmP.u.setData(timeData(+sl.value)); };
+    try {
+      const runs = d.runs;
+      const itP = makePanel($('it-' + ds), 'NRMSE vs iteration', 'iteration', runs,
+                            buildData(runs, 'it'), d.floor);
+      const maxIt = Math.max(...runs.flatMap(r => r.it));
+      const timeData = m => buildData(runs, 't', (r, j) => r.it[j] <= m);
+      const tmP = makePanel($('tm-' + ds), 'NRMSE vs wall time (seconds)', 'seconds', runs,
+                            timeData(maxIt), d.floor);
+      // Shared legend: hover highlights the sequence in BOTH plots.
+      const leg = $('leg-' + ds);
+      runs.forEach((r, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.innerHTML = `<span class="sw" style="background:${COLORS[i % COLORS.length]}"></span>`
+                         + r.name + ` <span style="color:#999">${JSON.stringify(r.seq)}</span>`;
+        chip.onmouseenter = () => { itP.highlight(i); tmP.highlight(i); };
+        chip.onmouseleave = () => { itP.highlight(-1); tmP.highlight(-1); };
+        leg.appendChild(chip);
+      });
+      // Slider truncates the time plot at a chosen iteration.
+      const sl = $('sl-' + ds), out = $('slv-' + ds);
+      sl.min = 1; sl.max = maxIt; sl.value = maxIt; out.textContent = maxIt;
+      sl.oninput = () => { out.textContent = sl.value; tmP.setData(timeData(+sl.value)); };
+      panels.push(itP, tmP);
+    } catch (e) { console.error('build failed for ' + ds, e); }
   }
+  // Heal any plot that failed to size on first construct.  A long multi-dataset page can
+  // finish layout well after load, so poll (rebuild undersized plots) until all are sized
+  // or ~2.5 s elapses.
+  let tries = 0;
+  const timer = setInterval(() => {
+    const allOk = panels.every(p => p.healIfNeeded());
+    if (allOk || ++tries > 25) clearInterval(timer);
+  }, 100);
 }
-// Build after layout is settled (two rAFs): constructing before the containers have real
-// geometry left the first plots' canvases at the browser default size.
-window.addEventListener('load', () =>
-  requestAnimationFrame(() => requestAnimationFrame(build)));
+window.addEventListener('load', build);
+
 </script></body></html>'''
 
 
