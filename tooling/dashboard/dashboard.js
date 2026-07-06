@@ -115,12 +115,15 @@ function gateBasisShort(basis) {
   const sha = m ? m[1].slice(0, 8) : null;
   return sha ? (type ? `${type} ${sha}` : sha) : (type || String(basis));
 }
-// The "⚠ gate fail — <discrepancy>" line for a scaling tooltip, with the reference folded into the
-// engine's "... expected ..." phrasing (falls back to appending "· vs <ref>" if the wording changes).
+// The "⚠ gate fail — <discrepancy>" line for a scaling tooltip.  Memory discrepancies arrive from the
+// engine in MB; show them in GB (via fmtGB) to match the rest of the tooltip — time details carry no
+// "MB", so that conversion is a no-op there.  The reference is then folded into the engine's
+// "... expected ..." phrasing (falls back to appending "· vs <ref>" if that wording ever changes).
 function gateNote(detail, basis) {
-  const bl = gateBasisShort(basis), d = detail || "";
-  const withRef = !bl ? d : (d.includes(" expected") ? d.replace(" expected", " expected from " + bl) : (d + " · vs " + bl));
-  return `<span class="bad">⚠ gate fail</span> — ${withRef}`;
+  const bl = gateBasisShort(basis);
+  let d = (detail || "").replace(/([\d.]+)\s*MB/g, (_, n) => fmtGB(parseFloat(n)));
+  d = !bl ? d : (d.includes(" expected") ? d.replace(" expected", " expected from " + bl) : (d + " · vs " + bl));
+  return `<span class="bad">⚠ gate fail</span> — ${d}`;
 }
 // The run shown for a given platform on the currently-selected branch: honour an explicitly
 // picked run (ui_state.runKey) only on the active platform; otherwise the latest for that platform.
