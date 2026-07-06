@@ -1,0 +1,156 @@
+# Partition-sequence study -- single shared config for the whole pipeline.
+#
+#   build_cache.py   preprocess each dataset ONCE -> cache_dir/<tag>.h5 (+ .json sidecar)
+#   run_study.py     recon each (dataset, candidate) -> output_dir/<label>.json
+#   build_page.py    trajectory JSONs in data/ -> partition_sequence.html
+#
+# See README.md.  Sequences are INDICES into granularity [1,2,4,8,16,32,64,128,256]; the
+# LAST index repeats for all remaining iterations (tail granularity is a first-class knob).
+# Edit this file to run your own sweep; no Python edits needed for a new dataset/experiment.
+#
+# Tag scheme: <source>_v<view_factor>x_d<det_factor>x_nv<views>_nch<channels>, e.g.
+# z62_v8x_d4x_nv101_nch512 = Z62 subsampled 8x in views + 4x in detector, giving 101 views
+# x 512 channels.  The factors (v.x/d.x) are the reproducibility token (how it was subsampled
+# from the raw scan); nv/nch are the interpretability token (the problem size at a glance).
+# (view, channel) order is consistent between the factor and the count parts.  Constants
+# --sharpness/snr/alignment-- live in the sidecar, not the name.
+# NB: nv/nch depend on the raw scan, so a brand-new dataset's dims are known only after the
+# first build_cache; name from raw_dims/factor, or build under a provisional tag then rename.
+
+# ---------------------------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------------------------
+# Shared, group-writable cache of preprocessed sinograms on data_depot (long-term, visible
+# from gautschi).  build_cache REUSES an existing <tag>.h5 here and only preprocesses when
+# it is missing, so the common case does zero preprocessing.  See the cache manifest
+# (MANIFEST.md alongside the caches) for what is already built.
+cache_dir: /depot/bouman/data/mbirjax_metrics/partition_sequence/cache
+
+# Per-run trajectory JSONs + optional recons.  Per-user scratch (PURGES); copy the JSONs
+# you want to keep into data/<round>/ so build_page can render them and git can track them.
+output_dir: /scratch/gautschi/buzzard/ps_study/ps_results
+
+# ---------------------------------------------------------------------------------------
+# Datasets: one entry per (source, downsampling).  detector_factor / view_factor are
+# PER-DATASET (this is what lets a single config hold several subsamplings side by side).
+# recon_settings are held CONSTANT across a study so regularization does not confound
+# convergence.  auto_set_recon_geometry + model class are derived from the loader.
+# ---------------------------------------------------------------------------------------
+datasets:
+  z62_v4x_d4x_nv201_nch512:
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/ParAM-Round-1_Z62.txrm
+    detector_factor: 4
+    view_factor: 4
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  z62_v8x_d4x_nv101_nch512:
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/ParAM-Round-1_Z62.txrm
+    detector_factor: 4
+    view_factor: 8
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  z62_v4x_d2x_nv201_nch1024:             # 2x detector (1024^2), 4x views -- the 1024^3 scale point
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/ParAM-Round-1_Z62.txrm
+    detector_factor: 2
+    view_factor: 4
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  sic_v4x_d4x_nv401_nch512:
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/SiC-SiC_CompositeFFOV_tomo-A.txrm
+    detector_factor: 4
+    view_factor: 4
+    view_alignment: true                 # SiC needs a direct-recon view alignment; cached aligned
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  sic_v8x_d4x_nv201_nch512:
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/SiC-SiC_CompositeFFOV_tomo-A.txrm
+    detector_factor: 4
+    view_factor: 8
+    view_alignment: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  lilly_v4x_d4x_nv450_nch470:
+    loader: nsi
+    path: /depot/bouman/data/Lilly/Autoinjector_HighRes_Horizontal/
+    detector_factor: 4
+    view_factor: 4
+    auto_crop: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
+  lilly_v8x_d4x_nv225_nch470:
+    loader: nsi
+    path: /depot/bouman/data/Lilly/Autoinjector_HighRes_Horizontal/
+    detector_factor: 4
+    view_factor: 8
+    auto_crop: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
+  synthetic:
+    loader: synthetic                    # no data files: the local smoke-test dataset
+    size: 64
+    num_views: 48
+    recon_settings: {sharpness: 1.0}
+
+# ---------------------------------------------------------------------------------------
+# Study parameter defaults.  An experiment entry may override any of these.
+# ---------------------------------------------------------------------------------------
+defaults:
+  seed: 0                                # partitions AND subset order come from global np.random
+  chunk: 1                               # iterations per restart chunk (1 = per-iteration NRMSE)
+  reference_chunk: 10                    # references have no per-iter NRMSE target -> big chunks
+  sweep_max_iterations: 40
+  sweep_stop_pct: 0.05
+  reference_max_iterations: 100
+  reference_stop_pct: 0.01
+  noise_floor_seeds: [0, 1, 2, 3, 4]
+  noise_floor_iterations: 15
+  chunk_check_iterations: 5
+  drop_slice_fraction: 0.05              # NRMSE mask: drop this fraction of slices at EACH end
+  nrmse_targets: [0.05, 0.02, 0.01]      # summary: iterations/time to reach these vs reference
+  save_recons: false                     # save each sweep recon as .npy (large!)
+
+# ---------------------------------------------------------------------------------------
+# Experiments: named sweeps.  Select one at run time (PS_EXPERIMENT=<name>, default below).
+# Each lists the datasets to run, the candidate sequences (name -> indices), which phases,
+# and any parameter overrides.  Phases: reference (needed first; the NRMSE baseline),
+# chunk_check (chunked-vs-monolithic gate), noise_floor (partition-noise floor), sweep.
+# ---------------------------------------------------------------------------------------
+default_experiment: synthetic_smoke
+
+experiments:
+  synthetic_smoke:                       # local dry run -- no data files, ~1 min on a laptop
+    datasets: [synthetic]
+    phases: [reference, chunk_check, sweep]
+    candidates:
+      default:  [0, 2, 4, 6, 7]
+      flat_128: [7]
+    sweep_max_iterations: 40
+    reference_max_iterations: 60
+
+  tail_4x4:                              # realistic-sampling tail sweep (record: 2026-07-05)
+    datasets: [z62_v4x_d4x_nv201_nch512, sic_v4x_d4x_nv401_nch512, lilly_v4x_d4x_nv450_nch470]
+    phases: [reference, noise_floor, sweep]
+    candidates:
+      default:    [0, 2, 4, 6, 7]
+      flat_128:   [7]
+      flat_64:    [6]
+      flat_256:   [8]
+      ramp_4_128: [4, 7]
+    sweep_max_iterations: 150
+    sweep_stop_pct: 0.05
+    reference_max_iterations: 300
+
+# ---------------------------------------------------------------------------------------
+# Page: which results build_page.py renders and how.  rounds = data/ subfolders in
+# precedence order (later loses).  targets = NRMSE levels tabulated per dataset.
+# sino/recon shapes and the noise floor AUTO-DERIVE from the run JSONs / <tag>_floor.json
+# when present; the optional floor/sino/recon here are fallbacks for legacy rounds whose
+# JSONs predate the auto-derived metadata.  A NEW dataset needs only tag + rounds + targets.
+# ---------------------------------------------------------------------------------------
+page:
+  datasets:
+    - {tag: lilly_v8x_d4x_nv225_nch470, rounds: [round2, round1], targets: [0.05, 0.02, 0.01], floor: 0.00499, sino: [225, 356, 470], recon: [470, 470, 356]}
+    - {tag: z62_v8x_d4x_nv101_nch512,   rounds: [round2, round1], targets: [0.05, 0.02],       floor: 0.01235, sino: [101, 512, 512], recon: [512, 512, 512]}
+    - {tag: sic_v8x_d4x_nv201_nch512,   rounds: [round2, round1], targets: [0.10, 0.08],       floor: 0.00451, sino: [201, 512, 512], recon: [512, 512, 512]}
+    - {tag: z62_v4x_d2x_nv201_nch1024,  rounds: [scale2x],        targets: [0.10, 0.08],       floor: 0.01106, sino: [201, 1024, 1024], recon: [1024, 1024, 1024]}
+    - {tag: z62_v4x_d4x_nv201_nch512,   rounds: [z62_4x4],        targets: [0.10, 0.05, 0.04], floor: 0.00828, sino: [201, 512, 512], recon: [512, 512, 512]}
+    - {tag: lilly_v4x_d4x_nv450_nch470, rounds: [lilly_4x4],      targets: [0.05, 0.02],       sino: [450, 356, 470], recon: [470, 470, 356]}
+    - {tag: sic_v4x_d4x_nv401_nch512,   rounds: [sic_4x4],        targets: [0.10, 0.08],       sino: [401, 512, 512], recon: [512, 512, 512]}

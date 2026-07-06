@@ -106,6 +106,22 @@ function priorLabel(fn, plat) {
   const r = M.runs.find((x) => x.platform === plat && x.commit_full && x.commit_full.startsWith(sha));
   return r ? `${plat.toUpperCase()} · ${r.commit} · ${commitMinute(r)}` : `${plat.toUpperCase()} · ${sha.slice(0, 10)}`;
 }
+// Compact form of a gate basis for a tooltip: "prior:regression_gpu_..._0fe76ae2.yaml" -> "prior 0fe76ae2"
+// (the comparison TYPE + the reference sha), so "expected" says WHAT it was compared against.
+function gateBasisShort(basis) {
+  if (!basis) return null;
+  const type = (String(basis).split(":")[0] || "").trim();
+  const m = /_([0-9a-f]{7,40})\.ya?ml$/.exec(basis);
+  const sha = m ? m[1].slice(0, 8) : null;
+  return sha ? (type ? `${type} ${sha}` : sha) : (type || String(basis));
+}
+// The "⚠ gate fail — <discrepancy>" line for a scaling tooltip, with the reference folded into the
+// engine's "... expected ..." phrasing (falls back to appending "· vs <ref>" if the wording changes).
+function gateNote(detail, basis) {
+  const bl = gateBasisShort(basis), d = detail || "";
+  const withRef = !bl ? d : (d.includes(" expected") ? d.replace(" expected", " expected from " + bl) : (d + " · vs " + bl));
+  return `<span class="bad">⚠ gate fail</span> — ${withRef}`;
+}
 // The run shown for a given platform on the currently-selected branch: honour an explicitly
 // picked run (ui_state.runKey) only on the active platform; otherwise the latest for that platform.
 function runOnPlat(plat) {
@@ -738,15 +754,15 @@ function refSeries(geom, op, sizes, ndevs, metric, div) {
 function gateSeries(run, geom, op, sizes, metricWord, div) {
   const hits = run.gate.hard.filter((h) => h.cell && h.cell.startsWith(geom + "|" + op + "|") && (h.text || "").toLowerCase().includes(metricWord));
   if (!hits.length) return null;
-  const bySize = {};
-  hits.forEach((h) => { const p = h.cell.split("|"); bySize[p[2]] = +p[3]; });
+  const bySize = {};   // size -> {ndev, detail, basis} of the failing cell, for a rich hover tooltip
+  hits.forEach((h) => { const p = h.cell.split("|"); bySize[p[2]] = { ndev: +p[3], detail: h.detail, basis: h.basis }; });
   const field = metricWord === "memory" ? "mem_mb" : "min_ms";
   const ys = sizes.map((s) => {
     if (!(s in bySize)) return null;
-    const c = findCell(run, geom + "|" + op + "|" + s + "|" + bySize[s]);
+    const c = findCell(run, geom + "|" + op + "|" + s + "|" + bySize[s].ndev);
     return c && c[field] != null ? c[field] / div : null;
   });
-  return ys.some((y) => y != null) ? { label: "gate fail", color: FAILC, ys, pointsOnly: true, psize: 9, pw: 3 } : null;
+  return ys.some((y) => y != null) ? { label: "gate fail", color: FAILC, ys, pointsOnly: true, psize: 9, pw: 3, isGate: true, bySize } : null;
 }
 // Thermal markers on cells whose timing may be suspect — two tiers per device curve: a filled amber
 // disc where the driver actually throttled (causal), a hollow amber ring where a GPU merely ran hot
@@ -798,12 +814,24 @@ function renderScaling() {
     + `<br><span class="tdim">peak mem</span> ${fmtGB(c.mem_mb)}`
     + (c.speedup != null ? `<br><span class="tdim">speedup</span> ${c.speedup.toFixed(2)}×` : "")
     + (cellHot(c) ? `<br><span class="thr">⚠ ${hotWarn(c)}</span>` : "");
-  const sizeTip = (fb) => (spec, idx) => {
-    const size = sizes[idx], m = /n=(\d+)/.exec(spec.label || "");
+  const sizeTip = (fb, metricWord) => (spec, idx) => {
+    const size = sizes[idx];
+    if (spec.isGate) {   // the "gate fail" overlay marker: the SAME full cell readout as a normal point + the gate context
+      const g = spec.bySize[size]; if (!g) return null;
+      const c = at(size, g.ndev);
+      const head = `<b>${geom} · ${op}</b> · ${size} · n=${g.ndev}`;
+      const body = c ? (c.failed ? `<span class="bad">${c.oom ? "OOM" : "FAILED"}</span>` : cellLine(c)) : "";
+      return `${head}${body ? "<br>" + body : ""}<br>${gateNote(g.detail, g.basis)}`;
+    }
+    const m = /n=(\d+)/.exec(spec.label || "");
     if (!m || spec.color === REFC) { const y = spec.ys[idx]; return y == null ? null : `<b>${geom} · ${op}</b> · ${size}<br>${spec.label}: ${fb(y)}`; }
     const c = at(size, +m[1]); if (!c) return null;
     const head = `<b>${geom} · ${op}</b> · ${size} · n=${m[1]}`;
-    return c.failed ? `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " — " + c.error : ""}` : `${head}<br>${cellLine(c)}`;
+    if (c.failed) return `${head}<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " — " + c.error : ""}`;
+    // if this exact cell is itself a hard-gate hit for this panel's metric, append the gate context too, so
+    // it shows whether the cursor snaps to the overlay marker or the underlying curve
+    const gh = (run.gate.hard || []).find((h) => h.cell === `${geom}|${op}|${size}|${m[1]}` && (h.text || "").toLowerCase().includes(metricWord));
+    return `${head}<br>${cellLine(c)}${gh ? "<br>" + gateNote(gh.detail, gh.basis) : ""}`;
   };
   // Per-(size, n) derived metrics for the two device-axis panels — computed once so each panel's curve
   // and its hover tooltip read the SAME number.  speedup = (n=1 time / this time) × the base n;
@@ -850,7 +878,7 @@ function renderScaling() {
     return fails.length ? { x: xvol[i], tip: `<b>failed at ${s}</b><br>` + fails.map((c) => `n=${c.ndev} — <span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " · " + c.error : ""}`).join("<br>") } : null;
   }).filter(Boolean);
   const timeSpecs = [...(gT ? [gT] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "min_ms", 60000), ...refSeries(geom, op, sizes, ndevs, "min_ms", 60000), ...timeCurves, ...timeIdeal];
-  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip(fmtTime), failMarks: sizeFailMk, depTopMul: 1.5 });
+  linePlot($("pTime"), xvol, timeSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "minutes", tooltip: sizeTip(fmtTime, "time"), failMarks: sizeFailMk, depTopMul: 1.5 });
 
   // --- memory vs size (log-log, GB) ---  (same draw-order rule as the time panel)
   const memCurves = ndevs.map((nd) => ({ label: "n=" + nd, color: devColor(nd),
@@ -859,7 +887,7 @@ function renderScaling() {
     ys: xvol.map((v) => (aM.mem_mb / 1024) * (v / aV)) }] : [];
   const gM = gateSeries(run, geom, op, sizes, "memory", 1024);
   const memSpecs = [...(gM ? [gM] : []), ...throttleSeries(run, geom, op, sizes, ndevs, "mem_mb", 1024), ...refSeries(geom, op, sizes, ndevs, "mem_mb", 1024), ...memCurves, ...memIdeal];
-  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB"), failMarks: sizeFailMk, depTopMul: 1.5 });
+  linePlot($("pMem"), xvol, memSpecs, { width: w, xLog: true, yLog: true, tightLog: true, yPad: 0.06, xSplits: xticks, xLabels, xPad: 1.7, yLabelText: "GB", tooltip: sizeTip((y) => y.toFixed(2) + " GB", "memory"), failMarks: sizeFailMk, depTopMul: 1.5 });
 
   // --- speedup vs devices (one curve per size; ideal linear) ---
   const w2 = $("pSpeed").clientWidth || 460;

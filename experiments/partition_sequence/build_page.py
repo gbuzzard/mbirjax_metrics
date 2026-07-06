@@ -1,9 +1,9 @@
 """Build partition_sequence.html from the study trajectory JSONs in data/.
 
 Study: mbirjax/experiments/partition_sequence/partition_sequence_plan.md (results section).
-Each JSON is one run of the study harness (mbirjax_applications/partition_sequence/
-run_study.py): per-iteration masked NRMSE vs the dataset's converged reference, native
-change %, cumulative wall time, and peak GPU memory.
+Each JSON is one run of the study harness (run_study.py, alongside): per-iteration masked
+NRMSE vs the dataset's converged reference, native change %, cumulative wall time, and peak
+GPU memory.
 
 Per dataset the page shows a summary table, then two linked plots:
   LEFT  (NRMSE vs iteration):  curves nearly collapse -- convergence per iteration is
@@ -21,32 +21,34 @@ import glob
 import json
 import os
 
+import ps_config
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 VENDOR = os.path.join(HERE, '..', '..', 'tooling', 'dashboard', 'vendor')
 
-# (dataset, rounds in precedence order, noise-floor median, readable NRMSE targets,
-#  sino shape, recon shape).  Shapes queried once from the caches (build_cache.py output).
-DATASETS = [
-    ('lilly', ['round2', 'round1'], 0.00499, [0.05, 0.02, 0.01], (225, 356, 470), (470, 470, 356)),
-    ('z62', ['round2', 'round1'], 0.01235, [0.05, 0.02], (101, 512, 512), (512, 512, 512)),
-    ('sic', ['round2', 'round1'], 0.00451, [0.10, 0.08], (201, 512, 512), (512, 512, 512)),
-    ('z62_2x', ['scale2x'], 0.01106, [0.10, 0.08], (201, 1024, 1024), (1024, 1024, 1024)),
-    ('z62_4x4', ['z62_4x4'], 0.00828, [0.10, 0.05, 0.04], (201, 512, 512), (512, 512, 512)),
-    ('lilly_4x4', ['lilly_4x4'], None, [0.05, 0.02], (450, 356, 470), (470, 470, 356)),
-    ('sic_4x4', ['sic_4x4'], None, [0.10, 0.08], (401, 512, 512), (512, 512, 512)),
-]
+# Which results to render is driven by config.yaml's `page` block: per dataset a tag, the
+# data/ rounds (precedence order, later loses), and readable NRMSE targets.  sino/recon
+# shapes and the noise floor AUTO-DERIVE from the run JSONs / <tag>_floor.json when present;
+# the optional floor/sino/recon in config are fallbacks for legacy rounds.
+CFG = ps_config.load()
 SKIP = ('floor', 'chunk', 'mono', 'reference')
 
 
 def load(dataset, rounds):
-    runs = {}
+    """Return (runs, sino_shape, recon_shape); shapes come from the first run JSON that
+    carries them (falls back to None so the caller can use the config value)."""
+    runs, sino_shape, recon_shape = {}, None, None
     for rnd in reversed(rounds):                 # later entries in `rounds` lose
         for path in sorted(glob.glob(os.path.join(HERE, 'data', rnd, f'{dataset}_*.json'))):
             r = json.load(open(path))
             name = r['label'][len(dataset) + 1:]
             if any(s in name for s in SKIP):
+                if r.get('sino_shape') and sino_shape is None:   # e.g. the reference run
+                    sino_shape, recon_shape = r['sino_shape'], r.get('recon_shape')
                 continue
             runs[name] = r
+            if r.get('sino_shape'):
+                sino_shape, recon_shape = r['sino_shape'], r.get('recon_shape')
     out = []
     for name, r in sorted(runs.items()):
         rows = [x for x in r['rows'] if x['nrmse_vs_ref'] is not None]
@@ -58,7 +60,17 @@ def load(dataset, rounds):
                     'nrmse': [round(x['nrmse_vs_ref'], 6) for x in rows],
                     'peak': round(max(r['peak_gib_per_device']), 2)
                             if r['peak_gib_per_device'] else None})
-    return out
+    return out, sino_shape, recon_shape
+
+
+def load_floor(dataset, rounds, fallback):
+    """Auto-derived noise floor from <tag>_floor.json (written by run_study), else the
+    config fallback, else None."""
+    for rnd in reversed(rounds):
+        path = os.path.join(HERE, 'data', rnd, f'{dataset}_floor.json')
+        if os.path.exists(path):
+            return json.load(open(path)).get('floor_median')
+    return fallback
 
 
 def target_cells(run, targets):
@@ -72,7 +84,7 @@ def target_cells(run, targets):
 
 def reference_note(dataset):
     # Read the actual reference run so the note reflects whether it truly hit 0.01% change
-    # (z62_2x's 1024^3 reference was capped at its iteration limit, not converged).
+    # (the z62 1024^3 reference was capped at its iteration limit, not converged).
     for f in glob.glob(os.path.join(HERE, 'data', '*', f'{dataset}_reference.json')):
         rows = json.load(open(f))['rows']
         iters, final = len(rows), rows[-1]['change_pct']
@@ -87,16 +99,20 @@ def reference_note(dataset):
 
 
 def shape(s):
-    return '&times;'.join(str(x) for x in s)
+    return '&times;'.join(str(x) for x in s) if s else '?'
 
 
 def main():
     data = {}
     sections = []
-    for ds, rounds, floor, targets, sino, recon in DATASETS:
-        runs = load(ds, rounds)
+    for entry in CFG['page']['datasets']:
+        ds, rounds, targets = entry['tag'], entry['rounds'], entry['targets']
+        runs, sino, recon = load(ds, rounds)
         if not runs:
             continue
+        sino = sino or entry.get('sino')             # auto-derived, else config fallback
+        recon = recon or entry.get('recon')
+        floor = load_floor(ds, rounds, entry.get('floor'))
         data[ds] = {'runs': runs, 'floor': floor}
 
         hdr = ''.join(f'<th>iter / sec&nbsp;@&nbsp;{t:g}</th>' for t in targets)

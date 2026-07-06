@@ -18,8 +18,8 @@ def nrmse(a, b, mask2d, drop):
     return float(np.linalg.norm(aa-bb) / np.linalg.norm(bb))
 
 DATASETS = {
-  'z62_4x4': [('iter15','snap_iter15'), ('0.2% (it44)','snap_stop02_iter44'), ('0.1% (it60)','snap_stop01_iter60')],
-  'sic_4x4': [('iter15','snap_iter15'), ('0.2% (it47)','snap_stop02_iter47'), ('0.1% (it88)','snap_stop01_iter88')],
+  'z62_v4x_d4x_nv201_nch512': [('iter15','snap_iter15'), ('0.2% (it44)','snap_stop02_iter44'), ('0.1% (it60)','snap_stop01_iter60')],
+  'sic_v4x_d4x_nv401_nch512': [('iter15','snap_iter15'), ('0.2% (it47)','snap_stop02_iter47'), ('0.1% (it88)','snap_stop01_iter88')],
 }
 for ds, snaps in DATASETS.items():
     ref = np.load(f'{REF}/recon_{ds}_reference.npy')

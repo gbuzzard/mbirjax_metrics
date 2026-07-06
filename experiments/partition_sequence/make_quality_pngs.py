@@ -7,11 +7,11 @@ import mbirjax.preprocess as mjp
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-CACHE = '/scratch/gautschi/buzzard/ps_study/ps_cache'
+CACHE = '/depot/bouman/data/mbirjax_metrics/partition_sequence/cache'
 RESULTS = '/scratch/gautschi/buzzard/ps_study/ps_results_4x4'
 OUT = '/scratch/gautschi/buzzard/ps_study/quality_pngs'
 os.makedirs(OUT, exist_ok=True)
-DATASETS = ['z62_4x4', 'sic_4x4']
+DATASETS = ['z62_v4x_d4x_nv201_nch512', 'sic_v4x_d4x_nv401_nch512']
 SEQ = [7]
 MAX_ITERS = 95
 THRESHOLDS = [0.2, 0.1]                     # change-% snapshot points
