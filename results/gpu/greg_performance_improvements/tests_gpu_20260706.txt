@@ -1,0 +1,172 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_performance_improvements
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [213 items]
+
+.....................................................s.................. [ 33%]
+............................s.F.....................................s... [ 67%]
+.....................................................................    [100%]
+=================================== FAILURES ===================================
+__________ TestReconPlasticMetalContract.test_output_sharded_contract __________
+[gw4] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_mar.TestReconPlasticMetalContract testMethod=test_output_sharded_contract>
+
+    def test_output_sharded_contract(self):
+        """recon_plastic_metal returns a host ndarray by default and the sharded device form with
+        output_sharded=True, and the two agree.  The VCD partition RNG is seeded before each call
+        so the two runs draw identical partitions (comparing unseeded runs compares noise)."""
+        multi = preferred_devices(3)
+        if multi is None:
+            self.skipTest("need >= 3 devices")
+        model = _make_model(multi)
+        phantom = _make_phantom(model)
+        measured = np.array(model.forward_project(phantom))
+    
+        np.random.seed(7)
+        recon_host = mjp.recon_plastic_metal(model, measured, None, num_BH_iterations=1,
+                                             num_metal=1, stop_threshold_change_pct=5.0)
+        np.random.seed(7)
+        recon_dev = mjp.recon_plastic_metal(model, measured, None, num_BH_iterations=1,
+                                            num_metal=1, stop_threshold_change_pct=5.0,
+                                            output_sharded=True)
+    
+        self.assertIsInstance(recon_host, np.ndarray)
+        self.assertEqual(recon_host.shape, tuple(model.get_params('recon_shape')))
+        self.assertNotIsInstance(recon_dev, np.ndarray)      # device form
+>       assert_sharded_allclose(np.asarray(model._gather_recon(recon_dev)), recon_host,
+                                msg="output_sharded form diverged from the host default", tol=1e-4)
+
+../tests/sharding/test_mar.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+out = array([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+ ...0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], shape=(28, 28, 25), dtype=float32)
+ref = array([[[0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+ ...0.],
+        [0., 0., 0., ..., 0., 0., 0.],
+        [0., 0., 0., ..., 0., 0., 0.]]], shape=(28, 28, 25), dtype=float32)
+msg = 'output_sharded form diverged from the host default', tol = 0.0001
+
+    def assert_sharded_allclose(out, ref, msg="", tol=1e-5):
+        """Assert a sharded result matches its single-device reference to float noise, via the
+        SCALE-INVARIANT gate ``rel_max_err(out, ref) <= tol`` (see :func:`rel_max_err` for why a fixed
+        ``atol`` / per-element ``rtol`` is the wrong ruler for reduce-scatter reorder noise).  Use
+        tol=1e-5 for single-shot projectors, 1e-4 for an iterated VCD recon.  Raises AssertionError
+        carrying the measured error.  Reserve plain ``assert_allclose``/exact-equality for the OTHER
+        invariants -- constructed-zero (padded entries == 0) and data-movement (gather/scatter/halo
+        round trips) -- where a relative gate would mask the very corruption the test exists to catch.
+        """
+        err = rel_max_err(out, ref)
+        if err > tol:
+            prefix = f"{msg} -- " if msg else ""
+>           raise AssertionError(
+                f"{prefix}sharded vs single-device rel_max_err={err:.2e} > tol={tol:.1e}")
+E           AssertionError: output_sharded form diverged from the host default -- sharded vs single-device rel_max_err=6.82e-04 > tol=1.0e-04
+
+../tests/sharding/conftest.py:61: AssertionError
+----------------------------- Captured stderr call -----------------------------
+MBIRJAX Version = 0.7.0
+Reconstruction devices: 3 x GPU (sharded) (views padded 31->33) (slices padded 25->27)
+Initializing error sinogram
+Computing Hessian diagonal
+Starting VCD iterations
+
+After iteration 0 of a max of 25: Pct change=13.5022, Forward loss=103.7105
+Relative step size (alpha)=0.82, Error sino RMSE=0.1911
+Number subsets = 16
+
+After iteration 1 of a max of 25: Pct change=7.2525, Forward loss=51.8214
+Relative step size (alpha)=0.99, Error sino RMSE=0.0955
+Number subsets = 128
+
+After iteration 2 of a max of 25: Pct change=3.2070, Forward loss=39.3765
+Relative step size (alpha)=0.99, Error sino RMSE=0.0726
+Number subsets = 128
+Change threshold stopping condition reached
+Logs written to /home/buzzard/.mbirjax/logs/recon.log
+MBIRJAX Version = 0.7.0
+Reconstruction devices: 3 x GPU (sharded) (views padded 31->33) (slices padded 25->27)
+Initializing error sinogram
+Computing Hessian diagonal
+Starting VCD iterations
+
+After iteration 0 of a max of 25: Pct change=13.5001, Forward loss=103.6886
+Relative step size (alpha)=0.82, Error sino RMSE=0.1911
+Number subsets = 16
+
+After iteration 1 of a max of 25: Pct change=7.2514, Forward loss=51.8233
+Relative step size (alpha)=0.99, Error sino RMSE=0.0955
+Number subsets = 128
+
+After iteration 2 of a max of 25: Pct change=3.2065, Forward loss=39.3851
+Relative step size (alpha)=0.99, Error sino RMSE=0.0726
+Number subsets = 128
+Change threshold stopping condition reached
+Logs written to /home/buzzard/.mbirjax/logs/recon.log
+------------------------------ Captured log call -------------------------------
+INFO     ParallelBeamModel:parameter_handler.py:133 MBIRJAX Version = 0.7.0
+INFO     ParallelBeamModel:parameter_handler.py:134 Reconstruction devices: 3 x GPU (sharded) (views padded 31->33) (slices padded 25->27)
+INFO     ParallelBeamModel:tomography_model.py:2827 Initializing error sinogram
+INFO     ParallelBeamModel:tomography_model.py:2904 Computing Hessian diagonal
+INFO     ParallelBeamModel:tomography_model.py:2928 Starting VCD iterations
+INFO     ParallelBeamModel:tomography_model.py:2984 
+After iteration 0 of a max of 25: Pct change=13.5022, Forward loss=103.7105
+INFO     ParallelBeamModel:tomography_model.py:2985 Relative step size (alpha)=0.82, Error sino RMSE=0.1911
+INFO     ParallelBeamModel:tomography_model.py:2986 Number subsets = 16
+INFO     ParallelBeamModel:tomography_model.py:2984 
+After iteration 1 of a max of 25: Pct change=7.2525, Forward loss=51.8214
+INFO     ParallelBeamModel:tomography_model.py:2985 Relative step size (alpha)=0.99, Error sino RMSE=0.0955
+INFO     ParallelBeamModel:tomography_model.py:2986 Number subsets = 128
+INFO     ParallelBeamModel:tomography_model.py:2984 
+After iteration 2 of a max of 25: Pct change=3.2070, Forward loss=39.3765
+INFO     ParallelBeamModel:tomography_model.py:2985 Relative step size (alpha)=0.99, Error sino RMSE=0.0726
+INFO     ParallelBeamModel:tomography_model.py:2986 Number subsets = 128
+WARNING  ParallelBeamModel:tomography_model.py:2994 Change threshold stopping condition reached
+INFO     ParallelBeamModel:tomography_model.py:2695 Logs written to /home/buzzard/.mbirjax/logs/recon.log
+INFO     ParallelBeamModel:parameter_handler.py:133 MBIRJAX Version = 0.7.0
+INFO     ParallelBeamModel:parameter_handler.py:134 Reconstruction devices: 3 x GPU (sharded) (views padded 31->33) (slices padded 25->27)
+INFO     ParallelBeamModel:tomography_model.py:2827 Initializing error sinogram
+INFO     ParallelBeamModel:tomography_model.py:2904 Computing Hessian diagonal
+INFO     ParallelBeamModel:tomography_model.py:2928 Starting VCD iterations
+INFO     ParallelBeamModel:tomography_model.py:2984 
+After iteration 0 of a max of 25: Pct change=13.5001, Forward loss=103.6886
+INFO     ParallelBeamModel:tomography_model.py:2985 Relative step size (alpha)=0.82, Error sino RMSE=0.1911
+INFO     ParallelBeamModel:tomography_model.py:2986 Number subsets = 16
+INFO     ParallelBeamModel:tomography_model.py:2984 
+After iteration 1 of a max of 25: Pct change=7.2514, Forward loss=51.8233
+INFO     ParallelBeamModel:tomography_model.py:2985 Relative step size (alpha)=0.99, Error sino RMSE=0.0955
+INFO     ParallelBeamModel:tomography_model.py:2986 Number subsets = 128
+INFO     ParallelBeamModel:tomography_model.py:2984 
+After iteration 2 of a max of 25: Pct change=3.2065, Forward loss=39.3851
+INFO     ParallelBeamModel:tomography_model.py:2985 Relative step size (alpha)=0.99, Error sino RMSE=0.0726
+INFO     ParallelBeamModel:tomography_model.py:2986 Number subsets = 128
+WARNING  ParallelBeamModel:tomography_model.py:2994 Change threshold stopping condition reached
+INFO     ParallelBeamModel:tomography_model.py:2695 Logs written to /home/buzzard/.mbirjax/logs/recon.log
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17: 10 warnings
+  /home/buzzard/.mbirjax/regression/lib_greg_performance_improvements/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:211: GPU present: auto uses GPUs; this exercises the CPU default
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+FAILED ../tests/sharding/test_mar.py::TestReconPlasticMetalContract::test_output_sharded_contract
+====== 1 failed, 209 passed, 3 skipped, 13 warnings in 400.20s (0:06:40) =======
