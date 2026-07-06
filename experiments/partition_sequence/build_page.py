@@ -31,6 +31,9 @@ DATASETS = [
     ('z62', ['round2', 'round1'], 0.01235, [0.05, 0.02], (101, 512, 512), (512, 512, 512)),
     ('sic', ['round2', 'round1'], 0.00451, [0.10, 0.08], (201, 512, 512), (512, 512, 512)),
     ('z62_2x', ['scale2x'], 0.01106, [0.10, 0.08], (201, 1024, 1024), (1024, 1024, 1024)),
+    ('z62_4x4', ['z62_4x4'], 0.00828, [0.10, 0.05, 0.04], (201, 512, 512), (512, 512, 512)),
+    ('lilly_4x4', ['lilly_4x4'], None, [0.05, 0.02], (450, 356, 470), (470, 470, 356)),
+    ('sic_4x4', ['sic_4x4'], None, [0.10, 0.08], (401, 512, 512), (512, 512, 512)),
 ]
 SKIP = ('floor', 'chunk', 'mono', 'reference')
 
@@ -107,7 +110,7 @@ def main():
         ref_note = reference_note(ds)
 
         sections.append(f'''
-<section class="ds">
+<section class="ds" id="sec-{ds}">
   <h2>{ds} &mdash; sinogram {shape(sino)}, reconstruction {shape(recon)}</h2>
   <table class="sum">
     <tr><th>sequence</th><th>indices</th>{hdr}<th>peak GiB</th></tr>
@@ -161,7 +164,10 @@ curves; drag the slider to truncate the time plot at a chosen iteration.  Study 
     tmpl = TEMPLATE
     tmpl = tmpl.replace('__UPLOT_CSS__', open(os.path.join(VENDOR, 'uPlot.min.css')).read())
     tmpl = tmpl.replace('__UPLOT_JS__', open(os.path.join(VENDOR, 'uPlot.iife.min.js')).read())
-    tmpl = tmpl.replace('__INTRO__', intro)
+    nav = ('<p class="nav"><b>Jump to dataset:</b> '
+           + ' &nbsp;·&nbsp; '.join(f'<a href="#sec-{d}">{d}</a>' for d in data)
+           + '</p>')
+    tmpl = tmpl.replace('__INTRO__', intro + nav)
     tmpl = tmpl.replace('__SECTIONS__', ''.join(sections))
     tmpl = tmpl.replace('__DATA_JSON__', json.dumps(data))
 
@@ -179,6 +185,8 @@ body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; margin: 24p
        max-width: 1360px; background: #fff; color: #1a1a1a; }
 h1 { font-size: 22px; } h2 { margin: 30px 0 6px; font-size: 18px; }
 .intro, .defs { max-width: 900px; color: #333; }
+.nav { max-width: 900px; }
+.nav a { margin: 0 2px; }
 .defs li { margin: 3px 0; }
 .row { display: flex; gap: 24px; flex-wrap: wrap; margin: 6px 0 10px; }
 .plot { width: 600px; min-height: 360px; flex: 0 0 600px; }
