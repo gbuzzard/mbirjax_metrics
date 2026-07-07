@@ -99,6 +99,22 @@
   </section>
 
   <section>
+    <div class="sec-head"><h2>History by op</h2><span class="muted">time &amp; memory for one op + sinogram shape over commits · one line per branch · click a point to show that run · drag to zoom · double-click to reset</span></div>
+    <div class="controls wrap">
+      <label>platform <select id="poPlat"></select></label>
+      <label>branch <select id="poBranch"></select></label>
+      <label>op <select id="poOp"></select></label>
+      <label>sino shape <select id="poShape"></select></label>
+      <label>devices <select id="poN"></select></label>
+    </div>
+    <div id="po-legend" class="legend"></div>
+    <div class="panels">
+      <div class="panel"><div class="pcap" id="poCapTime">time</div><div id="poTime" class="chart"></div></div>
+      <div class="panel"><div class="pcap" id="poCapMem">peak memory</div><div id="poMem" class="chart"></div></div>
+    </div>
+  </section>
+
+  <section>
     <div class="sec-head">
       <h2>Scaling</h2>
       <span id="sv-meta" class="muted"></span>

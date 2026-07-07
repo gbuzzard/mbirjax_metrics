@@ -19,6 +19,10 @@ const DEPC = "#25a244";                                       // green: a DEPEND
 const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" if a GPU core>=85C / HBM>=95C / any throttle reason
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
+// Per-op history colours a curve by BRANCH (platform + op are fixed by that section's selectors, so the
+// platform colour can't disambiguate).  A stable palette indexed by the branch's position in M.branches.
+const BRANCHC = ["#185fa5", "#1D9E75", "#D85A30", "#7F77DD", "#BA7517", "#C0468A", "#3AA6A6", "#8A8A2E"];
+const branchColor = (b) => BRANCHC[Math.max(0, M.branches.indexOf(b)) % BRANCHC.length];
 
 const OP_ORDER = ["direct_filter", "forward", "back", "vcd_nonconst", "denoise"];
 const GEOM_ORDER = ["parallel", "cone", "translation", "multiaxis_parallel", "denoiser"];
@@ -41,7 +45,8 @@ const HIST_GROUPS = [
 const IDEAL_EXP = { direct_filter: 1, forward: 1, back: 1, vcd_nonconst: 4 / 3 };
 const IDEAL_BASIS = { direct_filter: "sinogram entries", forward: "voxels", back: "voxels", vcd_nonconst: "voxels · views" };
 
-const ui_state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp", histBranch: "all" };
+const ui_state = { platform: null, branch: null, go: null, ref: "none", view: "plot", openTile: null, runKey: null, histN: 1, histGroup: "cp", histBranch: "all",
+  poPlat: null, poBranch: "all", poGo: null, poShape: null, poN: 1 };   // per-op history: platform, branch, geom|op, sino shape, device count
 
 // Displayed name for each reference (internal key -> label).  References are now derived from the
 // tracked runs themselves (latest main/prerelease tip, this branch's prior run) + best-ever.
@@ -285,6 +290,11 @@ function linePlot(el, xs, specs, o) {
   // Fixed y-axis (o.yRange + o.yLog): a LOG range with proportional top/bottom margins (fixedLogYRange).
   const yFixR = (o.yLog && o.yRange && o.yRange[0] != null && o.yRange[1] != null)
     ? fixedLogYRange(o.yRange[0], o.yRange[1]) : null;
+  // Box-zoom on a fixed-range panel (o.boxZoom): a y-drag selection overrides the pinned [bot, top] until
+  // reset.  yZoomWin holds the active y sub-range (null = show the pinned fixed range); it's captured from
+  // the drag in the setSelect hook and cleared on double-click.  (uPlot's own drag-scale can't do this here
+  // because yScale.range hard-returns the fixed band, ignoring the value uPlot sets from the selection.)
+  let yZoomWin = null;
   let markY = null;
   if ((o.depMarks && o.depMarks.length) || (o.failMarks && o.failMarks.length)) {
     let gmax = -Infinity;
@@ -362,7 +372,7 @@ function linePlot(el, xs, specs, o) {
   // A FIXED y-axis (yFixR, the History panels' all-time range) pins [bot, top] with proportional log
   // margins; the off-scale marks sit at yFixR.mark within the top margin.  Otherwise: auto data range,
   // lifting the top above any floating markers (markY) so they stay on screen.
-  if (yFixR) yScale.range = () => [yFixR.bot, yFixR.top];
+  if (yFixR) yScale.range = () => yZoomWin || [yFixR.bot, yFixR.top];
   else if (markY != null || baseYRange) yScale.range = (u, mn, mx) => {
     let hi = mx;
     if (markY != null) hi = Math.max(hi, markY);
@@ -437,6 +447,19 @@ function linePlot(el, xs, specs, o) {
       const mn = u.scales.x.min, mx = u.scales.x.max;
       group.forEach((p) => { if (p !== u && (p.scales.x.min !== mn || p.scales.x.max !== mx)) p.setScale("x", { min: mn, max: mx }); });
       if (o.onXChange) o.onXChange(mn, mx);   // report the (zoomed/reset) x-window so a caller can persist it
+    }];
+  }
+  // Box-zoom capture (o.boxZoom + a fixed range): a drag with vertical extent zooms Y too, like the
+  // scaling panels.  uPlot's built-in drag-scale can't move a hard-pinned axis (yScale.range ignores the
+  // value it sets), so read the selection's y sub-range here and feed it back through yZoomWin; the pinned
+  // range applies whenever yZoomWin is null.  select.top/height are CSS-px in the plot area; posToVal maps
+  // them to data (top px = higher value on an upward y-axis).
+  if (o.boxZoom && yFixR) {
+    hooks.setSelect = [(u) => {
+      const s = u.select;
+      if (!s || s.height <= 6) return;                       // a pure horizontal drag / a click -> leave Y pinned
+      const a = u.posToVal(s.top, "y"), b = u.posToVal(s.top + s.height, "y");
+      if (isFinite(a) && isFinite(b) && a !== b) yZoomWin = [Math.min(a, b), Math.max(a, b)];
     }];
   }
   // Optional custom triangle marks at data points (o.marks: [{x, y}]) — uPlot only draws CIRCLE
@@ -559,14 +582,20 @@ function linePlot(el, xs, specs, o) {
     // hard-clamped the scale is gone — see xPad — so the drag actually takes now.)
     // drag.dist: a drag shorter than this (px) is NOT a zoom — it falls through to a plain click, so
     // a click with a pixel or two of jitter still selects the point instead of zooming a sliver.
-    cursor: { points: { size: 7 }, drag: { x: true, y: !o.xTime, dist: 6 } },
-    hooks: (hooks.setCursor || hooks.setScale || hooks.draw || hooks.drawClear) ? hooks : undefined,
+    cursor: { points: { size: 7 }, drag: { x: true, y: o.boxZoom ? true : !o.xTime, dist: 6 } },
+    hooks: (hooks.setCursor || hooks.setScale || hooks.setSelect || hooks.draw || hooks.drawClear) ? hooks : undefined,
   };
   if (el._u) { el._u.destroy(); el._u = null; }
   el.innerHTML = "";
   try { el._u = new uPlot(opts, data, el); } catch (e) { el.innerHTML = "<p class='muted'>chart error: " + e.message + "</p>"; return null; }
   if (tip) el.appendChild(tip);
   if (o.syncX) o.syncX.push(el._u);
+  // Double-click resets uPlot's scales; drop any captured y-zoom in the SAME gesture so the pinned range
+  // returns.  Capture phase so this runs BEFORE uPlot's own dblclick reset re-ranges the axis.
+  if (o.boxZoom && yFixR) {
+    const ov = el.querySelector(".u-over");
+    if (ov) ov.addEventListener("dblclick", () => { yZoomWin = null; }, true);
+  }
   // Optional: a plain click (vs a drag, which zooms) selects the nearest point.
   if (o.onPick) {
     const over = el.querySelector(".u-over");
@@ -1039,7 +1068,7 @@ function aggregate(run, n, geoms, timeOp) {
 // hooks read currentRun() live, so a redraw() suffices) — so the marker tracks navigation while the
 // panels' zoom survives.
 function refreshHistoryNow() {
-  ["hVcd", "hMem", "hGate"].forEach((id) => { const el = $(id); if (el && el._u) el._u.redraw(); });
+  ["hVcd", "hMem", "hGate", "poTime", "poMem"].forEach((id) => { const el = $(id); if (el && el._u) el._u.redraw(); });
 }
 function showRun(r, resetOpen) {
   if (!r) return;
@@ -1289,6 +1318,150 @@ function renderHistory() {
     `</span>`;
 }
 
+// ---- per-op history ----------------------------------------------------------
+// A finer complement to the aggregated headline strip above: one time + one memory panel for a SINGLE
+// (platform, geom|op, sinogram shape, device count), plotted over commit time with ONE LINE PER BRANCH
+// (platform + op are fixed by the selectors, so the branch is what varies).  The y-axis is pinned per
+// (platform, geom, op) — spanning all branches/shapes/n/runs (M.perop_yranges) — so flipping the shape
+// or branch doesn't rescale it.  The section has its own branch filter (all + each branch, like History).
+//
+// Dep-change top-band markers for ONE platform (this section is single-platform).  Mirrors the per-day
+// grouping in renderHistory's depChanges(), filtered to `plat`.
+function depChangeMarks(plat) {
+  const groups = {};
+  M.runs.forEach((r) => {
+    if (!r.dep_gen || (plat && r.platform !== plat)) return;
+    const x = runTime(r), key = Math.floor(x / 86400);
+    const g = groups[key] || (groups[key] = { x: Infinity, entries: [] });
+    g.x = Math.min(g.x, x);
+    g.entries.push(r.dep_info || { reason: r.run_reason, gen: r.dep_gen, jax_to: r.jax, pkg_changes: [], pkg_n: 0 });
+  });
+  return Object.values(groups).map((g) => ({ x: g.x, color: DEPC, tip: depTipHtml(g.entries) }));
+}
+// Selector option lists (cascading: platform -> geom|op -> shape -> n), each drawn from the runs on the
+// chosen platform so an option always has data behind it.
+function poOpOptions(plat) {
+  return uniq(M.runs.filter((r) => r.platform === plat).flatMap((r) => r.cells.map((c) => c.geom + "|" + c.op)))
+    .sort((a, b) => { const [ga, oa] = a.split("|"), [gb, ob] = b.split("|");
+      return GEOM_ORDER.indexOf(ga) - GEOM_ORDER.indexOf(gb) || OP_ORDER.indexOf(oa) - OP_ORDER.indexOf(ob); });
+}
+function poShapeOptions(plat, geom, op) {
+  return uniq(M.runs.filter((r) => r.platform === plat)
+    .flatMap((r) => r.cells.filter((c) => c.geom === geom && c.op === op).map((c) => c.size)))
+    .sort((a, b) => sizeVol(a) - sizeVol(b));
+}
+function poNOptions(plat, geom, op, shape) {
+  return uniq(M.runs.filter((r) => r.platform === plat)
+    .flatMap((r) => r.cells.filter((c) => c.geom === geom && c.op === op && c.size === shape).map((c) => c.ndev)))
+    .filter((x) => x != null).sort((a, b) => a - b);
+}
+// Clamp the per-op selectors to valid values and (re)fill them.  Cascades: an invalid downstream pick
+// (e.g. a shape the newly-chosen op never ran) falls back to a sensible default (largest shape, fewest n).
+function syncPerOpSelectors() {
+  if (!M.platforms.includes(ui_state.poPlat)) ui_state.poPlat = M.platforms.includes("gpu") ? "gpu" : (ui_state.platform || M.platforms[0]);
+  fillSelect("poPlat", M.platforms, ui_state.poPlat);
+  const ops = poOpOptions(ui_state.poPlat);
+  if (!ops.includes(ui_state.poGo)) ui_state.poGo = ops.includes("cone|vcd_nonconst") ? "cone|vcd_nonconst" : ops[0];
+  fillSelect("poOp", ops, ui_state.poGo, ops.map((s) => s.replace("|", " · ")));
+  const [geom, op] = (ui_state.poGo || "|").split("|");
+  const shapes = poShapeOptions(ui_state.poPlat, geom, op);
+  if (!shapes.includes(ui_state.poShape)) ui_state.poShape = shapes.length ? shapes[shapes.length - 1] : null;   // default = largest
+  fillSelect("poShape", shapes, ui_state.poShape);
+  const ns = poNOptions(ui_state.poPlat, geom, op, ui_state.poShape);
+  if (!ns.includes(ui_state.poN)) ui_state.poN = ns.length ? ns[0] : 1;
+  fillSelect("poN", ns, ui_state.poN);
+}
+// Persisted x-window for the per-op panels (independent of the history strip's histXWindow).
+let poXWindow = null;
+function renderPerOp() {
+  syncPerOpSelectors();
+  const plat = ui_state.poPlat, [geom, op] = (ui_state.poGo || "|").split("|");
+  const shape = ui_state.poShape, n = ui_state.poN, PLAT = (plat || "").toUpperCase();
+  $("poCapTime").textContent = `${PLAT}: ${geom} · ${op} time · ${shape || "—"} · n=${n}`;
+  $("poCapMem").textContent = `${PLAT}: ${geom} · ${op} peak memory · ${shape || "—"} · n=${n}`;
+  const branches = (ui_state.poBranch && ui_state.poBranch !== "all")
+    ? M.branches.filter((b) => b === ui_state.poBranch) : M.branches;
+  // x = commit times of EVERY run on this platform; a branch's curve is defined only at its own runs'
+  // times (null elsewhere -> spanGaps bridges), exactly like the history strip.
+  const xs = uniq(M.runs.filter((r) => r.platform === plat).map(runTime)).sort((a, b) => a - b);
+  if (!xs.length || !shape) {
+    $("poTime").innerHTML = "<p class='muted'>no runs for this selection.</p>"; $("poMem").innerHTML = ""; $("po-legend").innerHTML = ""; return;
+  }
+  const cellOf = (r) => r.cells.find((c) => c.geom === geom && c.op === op && c.size === shape && c.ndev === n) || null;
+  const byBranch = {};   // branch -> { runTime -> cell }
+  branches.forEach((b) => { const m = {}; runsFor(plat, b).forEach((r) => { m[runTime(r)] = cellOf(r); }); byBranch[b] = m; });
+
+  const specsFor = (pick) => {
+    const field = pick === "time" ? "min_ms" : "mem_mb", div = pick === "time" ? 60000 : 1024;
+    const out = [], markers = [];
+    branches.forEach((b) => {
+      const map = byBranch[b];
+      const val = (t) => { const c = map[t]; return c && !c.failed && c[field] != null ? c[field] / div : null; };
+      const ys = xs.map(val);
+      if (!ys.some((y) => y != null)) return;
+      const meta = { platform: plat, branch: b, geom, op, size: shape, ndev: n, pick };
+      out.push({ label: b, color: branchColor(b), ys, _xs: xs, meta });
+      // two-tier thermal markers, like the history strip: filled amber disc = driver throttled, hollow ring = ran hot.
+      const thr = xs.map((t) => { const c = map[t]; return (c && cellThrottled(c)) ? val(t) : null; });
+      const hot = xs.map((t) => { const c = map[t]; return (c && cellHot(c) && !cellThrottled(c)) ? val(t) : null; });
+      if (thr.some((y) => y != null)) markers.push({ label: "throttled " + b, color: THROTC, ys: thr, _xs: xs, meta, pointsOnly: true, fillPoints: true, psize: 12, pw: 2.5 });
+      if (hot.some((y) => y != null)) markers.push({ label: "hot " + b, color: THROTC, ys: hot, _xs: xs, meta, pointsOnly: true, hollow: true, psize: 14, pw: 2.5 });
+    });
+    return [...markers, ...out];   // markers first -> drawn on top, win the hover tie
+  };
+  // off-scale ⊗ at a run whose SELECTED cell failed/OOM'd (never plotted on-curve as a low value)
+  const failMk = (() => {
+    const byX = {};
+    branches.forEach((b) => runsFor(plat, b).forEach((r) => {
+      const c = cellOf(r); if (!c || !c.failed) return;
+      (byX[runTime(r)] = byX[runTime(r)] || { x: runTime(r), items: [] }).items.push({ b, c });
+    }));
+    return Object.values(byX).map((g) => ({ x: g.x,
+      tip: `<b>failed config</b><br>` + g.items.map(({ b, c }) => `${b} — <span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " · " + c.error : ""}`).join("<br>") }));
+  })();
+  const poTip = (spec, idx) => {
+    const t = spec._xs[idx], m = spec.meta;
+    const r = runsFor(m.platform, m.branch).find((x) => runTime(x) === t); if (!r) return null;
+    const c = cellOf(r);
+    let val = "";
+    if (c && c.failed) val = `<br><span class="bad">${c.oom ? "OOM" : "FAILED"}</span>${c.error ? " — " + c.error : ""}`;
+    else if (c) val = `<br><span class="tdim">time</span> ${c.min_ms != null ? fmtTime(c.min_ms / 60000) : "—"}`
+      + `<br><span class="tdim">peak mem</span> ${fmtGB(c.mem_mb)}`
+      + (c.speedup != null ? `<br><span class="tdim">speedup</span> ${c.speedup.toFixed(2)}×` : "")
+      + (cellHot(c) ? `<br><span class="thr">⚠ ${hotWarn(c)}</span>` : "");
+    return `<b>${m.branch}</b><br>${PLAT} · ${commitMinute(r)}`
+      + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
+      + `<br><span class="tdim">${geom} · ${op} · ${shape} · n=${n}</span>${val}`;
+  };
+  const DAY = 86400;
+  const xr = xs.length < 2 ? [xs[0] - DAY / 2, xs[0] + DAY / 2] : null;
+  const xpad = xs.length > 1 ? (xs[xs.length - 1] - xs[0]) * 0.05 : 0;
+  const poOnX = (min, max) => { poXWindow = (min != null && max != null && min <= xs[0] && max >= xs[xs.length - 1]) ? null : [min, max]; };
+  const depMk = depChangeMarks(plat);
+  const yr = (M.perop_yranges || {})[`${plat}|${geom}|${op}`] || {};   // fixed per-(platform, geom, op) y-axis (build-time)
+  const poGroup = [];
+  const base = { xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yfmt: fmtNum, onPick: pickRun,
+    tooltip: poTip, syncX: poGroup, onXChange: poOnX, showNow: true, depMarks: depMk, failMarks: failMk, boxZoom: true };
+  linePlot($("poTime"), xs, specsFor("time"), { width: $("poTime").clientWidth || 320, ...base, yLabelText: "min", yRange: yr.time });
+  linePlot($("poMem"), xs, specsFor("mem"), { width: $("poMem").clientWidth || 320, ...base, yLabelText: "GB", yRange: yr.mem });
+  if (poXWindow && $("poTime")._u) $("poTime")._u.setScale("x", { min: poXWindow[0], max: poXWindow[1] });
+
+  // legend: one swatch per branch that actually has data (line 1), constant symbol keys (line 2) — the
+  // two-row layout keeps the height stable so the panels don't jump when the branch set changes.
+  const k = (c, t) => `<span class="k"><span class="sw" style="background:${c}"></span>${t}</span>`;
+  const usedBranches = branches.filter((b) => Object.values(byBranch[b]).some((c) => c && !c.failed));
+  const depLeg = depMk.length ? `<span class="k"><span style="display:inline-block;width:8px;height:8px;background:${DEPC};transform:rotate(45deg);margin:0 4px"></span>dep change (hover ◆)</span>` : "";
+  const failLeg = failMk.length ? `<span class="k"><span class="cx" style="color:${FAILC}">⊗</span>failed config (hover)</span>` : "";
+  $("po-legend").innerHTML =
+    `<span class="hl-line"><span class="grp">${usedBranches.map((b) => k(branchColor(b), b)).join("") || '<span class="muted">no data for this selection</span>'}</span></span>` +
+    `<span class="hl-line">` +
+      `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
+      `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
+      depLeg + failLeg +
+      `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
+    `</span>`;
+}
+
 // Device-count choices for the History `n` selector = the counts present in the ACTIVE group's
 // geometries (cone/parallel have 1/2/4; translation/multiaxis are n=1 until sharding lands).  Clamps
 // ui_state.histN into range so switching groups can't leave it on a count the new group lacks.
@@ -1355,7 +1528,7 @@ function renderBanner() {
 }
 
 // ---- orchestration -----------------------------------------------------------
-function renderAll() { renderBanner(); renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); renderHistory(); }
+function renderAll() { renderBanner(); renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); renderHistory(); renderPerOp(); }
 // Default branch for a platform = the one with the MOST RECENT run (by commit time), NOT the
 // alphabetically-first.  Keeps the run-shown tile on the newest run after a branch rename / new branch
 // (e.g. greg/conebeam_sharding -> greg/sharding_extensions: the newest run is on the new branch).
@@ -1408,11 +1581,21 @@ function init() {
   // geometries only have n=1 until sharding lands, so the choices shrink when that group is selected).
   syncHistN();
   $("histN").onchange = () => { ui_state.histN = +$("histN").value; renderHistory(); };
+  // Per-op history selectors (fully self-contained: its own platform/branch/op/shape/n).  Defaults to GPU
+  // (the platform with the large sharded shapes); every dropdown is sticky — changing one keeps the rest.
+  ui_state.poPlat = M.platforms.includes("gpu") ? "gpu" : ui_state.platform;
+  fillSelect("poBranch", ["all", ...M.branches], ui_state.poBranch, ["all branches", ...M.branches]);
+  syncPerOpSelectors();
+  $("poPlat").onchange = () => { ui_state.poPlat = $("poPlat").value; renderPerOp(); };
+  $("poBranch").onchange = () => { ui_state.poBranch = $("poBranch").value; renderPerOp(); };
+  $("poOp").onchange = () => { ui_state.poGo = $("poOp").value; renderPerOp(); };
+  $("poShape").onchange = () => { ui_state.poShape = $("poShape").value; renderPerOp(); };
+  $("poN").onchange = () => { ui_state.poN = +$("poN").value; renderPerOp(); };
   $("view-seg").innerHTML = `<button data-v="plot" class="on">plot</button><button data-v="table">table</button>`;
   $("view-seg").querySelectorAll("button").forEach((b) => b.onclick = () => {
     ui_state.view = b.dataset.v; $("view-seg").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); renderScaling();
   });
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { renderScaling(); renderHistory(); }, 160); });
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { renderScaling(); renderHistory(); renderPerOp(); }, 160); });
   renderAll();
 }
 init();

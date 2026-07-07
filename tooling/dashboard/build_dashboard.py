@@ -524,6 +524,39 @@ def _history_yranges(runs) -> dict:
     return out
 
 
+def _perop_yranges(runs) -> dict:
+    """{"{platform}|{geom}|{op}": {"time": [min, max], "mem": [min, max]}} — a fixed y-axis for the
+    per-op History panels, spanning ALL branches, sinogram shapes, device counts and runs of that
+    (platform, geom, op).  Keyed by (platform, geom, op) — NOT (platform, op) — because a shared op like
+    `back` runs across geometries whose problem sizes differ by decades, so a cross-geometry range would
+    be useless; within one geometry it stays ~the shape-sweep span.  Independent of the selected
+    shape/branch/n so switching them doesn't rescale (see dashboard.js renderPerOp)."""
+    acc: dict[str, dict] = {}
+    for r in runs:
+        plat = r.get("platform")
+        for c in (r.get("cells") or []):
+            if c.get("failed"):
+                continue
+            geom, op = c.get("geom"), c.get("op")
+            if geom is None or op is None:
+                continue
+            a = acc.setdefault(f"{plat}|{geom}|{op}", {"time": [], "mem": []})
+            if c.get("min_ms") is not None:
+                a["time"].append(c["min_ms"] / 60000.0)   # minutes
+            if c.get("mem_mb") is not None:
+                a["mem"].append(c["mem_mb"] / 1024.0)      # GB
+    out = {}
+    for key, a in acc.items():
+        rng = {}
+        if a["time"]:
+            rng["time"] = [min(a["time"]), max(a["time"])]
+        if a["mem"]:
+            rng["mem"] = [min(a["mem"]), max(a["mem"])]
+        if rng:
+            out[key] = rng
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Discovery                                                                   #
 # --------------------------------------------------------------------------- #
@@ -587,6 +620,7 @@ def collect_data() -> dict:
         "corr_tol": {"single": VSMAIN_RTOL_SINGLE, "iter": VSMAIN_RTOL_ITER, "xdev": XDEV_RTOL, "xplat": VSPLAT_RTOL_SINGLE},
         "corr_stats": corr_stats,
         "hist_yranges": _history_yranges(runs),   # fixed y-axis per (geom-group, metric) for the History panels
+        "perop_yranges": _perop_yranges(runs),     # fixed y-axis per (platform, geom, op) for the per-op panels
     }
 
 
