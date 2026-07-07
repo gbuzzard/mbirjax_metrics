@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import math
 import re
 import subprocess
 from pathlib import Path
@@ -470,6 +471,60 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# History y-ranges: the all-time [min, max] of each panel's PLOTTED value (the largest-size op cell's
+# time in minutes / peak memory in GB) per geometry group, over ALL runs / branches / platforms /
+# device counts.  The dashboard pins these as a fixed y-axis so the History panels don't rescale on a
+# branch / geometry / n switch.  Mirrors dashboard.js `aggregate()`; ⚠ KEEP _HIST_GROUPS IN SYNC with
+# HIST_GROUPS in dashboard.js.
+# --------------------------------------------------------------------------- #
+_HIST_GROUPS = [
+    {"id": "cp", "geoms": ("cone", "parallel"), "op": "vcd_nonconst"},
+    {"id": "tm", "geoms": ("translation", "multiaxis_parallel"), "op": "back"},
+    {"id": "dn", "geoms": ("denoiser",), "op": "denoise"},
+]
+
+
+def _size_vol(size) -> int:
+    try:
+        return math.prod(int(x) for x in str(size).split("x"))
+    except Exception:   # noqa: BLE001
+        return 0
+
+
+def _history_yranges(runs) -> dict:
+    """{group_id: {"time": [min, max], "mem": [min, max]}} — see the section comment."""
+    out = {}
+    for g in _HIST_GROUPS:
+        times, mems = [], []
+        for r in runs:
+            cells = r.get("cells") or []
+            ndevs = {c.get("ndev") for c in cells if c.get("ndev") is not None}
+            for gm in g["geoms"]:
+                gm_cells = [c for c in cells if c.get("geom") == gm]
+                if not gm_cells:
+                    continue
+                focus = max(_size_vol(c.get("size")) for c in gm_cells)   # largest measured size for this geom
+                for nd in ndevs:
+                    c = next((c for c in cells if c.get("geom") == gm and c.get("op") == g["op"]
+                              and _size_vol(c.get("size")) == focus and c.get("ndev") == nd
+                              and not c.get("failed")), None)
+                    if not c:
+                        continue
+                    if c.get("min_ms") is not None:
+                        times.append(c["min_ms"] / 60000.0)   # minutes (matches aggregate)
+                    if c.get("mem_mb") is not None:
+                        mems.append(c["mem_mb"] / 1024.0)      # GB (matches aggregate)
+        rng = {}
+        if times:
+            rng["time"] = [min(times), max(times)]
+        if mems:
+            rng["mem"] = [min(mems), max(mems)]
+        if rng:
+            out[g["id"]] = rng
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Discovery                                                                   #
 # --------------------------------------------------------------------------- #
 def collect_data() -> dict:
@@ -531,6 +586,7 @@ def collect_data() -> dict:
         "cleared_through": str(cleared_through) if cleared_through else None,
         "corr_tol": {"single": VSMAIN_RTOL_SINGLE, "iter": VSMAIN_RTOL_ITER, "xdev": XDEV_RTOL, "xplat": VSPLAT_RTOL_SINGLE},
         "corr_stats": corr_stats,
+        "hist_yranges": _history_yranges(runs),   # fixed y-axis per (geom-group, metric) for the History panels
     }
 
 

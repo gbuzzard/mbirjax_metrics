@@ -241,6 +241,24 @@ function logTicks(mn, mx) {
 
 // ---- uPlot wrapper -----------------------------------------------------------
 // specs: [{label, color, ys, dash, pointsOnly, width, psize}]
+// Fixed LOG y-axis for the History panels: PROPORTIONAL margins (a fixed % of plot height top & bottom,
+// in log space) instead of a floor-to-decade bottom + fixed-multiple top, plus a fixed marker height in
+// the top margin.  Given the data extent [dmin, dmax], solve span so dmin sits FB of the height up from
+// bot and dmax sits FT down from top; park off-scale marks at MK of the top margin above dmax (so failed/
+// OOM/dep marks are separated at a CONSISTENT top height regardless of the view's data).  null if
+// non-positive.
+const HIST_Y_FB = 0.06, HIST_Y_FT = 0.14, HIST_Y_MK = 0.5;
+function fixedLogYRange(dmin, dmax) {
+  if (!(dmin > 0) || !(dmax > 0)) return null;
+  let lo = Math.log10(dmin), hi = Math.log10(dmax);
+  if (hi - lo < 0.05) { const c = (lo + hi) / 2; lo = c - 0.15; hi = c + 0.15; }   // degenerate extent -> small window
+  const span = (hi - lo) / (1 - HIST_Y_FB - HIST_Y_FT);
+  return {
+    bot: Math.pow(10, lo - HIST_Y_FB * span),
+    top: Math.pow(10, hi + HIST_Y_FT * span),
+    mark: Math.pow(10, hi + HIST_Y_MK * HIST_Y_FT * span),
+  };
+}
 function linePlot(el, xs, specs, o) {
   o = o || {};
   const cs = getComputedStyle(document.body);
@@ -264,12 +282,19 @@ function linePlot(el, xs, specs, o) {
   // Off-scale markers (dep changes + failed/OOM configs) float ABOVE the data at markY = depTopMul × the
   // tallest data point (default 2×); the y-scale is stretched to keep that headroom (see yScale.range).
   // Null when there are no such marks or no finite data — the draw hooks then fall back to a fixed band.
+  // Fixed y-axis (o.yRange + o.yLog): a LOG range with proportional top/bottom margins (fixedLogYRange).
+  const yFixR = (o.yLog && o.yRange && o.yRange[0] != null && o.yRange[1] != null)
+    ? fixedLogYRange(o.yRange[0], o.yRange[1]) : null;
   let markY = null;
   if ((o.depMarks && o.depMarks.length) || (o.failMarks && o.failMarks.length)) {
     let gmax = -Infinity;
     S.forEach((s) => s.ys.forEach((v) => { if (v != null && isFinite(v) && v > gmax) gmax = v; }));
     if (gmax > 0) markY = gmax * (o.depTopMul || 2);
   }
+  // Fixed axis: park the off-scale marks at the FIXED top-margin height (not 2x the current view's data),
+  // so failed/OOM/dep marks stay separated at a consistent top regardless of the view (fixes both the
+  // "not separated" and the "not at the top for n=4" cases).
+  if (yFixR) markY = yFixR.mark;
   const series = [{}, ...S.map((s) => ({
     stroke: s.color, width: s.width == null ? 2 : s.width, dash: s.dash || undefined,
     spanGaps: true,  // bridge null cells (e.g. a failed non-dividing size) so the curve stays connected
@@ -334,10 +359,15 @@ function linePlot(el, xs, specs, o) {
   const baseYRange = o.yPad != null ? padRange(o.yPad, o.yLog)
                    : o.padAll != null ? padRange(o.padAll, o.yLog)
                    : (o.tightLog && o.yLog) ? tightLog : null;
-  if (markY != null) yScale.range = (u, mn, mx) => {
-    const hi = Math.max(mx, markY);
+  // A FIXED y-axis (yFixR, the History panels' all-time range) pins [bot, top] with proportional log
+  // margins; the off-scale marks sit at yFixR.mark within the top margin.  Otherwise: auto data range,
+  // lifting the top above any floating markers (markY) so they stay on screen.
+  if (yFixR) yScale.range = () => [yFixR.bot, yFixR.top];
+  else if (markY != null || baseYRange) yScale.range = (u, mn, mx) => {
+    let hi = mx;
+    if (markY != null) hi = Math.max(hi, markY);
     if (baseYRange) return baseYRange(u, mn, hi);
-    if (o.yLog) { const lo = (mn > 0) ? Math.pow(10, Math.floor(Math.log10(mn))) : mn; return [lo, hi * 1.25]; }
+    if (o.yLog) { const flo = (mn > 0) ? Math.pow(10, Math.floor(Math.log10(mn))) : mn; return [flo, hi * 1.25]; }
     return [Math.min(mn, 0), hi * 1.1];
   };
   else if (baseYRange) yScale.range = baseYRange;
@@ -401,11 +431,12 @@ function linePlot(el, xs, specs, o) {
   // Linked x-zoom: when one plot in a sync group zooms (or resets) its x-scale, mirror the range to
   // the others.  Propagate ONLY when a peer's range actually differs, so the cascade converges
   // instead of looping (uPlot commits setScale on rAF, so a sync flag wouldn't span the callbacks).
-  if (o.syncX) { const group = o.syncX;
+  if (o.syncX || o.onXChange) { const group = o.syncX || [];
     hooks.setScale = [(u, key) => {
       if (key !== "x") return;
       const mn = u.scales.x.min, mx = u.scales.x.max;
       group.forEach((p) => { if (p !== u && (p.scales.x.min !== mn || p.scales.x.max !== mx)) p.setScale("x", { min: mn, max: mx }); });
+      if (o.onXChange) o.onXChange(mn, mx);   // report the (zoomed/reset) x-window so a caller can persist it
     }];
   }
   // Optional custom triangle marks at data points (o.marks: [{x, y}]) — uPlot only draws CIRCLE
@@ -1044,6 +1075,9 @@ function depTipHtml(entries) {
   });
   return `<b>dependency change</b><br>${parts.join('<br><span class="tdim">———</span><br>')}`;
 }
+// Persisted history x-window [min, max] so the time range survives branch/geom/run/group re-renders
+// until a double-click reset (which restores the full range) or a page refresh.  null = auto/full.
+let histXWindow = null;
 function renderHistory() {
   // The history spans BOTH platforms and all branches; x is commit time
   // (falls back to collection date for older runs).
@@ -1090,6 +1124,11 @@ function renderHistory() {
   // Pad the time domain by 5% of its span on each end so the first/last run isn't on the boundary
   // (where a click misses) — proportional, so it scales as the history grows instead of a fixed day.
   const xpad = xs.length > 1 ? (xs[xs.length - 1] - xs[0]) * 0.05 : 0;
+  // Capture a zoom/reset so the window PERSISTS across re-renders: a zoom is a sub-range; a reset
+  // (double-click) restores a range spanning all data -> forget the window (revert to auto/full).
+  const histOnX = (min, max) => {
+    histXWindow = (min != null && max != null && min <= xs[0] && max >= xs[xs.length - 1]) ? null : [min, max];
+  };
   // hover tooltip: the same identity as the "run shown" tile (branch · platform · commit date+time).
   const histTip = (spec, idx) => {
     const r = runsFor(spec.meta.platform, spec.meta.branch).find((x) => runTime(x) === spec._xs[idx]);
@@ -1209,16 +1248,20 @@ function renderHistory() {
     });
   })();
   const allMarks = (pick) => [...depDiamonds(pick), ...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
-  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true, depMarks: depMk });
-  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk });
-  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk });
+  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk });
+  const yr = (M.hist_yranges || {})[group.id] || {};   // fixed per-(geom-group, metric) y-axis (build-time)
+  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk, yRange: yr.time });
+  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk, yRange: yr.mem });
   const gateSpecs = [];
   M.platforms.forEach((plat) => branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gatePerf : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, showNow: true, depMarks: depMk });
+  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk });
+  // Re-open at the persisted window (if any) via setScale — NOT a clamped xRange — so drag-zoom and the
+  // double-click reset keep working; syncX mirrors it to the other two panels.
+  if (histXWindow && $("hVcd")._u) $("hVcd")._u.setScale("x", { min: histXWindow[0], max: histXWindow[1] });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   // Only surface the dep-canary legend entries once a dep change has actually been recorded (gen>0 runs),
@@ -1229,15 +1272,21 @@ function renderHistory() {
   const failLeg = failMk.length
     ? `<span class="k"><span class="cx" style="color:${FAILC}">⊗</span>failed config (hover)</span>`
     : "";
+  // Two fixed rows: platforms + geometries on line 1 (these change with the geom group), the symbol keys
+  // on line 2 (constant) — so switching groups never reflows the symbols and the plots don't jump.
   $("hist-legend").innerHTML =
-    `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
-    `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}` +
-    `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
-    `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
-    `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span>` +
-    depLeg + failLeg +
-    `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
-    `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span></span>`;
+    `<span class="hl-line">` +
+      `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
+      `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}</span>` +
+    `</span>` +
+    `<span class="hl-line">` +
+      `<span class="k"><span class="ring" style="border-color:${THROTC}"></span>ran hot</span>` +
+      `<span class="k"><span class="dot" style="background:${THROTC}"></span>throttled</span>` +
+      `<span class="k"><span class="tri" style="border-bottom-color:${FAILC}"></span>tests failed</span>` +
+      depLeg + failLeg +
+      `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
+      `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span>` +
+    `</span>`;
 }
 
 // Device-count choices for the History `n` selector = the counts present in the ACTIVE group's
