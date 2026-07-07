@@ -33,7 +33,7 @@ def main():
         aligned = 'aligned' if prov.get('aligned') else ''
         rs = side.get('recon_settings', {})
         rs_txt = ', '.join(f'{k}={v}' for k, v in rs.items())
-        rows.append((tag, shape, f'{df}x{vf}', src, prov.get('built', '?'),
+        rows.append((tag, shape, f'v{vf}x d{df}x', src, prov.get('built', '?'),
                      (aligned + ('; ' if aligned and rs_txt else '') + rs_txt)))
 
     lines = [
@@ -41,10 +41,11 @@ def main():
         '',
         f'Shared, group-writable preprocessed sinograms for the partition-sequence study.',
         f'Location: `{CACHE_DIR}`.  Built by `build_cache.py` (reuses existing caches).',
-        'Regenerate this file with `python gen_manifest.py`.',
+        'Tag scheme: `<source>_v<view_factor>x_d<det_factor>x_nv<views>_nch<channels>`.  '
+        'Regenerate with `python gen_manifest.py`.',
         '',
-        '| tag | sinogram | det×view | source | built | notes |',
-        '|-----|----------|----------|--------|-------|-------|',
+        '| tag | sinogram (v×row×ch) | subsample | source | built | notes |',
+        '|-----|---------------------|-----------|--------|-------|-------|',
     ]
     for tag, shape, dv, src, built, notes in rows:
         shp = '×'.join(str(x) for x in shape) if shape else '?'

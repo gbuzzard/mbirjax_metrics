@@ -36,7 +36,9 @@ EXP = ps_config.experiment(CFG)
 CACHE_DIR = CFG['cache_dir']
 OUTPUT_DIR = CFG['output_dir']
 CANDIDATES = EXP['candidates']
-DATASETS = EXP['datasets']
+# PS_DATASETS (comma-separated) subsets the experiment's datasets -- lets an expensive
+# experiment be split into one job per dataset (parallel + failure-isolated).
+DATASETS = os.environ['PS_DATASETS'].split(',') if os.environ.get('PS_DATASETS') else EXP['datasets']
 PHASES = EXP['phases']
 
 _ROLE_ENV = 'PS_STUDY_ROLE'

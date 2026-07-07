@@ -83,6 +83,37 @@ datasets:
     view_factor: 8
     auto_crop: true
     recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
+  # --- d2x well-sampled scale set (~1024^3 recon; view:channel ratio kept in [0.45, 1.0]) ---
+  # z62 has only 801 raw views (v1x = 0.78, its max); sic/lilly are view-rich so v2x keeps
+  # them <= 1.0 (v1x would over-sample: sic 1.56, lilly 1.91).
+  z62_v1x_d2x_nv801_nch1024:             # 801 views / 1024 ch = 0.78
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/ParAM-Round-1_Z62.txrm
+    detector_factor: 2
+    view_factor: 1
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  sic_v2x_d2x_nv801_nch1024:             # 1601 raw views -> v2x 801 / 1024 = 0.78
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/SiC-SiC_CompositeFFOV_tomo-A.txrm
+    detector_factor: 2
+    view_factor: 2
+    view_alignment: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  lilly_v2x_d2x_nv900_nch940:            # 1800 raw views -> v2x 900 / 940 = 0.96 (nch verified post-build)
+    loader: nsi
+    path: /depot/bouman/data/Lilly/Autoinjector_HighRes_Horizontal/
+    detector_factor: 2
+    view_factor: 2
+    auto_crop: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
+  lilly_v4x_d2x_nv450_nch940:            # 1800 raw views -> v4x 450 / 940 = 0.48 (same recon, fewer views)
+    loader: nsi
+    path: /depot/bouman/data/Lilly/Autoinjector_HighRes_Horizontal/
+    detector_factor: 2
+    view_factor: 4
+    auto_crop: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
+
   synthetic:
     loader: synthetic                    # no data files: the local smoke-test dataset
     size: 64
@@ -138,6 +169,17 @@ experiments:
     sweep_stop_pct: 0.05
     reference_max_iterations: 300
 
+  scale_d2x:                             # [7] vs [4,7] at ~1024^3, well-sampled (nv/nch in [0.45,1.0])
+    datasets: [z62_v1x_d2x_nv801_nch1024, sic_v2x_d2x_nv801_nch1024, lilly_v2x_d2x_nv900_nch940, lilly_v4x_d2x_nv450_nch940]
+    phases: [reference, noise_floor, sweep]
+    candidates:
+      default:    [0, 2, 4, 6, 7]        # reference/noise-floor sequence (also shown in the sweep)
+      flat_128:   [7]
+      ramp_4_128: [4, 7]
+    sweep_max_iterations: 150
+    sweep_stop_pct: 0.05
+    reference_max_iterations: 300
+
 # ---------------------------------------------------------------------------------------
 # Page: which results build_page.py renders and how.  rounds = data/ subfolders in
 # precedence order (later loses).  targets = NRMSE levels tabulated per dataset.
@@ -154,3 +196,8 @@ page:
     - {tag: z62_v4x_d4x_nv201_nch512,   rounds: [z62_4x4],        targets: [0.10, 0.05, 0.04], floor: 0.00828, sino: [201, 512, 512], recon: [512, 512, 512]}
     - {tag: lilly_v4x_d4x_nv450_nch470, rounds: [lilly_4x4],      targets: [0.05, 0.02],       sino: [450, 356, 470], recon: [470, 470, 356]}
     - {tag: sic_v4x_d4x_nv401_nch512,   rounds: [sic_4x4],        targets: [0.10, 0.08],       sino: [401, 512, 512], recon: [512, 512, 512]}
+    # d2x well-sampled scale set (shapes + floor auto-derive from the scale_d2x run JSONs)
+    - {tag: z62_v1x_d2x_nv801_nch1024,  rounds: [scale_d2x],      targets: [0.10, 0.09, 0.08]}
+    - {tag: sic_v2x_d2x_nv801_nch1024,  rounds: [scale_d2x],      targets: [0.10, 0.09, 0.08]}
+    - {tag: lilly_v2x_d2x_nv900_nch940, rounds: [scale_d2x],      targets: [0.02, 0.01, 0.005]}
+    - {tag: lilly_v4x_d2x_nv450_nch940, rounds: [scale_d2x],      targets: [0.02, 0.01, 0.005]}

@@ -41,6 +41,8 @@ def load(dataset, rounds):
     for rnd in reversed(rounds):                 # later entries in `rounds` lose
         for path in sorted(glob.glob(os.path.join(HERE, 'data', rnd, f'{dataset}_*.json'))):
             r = json.load(open(path))
+            if 'label' not in r:                     # <tag>_floor.json summary (read by load_floor)
+                continue
             name = r['label'][len(dataset) + 1:]
             if any(s in name for s in SKIP):
                 if r.get('sino_shape') and sino_shape is None:   # e.g. the reference run
