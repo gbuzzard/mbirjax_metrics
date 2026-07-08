@@ -113,6 +113,21 @@ datasets:
     view_factor: 4
     auto_crop: true
     recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
+  # d2x ~500-view set for the recon-export comparison (recon_exports.scale1k_snapshots)
+  sic_v3x_d2x_nv534_nch1024:             # 1601 raw views -> v3x 534 / 1024 = 0.52
+    loader: zeiss
+    path: /depot/bouman/data/ORNL/versa/SiC-SiC_CompositeFFOV_tomo-A.txrm
+    detector_factor: 2
+    view_factor: 3
+    view_alignment: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0}
+  lilly_v3x_d2x_nv600_nch940:            # 1800 raw views -> v3x 600 / 940 = 0.64
+    loader: nsi
+    path: /depot/bouman/data/Lilly/Autoinjector_HighRes_Horizontal/
+    detector_factor: 2
+    view_factor: 3
+    auto_crop: true
+    recon_settings: {sharpness: 1.0, snr_db: 30.0, positivity_flag: true}
 
   synthetic:
     loader: synthetic                    # no data files: the local smoke-test dataset
@@ -179,6 +194,23 @@ experiments:
     sweep_max_iterations: 150
     sweep_stop_pct: 0.05
     reference_max_iterations: 300
+
+# ---------------------------------------------------------------------------------------
+# Recon exports: reconstruct and SAVE VOLUMES (+ run logs) as slice_viewer-loadable h5, via
+# recon_and_save.py.  Unlike experiments (which record trajectory NRMSE), these produce recon
+# files for visual inspection.  `snapshots` = iteration counts to save; ONE continuous
+# checkpointed run to max(snapshots) yields all of them (error-sino + Hessian preserved, RNG
+# stream not re-seeded -> bit-continuous, verified by the synthetic trial).  No reference/NRMSE.
+# Select with PS_EXPORT; PS_DATASETS subsets for parallel per-dataset jobs.
+# Output: <out_dir>/<tag>_<seq>_iter<N>.h5  (dataset 'recon' + recon_dict attrs incl. recon_log).
+# ---------------------------------------------------------------------------------------
+recon_exports:
+  scale1k_snapshots:                     # [0,2,4,6,7] vs [4,7] at ~1024^3, snapshots 15/20/50
+    datasets: [z62_v1x_d2x_nv801_nch1024, sic_v3x_d2x_nv534_nch1024, lilly_v3x_d2x_nv600_nch940]
+    sequences: {default: [0, 2, 4, 6, 7], ramp47: [4, 7]}
+    snapshots: [15, 20, 50]
+    seed: 0
+    out_dir: /depot/bouman/data/mbirjax_metrics/recons
 
 # ---------------------------------------------------------------------------------------
 # Page: which results build_page.py renders and how.  rounds = data/ subfolders in
