@@ -1,0 +1,51 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [237 items]
+
+...............................................s........................ [ 30%]
+...................................s...............s.................... [ 60%]
+................................................F....................... [ 91%]
+.....................                                                    [100%]
+=================================== FAILURES ===================================
+____________________ TestTilePolicy.test_base_policy_on_cpu ____________________
+[gw7] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_tile_policy.TestTilePolicy testMethod=test_base_policy_on_cpu>
+
+    def test_base_policy_on_cpu(self):
+        # On CPU (these tests run on CPU) parallel beam inherits the base policy untouched.
+        model = make_model()
+        model.configure_devices(1)
+        t = model.tiles
+        self.assertEqual(t.fwd_view_batch, 64)          # min(views, cap 128)
+        self.assertEqual(t.back_view_batch, 64)
+>       self.assertEqual(t.fwd_pixel_batch, model._PIXEL_BATCH_DEFAULT)
+E       AssertionError: 8192 != 2048
+
+../tests/test_tile_policy.py:32: AssertionError
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17: 10 warnings
+  /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+  /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:211: GPU present: auto uses GPUs; this exercises the CPU default
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+FAILED ../tests/test_tile_policy.py::TestTilePolicy::test_base_policy_on_cpu
+====== 1 failed, 233 passed, 3 skipped, 14 warnings in 413.12s (0:06:53) =======
