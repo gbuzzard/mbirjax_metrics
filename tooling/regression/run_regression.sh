@@ -168,6 +168,13 @@ fi
 # provenance.  The big experiments/ tree is gitignored, so it is never cloned.
 DATE="$(date '+%Y%m%d')"
 GATE_FAIL=0
+TEST_FAIL=0
+# Alert email (A): accumulate per-branch perf-gate HARD items + test failures into ALERT_BODY, sent
+# ONCE at the end via sendmail if non-empty.  The run's EXIT CODE (and thus Slurm's --mail-type=FAIL
+# mail) still tracks GATE_FAIL only — so a test-only failure emails the detail WITHOUT flipping the
+# exit code (no redundant Slurm mail).  Recipient overridable via REG_MAIL_TO.
+ALERT_BODY="$(mktemp)"
+MAIL_TO="${REG_MAIL_TO:-buzzard@purdue.edu}"
 
 # measure_commit: run the perf engine for ONE (branch, sha) at a given dep-gen/reason — the vehicle for
 # the dependency-canary steps that are NOT the plain per-branch loop below (the jax-step on the PREVIOUS
@@ -249,8 +256,15 @@ for i in "${!CHANGED_BR[@]}"; do
     else
       ( cd "$WT" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" python -m pytest tests -q -n 10 ) 2>&1 | tee "$TLOG"
     fi
-    [ "${PIPESTATUS[0]}" -eq 0 ] || log "$BR: tests reported failures (non-fatal; see $(basename "$TLOG"))."
-    log "$BR: tests done."
+    if [ "${PIPESTATUS[0]}" -eq 0 ]; then
+      log "$BR: tests done."
+    else
+      TEST_FAIL=1
+      log "$BR: tests reported failures (non-fatal; emailed — see $(basename "$TLOG"))."
+      { echo "### $BR @ ${SHA:0:8} — TEST FAILURES"
+        grep -aE "^FAILED |[0-9]+ (failed|error)" "$TLOG" | tail -20
+        echo; } >>"$ALERT_BODY"
+    fi
   fi
 
   # Perf engine (fixed harness; lib_root=$WT selects the library + provenance).  The gate compares
@@ -267,13 +281,19 @@ for i in "${!CHANGED_BR[@]}"; do
     DGEN="$DEP_GEN"; if [ "$RAN_JAX_STEP" = "1" ]; then RREASON="code-step"; else RREASON="jax-step"; fi
   fi
   log "$BR: running perf engine (output follows)..."
-  if REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
+  GLOG="$(mktemp)"   # capture engine output to grep the gate detail for the alert email; tee keeps it live
+  REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
        REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" \
-       python "$HARNESS_DIR/scaling_tests/run_nightly.py"; then
+       python "$HARNESS_DIR/scaling_tests/run_nightly.py" 2>&1 | tee "$GLOG"
+  if [ "${PIPESTATUS[0]}" -eq 0 ]; then
     log "$BR: engine ok."
   else
     GATE_FAIL=1; log "$BR: GATE FAIL (perf regression) — see $OUT."
+    { echo "### $BR @ ${SHA:0:8} — PERF GATE FAIL (vs prior baseline)"
+      grep -aE "GATE: FAIL|^ *HARD " "$GLOG" | head -25
+      echo; } >>"$ALERT_BODY"
   fi
+  rm -f "$GLOG"
 
   # Record the measured commit LAST (a crash mid-run re-measures next time).  Skipped in smoke so a
   # test run never marks the branch as measured.
@@ -335,6 +355,32 @@ else
   log "nothing new to commit."
 fi
 fi   # end REG_SMOKE publish guard
+
+# ── Alert email (A): ONE message with the perf-gate + test-failure detail, if any ────────────────
+# Fires on a perf-gate regression OR a (non-fatal) test failure.  Slurm's --mail-type=FAIL is kept as
+# the reliable backstop and fires only on the non-zero exit below (perf gate) — so a gate fail sends 2
+# mails (Slurm generic + this detailed one), a test-only fail sends just this one, a green night none.
+if { [ "$GATE_FAIL" != "0" ] || [ "$TEST_FAIL" != "0" ]; } && [ -s "$ALERT_BODY" ]; then
+  SM="$(command -v sendmail || echo /usr/sbin/sendmail)"
+  if [ -x "$SM" ]; then
+    _brs="$(IFS=,; echo "${CHANGED_BR[*]}")"
+    { printf 'Subject: [mbirjax-nightly] %s regression: %s\nTo: %s\n\n' "$PLAT" "$_brs" "$MAIL_TO"
+      echo "mbirjax nightly ($PLAT) detected regressions on $(hostname) at $(date '+%F %T')."
+      echo "Branches measured this run: $_brs"
+      echo
+      cat "$ALERT_BODY"
+      [ -n "${SLURM_JOB_ID:-}" ] && echo "Full log: ~/.mbirjax/regression/nightly-${SLURM_JOB_ID}.log"
+      echo "Records:  $RES/<branch>/  (record book records_${PLAT}.yaml)"
+      echo
+      echo "Note: a perf-gate regression AUTO-ADVANCES the baseline, so this alert fires ONCE per"
+      echo "regressing change — review and revert if it is not an expected/accepted change.  Test"
+      echo "failures are non-fatal (they do not change the exit code)."
+    } | "$SM" -t && log "alert email sent to $MAIL_TO." || log "WARN: alert email send failed (non-fatal)."
+  else
+    log "WARN: no sendmail found — alert email skipped (Slurm --mail-type=FAIL still covers gate fails)."
+  fi
+fi
+rm -f "$ALERT_BODY"
 
 [ "$GATE_FAIL" = "0" ] || { log "REGRESSION DETECTED — exit 1 (alert)."; exit 1; }
 log "done — no regressions."
