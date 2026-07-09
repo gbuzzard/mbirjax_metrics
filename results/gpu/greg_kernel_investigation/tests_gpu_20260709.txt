@@ -1,0 +1,82 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [240 items]
+
+..............................s......................................... [ 30%]
+............................................s....................s...... [ 60%]
+...........................................F...s........................ [ 90%]
+........................                                                 [100%]
+=================================== FAILURES ===================================
+_________ TestScatterCenters.test_chunked_wrapper_matches_single_call __________
+[gw8] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_scatter_centers.TestScatterCenters testMethod=test_chunked_wrapper_matches_single_call>
+
+    def test_chunked_wrapper_matches_single_call(self):
+        # Force the chunked path with a tiny threshold: results must match the single-call
+        # path EXACTLY for forward (same per-chunk programs, concatenated) and to summation
+        # order for back (the chunk accumulation reorders the view sum).
+        model = make_model()
+        recon_shape = model.get_params('recon_shape')
+        idx = mbirjax.gen_full_indices(recon_shape, use_ror_mask=False)
+        rng = np.random.default_rng(2)
+        vox = rng.random((len(idx), recon_shape[2]), dtype=np.float32)
+        sino = rng.random(model.get_params('sinogram_shape'), dtype=np.float32)
+        pf = model.projector_functions      # the wrapper level, where the hybrid lives
+        fwd_single = np.asarray(pf.sparse_forward_project(vox, idx))
+        back_single = np.asarray(pf.sparse_back_project(sino, idx))
+        saved = projectors.N_PC_SINGLE_CALL_MAX_BYTES
+        try:
+            projectors.N_PC_SINGLE_CALL_MAX_BYTES = 1     # everything chunks
+            fwd_chunked = np.asarray(pf.sparse_forward_project(vox, idx))
+            back_chunked = np.asarray(pf.sparse_back_project(sino, idx))
+        finally:
+            projectors.N_PC_SINGLE_CALL_MAX_BYTES = saved
+>       np.testing.assert_array_equal(fwd_chunked, fwd_single)
+E       AssertionError: 
+E       Arrays are not equal
+E       
+E       Mismatched elements: 18445 / 30720 (60%)
+E       First 5 mismatches are at indices:
+E        [0, 0, 0]: 18.034353256225586 (ACTUAL), 18.034351348876953 (DESIRED)
+E        [0, 0, 1]: 15.382574081420898 (ACTUAL), 15.382575035095215 (DESIRED)
+E        [0, 0, 3]: 13.924195289611816 (ACTUAL), 13.924196243286133 (DESIRED)
+E        [0, 0, 5]: 16.671377182006836 (ACTUAL), 16.671375274658203 (DESIRED)
+E        [0, 0, 6]: 16.184301376342773 (ACTUAL), 16.184303283691406 (DESIRED)
+E       Max absolute difference among violations: 9.536743e-06
+E       Max relative difference among violations: 4.777004e-07
+E        ACTUAL: array([[[18.034353, 15.382574, 14.26568 , ..., 13.639809, 15.662166,
+E                17.458593],
+E               [16.35232 , 19.782614, 15.818079, ..., 14.24496 , 14.273123,...
+E        DESIRED: array([[[18.034351, 15.382575, 14.26568 , ..., 13.63981 , 15.662166,
+E                17.458595],
+E               [16.352318, 19.782618, 15.818077, ..., 14.24496 , 14.273122,...
+
+../tests/test_scatter_centers.py:70: AssertionError
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17: 10 warnings
+  /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+  /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:212: CPU-only behavior (a GPU applies platform overrides)
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+SKIPPED [1] ../tests/test_tile_policy.py:34: CPU-only behavior (a GPU applies platform overrides)
+FAILED ../tests/test_scatter_centers.py::TestScatterCenters::test_chunked_wrapper_matches_single_call
+====== 1 failed, 235 passed, 4 skipped, 14 warnings in 518.30s (0:08:38) =======
