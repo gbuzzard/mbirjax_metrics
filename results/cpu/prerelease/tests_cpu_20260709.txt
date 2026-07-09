@@ -1,0 +1,28 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 10/10 workers
+10 workers [217 items]
+
+........................................................................ [ 33%]
+.........................s.....s........................................ [ 66%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+=============================== warnings summary ===============================
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+  /Users/gbuzzard/.mbirjax/regression/lib_prerelease/mbirjax/multiaxis_parallel.py:88: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /Users/gbuzzard/miniforge3/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [2] ../tests/sharding/test_padding.py:398: sharded VCD loop is geometry-independent (gated on parallel + cone)
+============ 215 passed, 2 skipped, 4 warnings in 124.69s (0:02:04) ============
