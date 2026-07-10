@@ -165,6 +165,20 @@ the `renderAll()` chain.
 - **Reproducible fingerprints need deterministic inputs** (`input_seed`, `measure_seed`, fixed
   iterations). Any nondeterminism breaks the prior/vs-main/cross-* comparisons. → memory
   `performance_tracking.md` (the VCD-partition reproducibility note).
+- **CPU perf is measured on an interactive laptop — a whole-suite slowdown is the ruler, not the
+  code.** Concurrent Mac activity (a manual daytime `run_one_night`, IDE indexing, a browser) injects
+  a broad *multiplicative* slowdown into that run's CPU times. The giveaway that it's the ruler and
+  not a regression: **~every cell moves by roughly the same factor, on *both* branches at once** — a
+  real regression is cell/op-specific and cannot hit two different-code branches identically. (Seen
+  2026-07-10: 123/123 cells slower on each of prerelease and kernel_investigation, median ≈1.45×,
+  worst on the *short compute-bound* cells — parallel/forward 128³ ≈2.4× — and milder on the long
+  ones. That skew is the fingerprint of **core contention**; thermal throttling would be the opposite,
+  worst on the sustained-large cells.) Diagnose by ratio-ing the two runs' per-cell `min time` from
+  the `_table.yaml` files: a near-uniform median >1 across ~100% of cells ⇒ contention, stop looking
+  at the code. The relevant window is the record's `measured_at`, **not** "load right now."
+  Mitigation: let the CPU nightly fire from the idle 2 AM scrontab and avoid manual daytime CPU runs
+  (or move CPU measurement to an isolated node like the GPU one). `git_dirty: true` on a manual run is
+  usually inert — bash-script edits the engine never executes — so don't over-read it.
 - The dashboard is **light-mode only** by design (plots read best on white).
 
 ---
