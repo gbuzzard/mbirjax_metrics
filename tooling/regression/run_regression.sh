@@ -242,22 +242,38 @@ for i in "${!CHANGED_BR[@]}"; do
   fi
   mkdir -p "$OUT"
 
-  # Tests: reuse the branch's OWN runner (your -n 10 tuning + conftest knobs); NON-FATAL (logged,
-  # not gated — per-branch test diffing is a later increment; the perf engine is the alert path).
-  # `tee` shows progress live (interactive) AND records to tests_*.txt; on an unattended run the
-  # stdout copy just lands in the cron/slurm log.
+  # Tests: reuse the branch's OWN runner + conftest knobs; NON-FATAL (logged, not gated — the perf
+  # engine is the alert path).  `tee` shows progress live AND records to tests_*.txt.
   if [ "${RUN_TESTS:-0}" = "1" ] && [ "${REG_SMOKE:-0}" != "1" ]; then
     TLOG="$OUT/tests_${PLAT}_${DATE}.txt"
-    log "$BR: running tests (MBIRJAX_NUM_CPU_DEVICES=$TEST_CPU_DEVICES) -> $(basename "$TLOG") ..."
+    # xdist workers: 4 on GPU, 8 on CPU.  Every worker inits CUDA at `import mbirjax`; too many
+    # concurrent GPU-backend inits abort ("Fatal Python error: Aborted") and crash the whole run
+    # (2026-07-10).  Pass via PYTEST_NPROC (honored by the current run_tests.sh); ALSO sed the clone
+    # so a branch whose runner still hardcodes `-n <N>` is capped too.
+    NPROC=$([ "$PLAT" = "gpu" ] && echo 4 || echo 8)
+    [ -f "$WT/dev_scripts/run_tests.sh" ] && sed -i -E "s/-n[ =]+[0-9]+/-n $NPROC/g" "$WT/dev_scripts/run_tests.sh" 2>/dev/null || true
+    log "$BR: running tests (MBIRJAX_NUM_CPU_DEVICES=$TEST_CPU_DEVICES, xdist -n $NPROC) -> $(basename "$TLOG") ..."
     if [ -f "$WT/dev_scripts/run_tests.sh" ]; then
-      # run_tests.sh uses a path RELATIVE to dev_scripts/ (`python -m pytest -n 10 ../tests`), so it
-      # MUST be invoked from there or it collects 0 tests (../tests would resolve outside the clone).
-      ( cd "$WT/dev_scripts" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" bash run_tests.sh ) 2>&1 | tee "$TLOG"
+      # run_tests.sh uses a path RELATIVE to dev_scripts/, so it MUST be invoked from there or it
+      # collects 0 tests (../tests would resolve outside the clone).
+      ( cd "$WT/dev_scripts" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" PYTEST_NPROC="$NPROC" bash run_tests.sh ) 2>&1 | tee "$TLOG"
     else
-      ( cd "$WT" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" python -m pytest tests -q -n 10 ) 2>&1 | tee "$TLOG"
+      ( cd "$WT" && MBIRJAX_NUM_CPU_DEVICES="$TEST_CPU_DEVICES" python -m pytest tests -q -n "$NPROC" ) 2>&1 | tee "$TLOG"
     fi
-    if [ "${PIPESTATUS[0]}" -eq 0 ]; then
+    tests_rc="${PIPESTATUS[0]}"
+    # A wholesale CRASH (xdist workers dying at import) can exit 0 with ZERO "FAILED" lines, so also
+    # scan the log for crash markers -- otherwise a run where NO tests ran would look green (the
+    # 2026-07-10 silent failure).
+    if grep -qaE "maximum crashed workers reached|Fatal Python error|INTERNALERROR|node down" "$TLOG" 2>/dev/null; then crashed=1; else crashed=0; fi
+    if [ "$tests_rc" -eq 0 ] && [ "$crashed" -eq 0 ]; then
       log "$BR: tests done."
+    elif [ "$crashed" -eq 1 ]; then
+      TEST_FAIL=1
+      log "$BR: TEST RUN CRASHED — xdist workers died; NO test results (emailed; see $(basename "$TLOG"))."
+      { echo "### $BR @ ${SHA:0:8} — TEST RUN CRASHED (xdist workers died — no results)"
+        grep -aE "maximum crashed workers reached|Fatal Python error|node down|INTERNALERROR" "$TLOG" | sort -u | head -6
+        echo "  The whole test run collapsed (likely concurrent GPU-init aborts), so 0 tests ran."
+        echo; } >>"$ALERT_BODY"
     else
       TEST_FAIL=1
       log "$BR: tests reported failures (non-fatal; emailed — see $(basename "$TLOG"))."
@@ -285,8 +301,19 @@ for i in "${!CHANGED_BR[@]}"; do
   REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
        REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" \
        python "$HARNESS_DIR/scaling_tests/run_nightly.py" 2>&1 | tee "$GLOG"
-  if [ "${PIPESTATUS[0]}" -eq 0 ]; then
+  engine_rc="${PIPESTATUS[0]}"
+  # The engine can print an abort ("produced no result" / a CUDA "Check failed") yet still exit 0,
+  # writing NO record while looking like success (the 2026-07-10 cascade: crashed test workers left
+  # the GPUs in a bad state -> the engine's setup worker aborted).  Catch that from the output.
+  if grep -qaE "produced no result|CUDA error|CUDA_ERROR|Check failed|Failed to create stream" "$GLOG" 2>/dev/null; then engine_aborted=1; else engine_aborted=0; fi
+  if [ "$engine_rc" -eq 0 ] && [ "$engine_aborted" -eq 0 ]; then
     log "$BR: engine ok."
+  elif [ "$engine_aborted" -eq 1 ]; then
+    TEST_FAIL=1
+    log "$BR: PERF ENGINE ABORTED — no record written (GPU likely left in a bad state); emailed."
+    { echo "### $BR @ ${SHA:0:8} — PERF ENGINE ABORTED (no record written -> no dashboard entry)"
+      grep -aE "produced no result|CUDA error|CUDA_ERROR|Check failed|Failed to create stream" "$GLOG" | sort -u | head -6
+      echo; } >>"$ALERT_BODY"
   else
     GATE_FAIL=1; log "$BR: GATE FAIL (perf regression) — see $OUT."
     { echo "### $BR @ ${SHA:0:8} — PERF GATE FAIL (vs prior baseline)"
@@ -295,9 +322,10 @@ for i in "${!CHANGED_BR[@]}"; do
   fi
   rm -f "$GLOG"
 
-  # Record the measured commit LAST (a crash mid-run re-measures next time).  Skipped in smoke so a
-  # test run never marks the branch as measured.
-  [ "${REG_SMOKE:-0}" = "1" ] || echo "$SHA" >"$STATE/$SLUG"
+  # Record the measured commit LAST (a crash mid-run re-measures next time).  Skipped in smoke, and
+  # NOT advanced when the engine aborted with no record -> a transient GPU failure re-measures next
+  # run instead of being marked "done" with an empty dashboard entry.
+  if [ "${REG_SMOKE:-0}" != "1" ] && [ "$engine_aborted" != "1" ]; then echo "$SHA" >"$STATE/$SLUG"; fi
   rm -rf "$WT"                  # drop the throwaway library clone
 done
 
@@ -383,5 +411,6 @@ fi
 rm -f "$ALERT_BODY"
 
 [ "$GATE_FAIL" = "0" ] || { log "REGRESSION DETECTED — exit 1 (alert)."; exit 1; }
-log "done — no regressions."
+[ "$TEST_FAIL" = "0" ] && log "done — no regressions." \
+  || log "done — no perf regression, but test failures/crashes occurred (emailed, non-fatal)."
 exit 0
