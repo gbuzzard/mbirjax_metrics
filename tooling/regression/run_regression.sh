@@ -251,7 +251,10 @@ for i in "${!CHANGED_BR[@]}"; do
     # (2026-07-10).  Pass via PYTEST_NPROC (honored by the current run_tests.sh); ALSO sed the clone
     # so a branch whose runner still hardcodes `-n <N>` is capped too.
     NPROC=$([ "$PLAT" = "gpu" ] && echo 4 || echo 8)
-    [ -f "$WT/dev_scripts/run_tests.sh" ] && sed -i -E "s/-n[ =]+[0-9]+/-n $NPROC/g" "$WT/dev_scripts/run_tests.sh" 2>/dev/null || true
+    # Portable in-place edit via a temp file -- BSD sed (macOS / run_one_night) rejects `-i` without a
+    # suffix arg, so `sed -i -E` silently no-ops there and leaves the runner at its hardcoded count.
+    RT="$WT/dev_scripts/run_tests.sh"
+    if [ -f "$RT" ]; then sed -E "s/-n[ =]+[0-9]+/-n $NPROC/g" "$RT" > "$RT.tmp" && mv "$RT.tmp" "$RT"; fi
     log "$BR: running tests (MBIRJAX_NUM_CPU_DEVICES=$TEST_CPU_DEVICES, xdist -n $NPROC) -> $(basename "$TLOG") ..."
     if [ -f "$WT/dev_scripts/run_tests.sh" ]; then
       # run_tests.sh uses a path RELATIVE to dev_scripts/, so it MUST be invoked from there or it
