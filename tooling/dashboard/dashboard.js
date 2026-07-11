@@ -248,20 +248,23 @@ function logTicks(mn, mx) {
 // specs: [{label, color, ys, dash, pointsOnly, width, psize}]
 // Fixed LOG y-axis for the History panels: PROPORTIONAL margins (a fixed % of plot height top & bottom,
 // in log space) instead of a floor-to-decade bottom + fixed-multiple top, plus a fixed marker height in
-// the top margin.  Given the data extent [dmin, dmax], solve span so dmin sits FB of the height up from
-// bot and dmax sits FT down from top; park off-scale marks at MK of the top margin above dmax (so failed/
-// OOM/dep marks are separated at a CONSISTENT top height regardless of the view's data).  null if
-// non-positive.
-const HIST_Y_FB = 0.06, HIST_Y_FT = 0.14, HIST_Y_MK = 0.5;
-function fixedLogYRange(dmin, dmax) {
+// the top (and, when bottomBand, the bottom) margin.  Given the data extent [dmin, dmax], solve span so
+// dmin sits FB of the height up from bot and dmax sits FT down from top; park off-scale marks at MK of the
+// top margin above dmax (so failed/OOM/dep marks are separated at a CONSISTENT height regardless of the
+// view's data).  bottomBand enlarges the bottom margin to FB_MARK and returns markBot at MK of it below
+// dmin, giving the dep marker's second (bottom) glyph the same headroom.  null if non-positive.
+const HIST_Y_FB = 0.06, HIST_Y_FB_MARK = 0.14, HIST_Y_FT = 0.14, HIST_Y_MK = 0.5;
+function fixedLogYRange(dmin, dmax, bottomBand) {
   if (!(dmin > 0) || !(dmax > 0)) return null;
   let lo = Math.log10(dmin), hi = Math.log10(dmax);
   if (hi - lo < 0.05) { const c = (lo + hi) / 2; lo = c - 0.15; hi = c + 0.15; }   // degenerate extent -> small window
-  const span = (hi - lo) / (1 - HIST_Y_FB - HIST_Y_FT);
+  const fb = bottomBand ? HIST_Y_FB_MARK : HIST_Y_FB;   // enlarge the bottom margin only when it holds a marker
+  const span = (hi - lo) / (1 - fb - HIST_Y_FT);
   return {
-    bot: Math.pow(10, lo - HIST_Y_FB * span),
+    bot: Math.pow(10, lo - fb * span),
     top: Math.pow(10, hi + HIST_Y_FT * span),
     mark: Math.pow(10, hi + HIST_Y_MK * HIST_Y_FT * span),
+    markBot: bottomBand ? Math.pow(10, lo - HIST_Y_MK * fb * span) : null,
   };
 }
 function linePlot(el, xs, specs, o) {
@@ -289,13 +292,13 @@ function linePlot(el, xs, specs, o) {
   // Null when there are no such marks or no finite data — the draw hooks then fall back to a fixed band.
   // Fixed y-axis (o.yRange + o.yLog): a LOG range with proportional top/bottom margins (fixedLogYRange).
   const yFixR = (o.yLog && o.yRange && o.yRange[0] != null && o.yRange[1] != null)
-    ? fixedLogYRange(o.yRange[0], o.yRange[1]) : null;
+    ? fixedLogYRange(o.yRange[0], o.yRange[1], !!(o.depMarks && o.depMarks.length)) : null;
   // Box-zoom on a fixed-range panel (o.boxZoom): a y-drag selection overrides the pinned [bot, top] until
   // reset.  yZoomWin holds the active y sub-range (null = show the pinned fixed range); it's captured from
   // the drag in the setSelect hook and cleared on double-click.  (uPlot's own drag-scale can't do this here
   // because yScale.range hard-returns the fixed band, ignoring the value uPlot sets from the selection.)
-  let yZoomWin = null;
-  let markY = null;
+  let yZoomWin = o.yInit || null;   // seed from a persisted y-zoom (o.yInit) so a zoom survives a re-render
+  let markY = null, markYBot = null;
   if ((o.depMarks && o.depMarks.length) || (o.failMarks && o.failMarks.length)) {
     let gmax = -Infinity;
     S.forEach((s) => s.ys.forEach((v) => { if (v != null && isFinite(v) && v > gmax) gmax = v; }));
@@ -304,7 +307,7 @@ function linePlot(el, xs, specs, o) {
   // Fixed axis: park the off-scale marks at the FIXED top-margin height (not 2x the current view's data),
   // so failed/OOM/dep marks stay separated at a consistent top regardless of the view (fixes both the
   // "not separated" and the "not at the top for n=4" cases).
-  if (yFixR) markY = yFixR.mark;
+  if (yFixR) { markY = yFixR.mark; markYBot = yFixR.markBot; }
   const series = [{}, ...S.map((s) => ({
     stroke: s.color, width: s.width == null ? 2 : s.width, dash: s.dash || undefined,
     spanGaps: true,  // bridge null cells (e.g. a failed non-dividing size) so the curve stays connected
@@ -416,10 +419,11 @@ function linePlot(el, xs, specs, o) {
     tip.style.left = lx + "px"; tip.style.top = (ob.top - eb.top + u.cursor.top + 8) + "px";
   };
   // nearest top-band marker (dep or fail) within ~10 CSS-px of the cursor, near the marker row, else null
-  const nearestMark = (u, marks) => {
+  const nearestMark = (u, marks, bottomToo) => {
     if (!(marks && marks.length)) return null;
-    const my = (markY != null) ? u.valToPos(markY, "y") : 12;   // the marker row (floating, or fixed band)
-    if (Math.abs(u.cursor.top - my) > 14) return null;
+    const rows = [(markY != null) ? u.valToPos(markY, "y") : 12];   // the top marker row (floating, or fixed band)
+    if (bottomToo && markYBot != null) rows.push(u.valToPos(markYBot, "y"));   // dep marks also sit in the bottom band
+    if (!rows.some((my) => Math.abs(u.cursor.top - my) <= 14)) return null;
     let best = null, bd = 10;
     marks.forEach((d) => { const dx = Math.abs(u.valToPos(d.x, "x") - u.cursor.left); if (dx < bd) { bd = dx; best = d; } });
     return best;
@@ -430,7 +434,7 @@ function linePlot(el, xs, specs, o) {
     if (cl == null || ct == null || cl < 0 || ct < 0 || (u.select && u.select.width > 1)) { tip.style.display = "none"; return; }
     const fail = nearestMark(u, o.failMarks);           // a failure symbol wins (most urgent), then a dep symbol
     if (fail) { placeTip(u, fail.tip); return; }
-    const dep = nearestMark(u, o.depMarks);
+    const dep = nearestMark(u, o.depMarks, true);
     if (dep) { placeTip(u, dep.tip); return; }
     if (!o.tooltip) { tip.style.display = "none"; return; }
     const np = nearestPoint(u, 30), oi = np ? np.di - padOff : -1;
@@ -459,17 +463,22 @@ function linePlot(el, xs, specs, o) {
       const s = u.select;
       if (!s || s.height <= 6) return;                       // a pure horizontal drag / a click -> leave Y pinned
       const a = u.posToVal(s.top, "y"), b = u.posToVal(s.top + s.height, "y");
-      if (isFinite(a) && isFinite(b) && a !== b) yZoomWin = [Math.min(a, b), Math.max(a, b)];
+      if (isFinite(a) && isFinite(b) && a !== b) { yZoomWin = [Math.min(a, b), Math.max(a, b)]; if (o.onYChange) o.onYChange(yZoomWin); }
     }];
   }
   // Optional custom triangle marks at data points (o.marks: [{x, y}]) — uPlot only draws CIRCLE
   // points, so failing-test flags are painted as red triangles in a draw hook (canvas/device px).
   if (o.marks && o.marks.length) hooks.draw = [(u) => {
     const ctx = u.ctx, dpr = u.pxRatio || 1, h = 9 * dpr;   // ~match the 'ran hot' ring (psize 14)
+    const L = u.bbox.left, R = u.bbox.left + u.bbox.width, T = u.bbox.top, B = u.bbox.top + u.bbox.height;
     ctx.save();
     o.marks.forEach((m) => {
       const x = u.valToPos(m.x, "x", true), y = u.valToPos(m.y, "y", true);
       if (!isFinite(x) || !isFinite(y)) return;
+      // Cull marks outside the plot box, else valToPos maps an out-of-range point into the axis margin
+      // and the glyph paints there (e.g. a test-fail triangle stranded left of a zoomed x-window, or above
+      // a y-zoom).  The floating dep/fail hooks already cull this way.
+      if (x < L - 1 || x > R + 1 || y < T - 1 || y > B + 1) return;
       if (m.shape === "x") {                                 // a CORRECTNESS divergence: a bold ✕ (white-haloed)
         const r = h * 1.15;
         const cross = () => { ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
@@ -523,6 +532,10 @@ function linePlot(el, xs, specs, o) {
   }
   // Top-band Y for the floating markers (markY; a fixed band as fallback).  Shared by dep + fail glyphs.
   const bandY = (u, r) => { const t = u.bbox.top; const a = (markY != null) ? u.valToPos(markY, "y", true) : t + r + 3 * dpr; return isFinite(a) ? a : t + r + 3 * dpr; };
+  // Bottom-band Y — mirror of bandY for the dep marker's second (bottom) glyph, which helps it stand out
+  // when the middle of the plot is busy.  markYBot lives in the enlarged bottom margin (fixed-range panels
+  // with dep marks only); a fixed offset above the axis is the fallback.
+  const bandYBot = (u, r) => { const b = u.bbox.top + u.bbox.height; const a = (markYBot != null) ? u.valToPos(markYBot, "y", true) : b - r - 3; return isFinite(a) ? a : b - r - 3; };
   // Failed/OOM configs (o.failMarks: [{x, tip}]) — a red ⊗ (ring + ✕) FLOATING above all data with a faint
   // red drop-line, so an OOM reads as an off-scale ceiling breach, never as a real (low) value.  Hover ->
   // nearestMark tooltip.  Drawn first so point markers sit on top.
@@ -546,28 +559,35 @@ function linePlot(el, xs, specs, o) {
     };
     hooks.draw = hooks.draw ? [drawFails, ...hooks.draw] : [drawFails];
   }
-  // Dependency-change markers (o.depMarks: [{x, tip, color}]) — a green diamond FLOATING ~2× above the
-  // tallest data point (markY; a fixed band as fallback) at each dep-set onset (a jax bump / periodic deps
-  // refresh: a "ruler change" that shifts every series at once), with a faint dashed drop-line down to the
-  // data.  Sized to match the on-curve re-measure diamonds.  No inline text — it collided when two changes
-  // shared an x; the description lives in a hover tooltip (nearestMark, above).  Drawn FIRST in the chain so
-  // it sits UNDER the point markers/rings.  Pairs with the on-curve diamond re-measure glyphs at the same x.
+  // Dependency-change markers (o.depMarks: [{x, tip, color}]) — a green diamond in the TOP margin at each
+  // dep-set onset (a jax bump / periodic deps refresh: a "ruler change" that shifts every series at once),
+  // plus a SECOND green diamond in the bottom margin on the fixed-range time/mem panels (markYBot), the two
+  // linked by a faint dashed drop-line.  The bottom glyph keeps the dep change visible when the middle of
+  // the plot is dense with data.  Sized to match the on-curve re-measure diamonds.  No inline text — it
+  // collided when two changes shared an x; the description lives in a hover tooltip (nearestMark, above,
+  // which checks both bands).  Drawn FIRST in the chain so it sits UNDER the point markers/rings.
   if (o.depMarks && o.depMarks.length) {
     const drawDeps = (u) => {
       const ctx = u.ctx, dpr = u.pxRatio || 1, bot = u.bbox.top + u.bbox.height;
-      const L = u.bbox.left, R = u.bbox.left + u.bbox.width, r = 9 * dpr, my = bandY(u, r);
+      const L = u.bbox.left, R = u.bbox.left + u.bbox.width, r = 9 * dpr, myT = bandY(u, r);
+      const hasBot = markYBot != null;                                                          // bottom band = fixed-range time/mem panels
+      const myB = hasBot ? bandYBot(u, r) : bot;
+      const diamond = (x, my) => {                                                              // filled diamond, white-edged
+        ctx.beginPath();
+        ctx.moveTo(x, my - r); ctx.lineTo(x + r, my); ctx.lineTo(x, my + r); ctx.lineTo(x - r, my); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      };
       ctx.save();
       o.depMarks.forEach((d) => {
         const x = u.valToPos(d.x, "x", true);
         if (!isFinite(x) || x < L - 1 || x > R + 1) return;
-        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5 * dpr;   // faint drop-line
+        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5 * dpr;   // faint drop-line (links the two glyphs)
         ctx.setLineDash([5 * dpr, 4 * dpr]);
-        ctx.beginPath(); ctx.moveTo(x, my + r); ctx.lineTo(x, bot); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, myT + r); ctx.lineTo(x, hasBot ? myB - r : bot); ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1;
-        ctx.beginPath();                                                                        // floating diamond
-        ctx.moveTo(x, my - r); ctx.lineTo(x + r, my); ctx.lineTo(x, my + r); ctx.lineTo(x - r, my); ctx.closePath();
-        ctx.fillStyle = d.color || DEPC; ctx.fill();
-        ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = bg; ctx.stroke();                          // white edge over the grid
+        ctx.fillStyle = d.color || DEPC; ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = bg;       // green fill, white edge over the grid
+        diamond(x, myT);                                                                        // top band (as before)
+        if (hasBot) diamond(x, myB);                                                            // bottom band (new — visible under busy data)
       });
       ctx.restore();
     };
@@ -594,7 +614,7 @@ function linePlot(el, xs, specs, o) {
   // returns.  Capture phase so this runs BEFORE uPlot's own dblclick reset re-ranges the axis.
   if (o.boxZoom && yFixR) {
     const ov = el.querySelector(".u-over");
-    if (ov) ov.addEventListener("dblclick", () => { yZoomWin = null; }, true);
+    if (ov) ov.addEventListener("dblclick", () => { yZoomWin = null; if (o.onYChange) o.onYChange(null); }, true);
   }
   // Optional: a plain click (vs a drag, which zooms) selects the nearest point.
   if (o.onPick) {
@@ -1107,12 +1127,18 @@ function depTipHtml(entries) {
 // Persisted history x-window [min, max] so the time range survives branch/geom/run/group re-renders
 // until a double-click reset (which restores the full range) or a page refresh.  null = auto/full.
 let histXWindow = null;
+// Per-panel y-zoom windows for the History time/mem panels, persisted across re-renders the same way
+// histXWindow persists the x-window — so a y-zoom survives a branch/device change.  Reset when the
+// geometry GROUP changes (its fixed y-range differs, so another group's zoom wouldn't map). null = full.
+let histYWin = { time: null, mem: null };
+let histYWinGroup = null;
 function renderHistory() {
   // The history spans BOTH platforms and all branches; x is commit time
   // (falls back to collection date for older runs).
   const xs = uniq(M.runs.map(runTime)).sort((a, b) => a - b);
   const n = ui_state.histN;
   const group = HIST_GROUPS.find((g) => g.id === ui_state.histGroup) || HIST_GROUPS[0];
+  if (group.id !== histYWinGroup) { histYWin.time = null; histYWin.mem = null; histYWinGroup = group.id; }
   // Branch filter: "all" shows every branch (colour=platform, style=geometry); selecting one
   // restricts all three panels to that branch only.
   const branches = (ui_state.histBranch && ui_state.histBranch !== "all")
@@ -1277,10 +1303,13 @@ function renderHistory() {
     });
   })();
   const allMarks = (pick) => [...depDiamonds(pick), ...runMarks(pick, "testsFailed", {}), ...runMarks(pick, "corrAlert", { shape: "x", color: CORRC })];
-  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk });
+  // boxZoom: drag with vertical extent zooms Y too (like History by op); a pure horizontal drag still
+  // zooms only the date range, and syncX keeps the x-window mirrored across time+mem.  (hGate below has
+  // no fixed y-range, so it stays x-only.)
+  const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk, boxZoom: true });
   const yr = (M.hist_yranges || {})[group.id] || {};   // fixed per-(geom-group, metric) y-axis (build-time)
-  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk, yRange: yr.time });
-  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk, yRange: yr.mem });
+  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk, yRange: yr.time, yInit: histYWin.time, onYChange: (w) => { histYWin.time = w; } });
+  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk, yRange: yr.mem, yInit: histYWin.mem, onYChange: (w) => { histYWin.mem = w; } });
   const gateSpecs = [];
   M.platforms.forEach((plat) => branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
