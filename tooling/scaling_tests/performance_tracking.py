@@ -691,6 +691,12 @@ def _git_provenance(root):
             return r.stdout.strip() if r.returncode == 0 else None
         except Exception:
             return None
+    dirty = _g(["status", "--porcelain"]) or ""
+    # Paths only (strip the two-char status + rename arrows); capped so a messy tree can't
+    # bloat the header.  dirty_code distinguishes "the MEASURED code wasn't the commit"
+    # from harmless doc/plan edits (a real case: a dirty .md-only tree muddied a memory-step
+    # attribution on 2026-07-11).
+    dirty_files = [ln[3:].split(" -> ")[-1] for ln in dirty.splitlines()]
     return {"git_commit": _g(["rev-parse", "HEAD"]),
             # committer date in strict ISO-8601, so the dashboard can place a run
             # on the timeline at the commit's time rather than the collection time
@@ -698,7 +704,32 @@ def _git_provenance(root):
             "git_commit_date": _g(["show", "-s", "--format=%cI", "HEAD"]),
             "git_branch": _g(["rev-parse", "--abbrev-ref", "HEAD"]),
             "mbirjax_version": sc.pyproject_version(root),
-            "git_dirty": bool(_g(["status", "--porcelain"]))}
+            "git_dirty": bool(dirty),
+            "git_dirty_files": dirty_files[:20],
+            "git_dirty_code": any(f.startswith("mbirjax/") for f in dirty_files)}
+
+
+def _mbirjax_policy_defaults(root):
+    """The library's EFFECTIVE reconstruction-policy defaults, captured from a real import in a
+    subprocess (the orchestrator itself stays JAX-free).  Recorded in the run header so the
+    dashboard can attribute a perf/memory step to a DEFAULT change (a real case: the
+    partition_sequence default reverting [4,7] -> [0,2,4,6,7] via a merge read as a +20% memory
+    step in every vcd_nonconst cell).  Best-effort: None if the import fails."""
+    import subprocess, sys, json as _json
+    snippet = (
+        "import json, inspect, mbirjax\n"
+        "from mbirjax._utils import _reconstruction_defaults_dict as d\n"
+        "print(json.dumps({"
+        "'partition_sequence': list(d['partition_sequence'].val), "
+        "'granularity': list(d['granularity'].val), "
+        "'max_iterations_default': inspect.signature(mbirjax.TomographyModel.recon).parameters['max_iterations'].default}))"
+    )
+    try:
+        r = subprocess.run([sys.executable, "-c", snippet], capture_output=True, text=True,
+                           timeout=180, cwd=root)
+        return _json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 else None
+    except Exception:
+        return None
 
 
 def _file_tag(prov, fallback_date):
@@ -1134,6 +1165,8 @@ def run(config):
         # the (older) commit time, so it doesn't stack on the commit's original point.
         "measured_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
         "config": config.to_dict(), "device_counts": sorted(swept_counts), "cells": cells,
+        # Library policy defaults in effect for this run (see _mbirjax_policy_defaults).
+        "policy": _mbirjax_policy_defaults(config.lib_root or sc.beta_root()),
     }
 
     # Diff + gate: compare against this branch's most-recent prior run (the immediately-preceding

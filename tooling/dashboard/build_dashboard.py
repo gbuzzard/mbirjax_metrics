@@ -34,6 +34,16 @@ from pathlib import Path
 
 import yaml
 
+# libyaml-backed loader when available: the pure-Python SafeLoader dominated the whole
+# build (~95% of wall time parsing the regression YAMLs).  CSafeLoader parses the same
+# documents ~15-30x faster; the fallback keeps environments without libyaml working.
+_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
+def _yaml_load(text):
+    return yaml.load(text, Loader=_YAML_LOADER)
+
+
 # --------------------------------------------------------------------------- #
 # CONFIG — edit here, not via the command line.                               #
 # --------------------------------------------------------------------------- #
@@ -283,7 +293,7 @@ def _read_cleared_through(root) -> str | None:
     p = Path(root) / "results" / "correctness_acks.yaml"
     if not p.exists():
         return None
-    v = (yaml.safe_load(p.read_text()) or {}).get("cleared_through")
+    v = (_yaml_load(p.read_text()) or {}).get("cleared_through")
     return str(v) if v else None   # YAML parses an ISO date to datetime.date; keep it a string ("YYYY-MM-DD")
 
 
@@ -419,9 +429,88 @@ def _annotate_dep_info(runs: list[dict]) -> None:
         }
 
 
+_POLICY_FIELDS = ("partition_sequence", "granularity", "max_iterations_default")
+
+
+def _annotate_config_changes(runs: list[dict]) -> None:
+    """Attach ``cfg_info`` to any run whose recorded library policy defaults differ from the
+    PREVIOUS run of the same (platform, branch).  This is what the dashboard's config-change
+    marker renders: a default change reads as a perf/memory step in every cell (a real case:
+    partition_sequence [4,7] -> [0,2,4,6,7] via a merge = +12-40% memory in vcd_nonconst), and
+    the marker makes the step self-explaining on the chart.  Runs without a recorded policy
+    (older engine versions) are skipped — no diff is claimed across unknown states."""
+    by_bp: dict = {}
+    for r in runs:   # runs are already sorted (platform, branch, date)
+        by_bp.setdefault((r["platform"], r["branch"]), []).append(r)
+    for seq in by_bp.values():
+        prev = None
+        for r in seq:
+            pol = r.get("policy")
+            if pol:
+                if prev:
+                    changes = [{"field": f, "from": prev.get(f), "to": pol.get(f)}
+                               for f in _POLICY_FIELDS if prev.get(f) != pol.get(f)]
+                    if changes:
+                        r["cfg_info"] = {"changes": changes}
+                prev = pol
+
+
+def _load_manual_annotations(root: Path) -> list[dict]:
+    """Hand-written chart notes from ``results/annotations.yaml`` (optional file): a list of
+    ``{date: ISO-date/time, text: str, platform: optional, branch: optional}``.  Rendered with
+    the config-change markers; use for one-off events the data cannot self-describe (e.g. a
+    merge whose BEFORE-side runs predate policy recording)."""
+    p = root / "results" / "annotations.yaml"
+    if not p.exists():
+        return []
+    try:
+        items = _yaml_load(p.read_text()) or []
+        return [i for i in items if isinstance(i, dict) and i.get("date") and i.get("text")]
+    except Exception:
+        return []
+
+
+# ── Parse cache ───────────────────────────────────────────────────────────────
+# The regression YAMLs are immutable once written, so their parsed run records are cached
+# and only NEW files are parsed on each build (deletions fall out of the rescan).  The
+# cache stores ONLY the _parse_run output (no gates/analysis), so tolerance and logic
+# changes in this file never require invalidation.  ⚠ Bump _PARSE_CACHE_SCHEMA whenever
+# the _parse_run/_parse_tests output shape changes.  The cache lives in the gitignored
+# dashboard/ output dir; deleting it forces a full re-parse.
+_PARSE_CACHE_SCHEMA = 2
+_PARSE_CACHE_PATH = REPO_ROOT / "dashboard" / ".parse_cache.json"
+
+
+def _file_sig(p: Path) -> list:
+    try:
+        st = p.stat()
+        return [st.st_mtime_ns, st.st_size]
+    except OSError:
+        return [0, 0]
+
+
+def _load_parse_cache() -> dict:
+    try:
+        cache = json.loads(_PARSE_CACHE_PATH.read_text())
+        if cache.get("schema") == _PARSE_CACHE_SCHEMA:
+            return cache.get("entries") or {}
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def _save_parse_cache(entries: dict) -> None:
+    # Written right after the scan loop, BEFORE the pipeline mutates the run records
+    # (the correctness analyzer pops the private _fps/_pkgs fields in place).
+    tmp = _PARSE_CACHE_PATH.with_suffix(".json.tmp")
+    _PARSE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_text(json.dumps({"schema": _PARSE_CACHE_SCHEMA, "entries": entries}))
+    tmp.replace(_PARSE_CACHE_PATH)
+
+
 def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
     """Parse one regression_<plat>_<date>.yaml into a compact run record."""
-    doc = yaml.safe_load(path.read_text()) or {}
+    doc = _yaml_load(path.read_text()) or {}
     date = str(doc.get("date") or "")
     branch = doc.get("git_branch") or branch_dir.replace("_", "/")
     gate = doc.get("gate") or {}
@@ -454,6 +543,11 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
         "jax": (doc.get("toolchain") or {}).get("jax") if isinstance(doc.get("toolchain"), dict) else None,
         "version": doc.get("mbirjax_version"),
         "dirty": bool(doc.get("git_dirty", False)),
+        "dirty_files": doc.get("git_dirty_files"),   # None on older runs
+        "dirty_code": doc.get("git_dirty_code"),     # None on older runs; True = mbirjax/ was dirty
+        # Library policy defaults captured at measurement time (None on older runs) — the
+        # config-change annotator diffs these between consecutive runs of a branch.
+        "policy": doc.get("policy"),
         "device_label": doc.get("device_label"),
         "gate": {
             "result": gate.get("result"),
@@ -568,6 +662,8 @@ def collect_data() -> dict:
     platforms: set[str] = set()
     branches: set[str] = set()
 
+    parse_cache = _load_parse_cache()
+    new_parse_cache: dict = {}
     for plat_dir in sorted(p for p in results_dir.glob("*") if p.is_dir()):
         platform = plat_dir.name
         if ONLY_PLATFORMS and platform not in ONLY_PLATFORMS:
@@ -582,7 +678,20 @@ def collect_data() -> dict:
             if not run_files:
                 continue
             for rf in run_files:
-                run = _parse_run(rf, platform, branch_dir)
+                key = str(rf.relative_to(REPO_ROOT))
+                sig = _file_sig(rf)
+                hit = parse_cache.get(key)
+                # A hit must match the yaml signature AND its companion tests file's
+                # signature (the tests path is only known after a parse, so it is
+                # remembered in the entry; yaml immutability makes this sound).
+                if hit and hit["sig"] == sig and _file_sig(Path(REPO_ROOT, hit["tests"])) == hit["tests_sig"]:
+                    run = hit["run"]
+                else:
+                    run = _parse_run(rf, platform, branch_dir)
+                    tests_rel = str((rf.parent / f"tests_{platform}_{run['date']}.txt").relative_to(REPO_ROOT))
+                    hit = {"sig": sig, "tests": tests_rel,
+                           "tests_sig": _file_sig(Path(REPO_ROOT, tests_rel)), "run": run}
+                new_parse_cache[key] = hit
                 if ONLY_BRANCHES and run["branch"] not in ONLY_BRANCHES:
                     continue
                 runs.append(run)
@@ -592,8 +701,9 @@ def collect_data() -> dict:
             rec_path = branch_dir_path / f"records_{platform}.yaml"
             if rec_path.exists():
                 branch_name = runs[-1]["branch"] if runs else branch_dir.replace("_", "/")
-                records[f"{platform}|{branch_name}"] = yaml.safe_load(rec_path.read_text()) or {}
+                records[f"{platform}|{branch_name}"] = _yaml_load(rec_path.read_text()) or {}
 
+    _save_parse_cache(new_parse_cache)   # before the pipeline mutates the records in place
     runs.sort(key=lambda r: (r["platform"], r["branch"], r["date"]))
     # Correctness analyzer (P2/P4): annotate each run with cross-device + vs-main + cross-platform + prior
     # findings (+ the cross-device noise floor), then drop the private fingerprint index from the JSON.
@@ -601,6 +711,7 @@ def collect_data() -> dict:
     # Dependency-canary: annotate each re-measure with what its dep set changed (marker tooltip), then drop
     # the private fingerprint + package maps from the JSON (findings / dep_info are what's kept).
     _annotate_dep_info(runs)
+    _annotate_config_changes(runs)
     for r in runs:
         r.pop("_fps", None)
         r.pop("_pkgs", None)
@@ -609,6 +720,7 @@ def collect_data() -> dict:
     # tab badge).  Absent file => nothing acknowledged.  The guided clear script (P3) writes this field.
     cleared_through = _read_cleared_through(REPO_ROOT)
     return {
+        "annotations": _load_manual_annotations(REPO_ROOT),
         "generated": _generated_stamp(),
         "repo_name": REPO_ROOT.name,
         "repo_url": _repo_url(),

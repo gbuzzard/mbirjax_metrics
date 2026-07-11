@@ -15,7 +15,8 @@ const PLATC = { gpu: "#185fa5", cpu: "#BA7517" };                     // history
 const IDEAL = "#9b9b94", FAILC = "#E24B4A", REFC = "#1f1f1d"; // ideal=grey, gate=red, reference=near-black
 const THROTC = "#E8950C";                                    // amber: a GPU ran hot / throttled (timing unreliable)
 const CORRC = "#a32d2d";                                      // deep red: a CORRECTNESS divergence (more severe than a perf hit)
-const DEPC = "#25a244";                                       // green: a DEPENDENCY change (jax bump / deps refresh) — a ruler change, not a series (kept clear of the blue/amber series)
+const DEPC = "#25a244";
+const CFGC = "#a855f7";                                       // purple: a CONFIG/default change (library policy defaults) or a hand-written note — like DEPC, a ruler change, not a series                                       // green: a DEPENDENCY change (jax bump / deps refresh) — a ruler change, not a series (kept clear of the blue/amber series)
 const HOT_C = 85, HOT_HBM = 95;                              // a cell is "hot" if a GPU core>=85C / HBM>=95C / any throttle reason
 const BRANCH_DASH = [null, [5, 3], [2, 2], [6, 2, 2, 2]];
 const devColor = (n) => DEVC[n] || SIZEC[n % SIZEC.length];
@@ -422,7 +423,8 @@ function linePlot(el, xs, specs, o) {
   const nearestMark = (u, marks, bottomToo) => {
     if (!(marks && marks.length)) return null;
     const rows = [(markY != null) ? u.valToPos(markY, "y") : 12];   // the top marker row (floating, or fixed band)
-    if (bottomToo && markYBot != null) rows.push(u.valToPos(markYBot, "y"));   // dep marks also sit in the bottom band
+    if (bottomToo) rows.push((markYBot != null) ? u.valToPos(markYBot, "y")
+                             : u.bbox.height / (u.pxRatio || 1) - 12);   // bottom band (config/note markers live here even without markYBot)
     if (!rows.some((my) => Math.abs(u.cursor.top - my) <= 14)) return null;
     let best = null, bd = 10;
     marks.forEach((d) => { const dx = Math.abs(u.valToPos(d.x, "x") - u.cursor.left); if (dx < bd) { bd = dx; best = d; } });
@@ -581,13 +583,18 @@ function linePlot(el, xs, specs, o) {
       o.depMarks.forEach((d) => {
         const x = u.valToPos(d.x, "x", true);
         if (!isFinite(x) || x < L - 1 || x > R + 1) return;
-        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5 * dpr;   // faint drop-line (links the two glyphs)
+        const botOnly = d.band === "bottom";                                                    // config/note markers: bottom band only
+        const yB = botOnly ? bandYBot(u, r) : myB;                                              // bottom-only works even without markYBot (fallback above the axis)
+        ctx.strokeStyle = d.color || DEPC; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5 * dpr;   // faint drop-line (the x-locator)
         ctx.setLineDash([5 * dpr, 4 * dpr]);
-        ctx.beginPath(); ctx.moveTo(x, myT + r); ctx.lineTo(x, hasBot ? myB - r : bot); ctx.stroke();
+        ctx.beginPath();
+        if (botOnly) { ctx.moveTo(x, u.bbox.top); ctx.lineTo(x, yB - r); }
+        else { ctx.moveTo(x, myT + r); ctx.lineTo(x, hasBot ? myB - r : bot); }
+        ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1;
-        ctx.fillStyle = d.color || DEPC; ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = bg;       // green fill, white edge over the grid
-        diamond(x, myT);                                                                        // top band (as before)
-        if (hasBot) diamond(x, myB);                                                            // bottom band (new — visible under busy data)
+        ctx.fillStyle = d.color || DEPC; ctx.lineWidth = 1.5 * dpr; ctx.strokeStyle = bg;       // fill, white edge over the grid
+        if (!botOnly) diamond(x, myT);                                                          // top band (dep changes, as before)
+        if (botOnly || hasBot) diamond(x, botOnly ? yB : myB);                                  // bottom band
       });
       ctx.restore();
     };
@@ -1124,6 +1131,36 @@ function depTipHtml(entries) {
   });
   return `<b>dependency change</b><br>${parts.join('<br><span class="tdim">———</span><br>')}`;
 }
+// Tooltip HTML for a config-change marker: the per-field default diffs recorded by the build
+// (run.cfg_info), e.g. "partition_sequence: [4, 7] → [0, 2, 4, 6, 7]".
+function cfgTipHtml(entries) {
+  const fmtV = (v) => Array.isArray(v) ? `[${v.join(", ")}]` : String(v);
+  const lines = entries.flatMap((e) => (e.changes || []).map(
+    (c) => `<span class="tdim">${c.field}</span> ${fmtV(c.from)} → ${fmtV(c.to)}`));
+  return `<b>library default change</b><br>${lines.join("<br>")}`;
+}
+// Config-change + hand-written-note markers (purple diamonds, same top band as dep changes).
+// cfg_info comes from the build's consecutive-run policy diff; notes come from
+// results/annotations.yaml (M.annotations: {date, text, platform?, branch?}).  ``plat`` filters
+// to one platform (the per-op section); null shows all (History).
+function cfgChangeMarks(plat) {
+  const groups = {};
+  M.runs.forEach((r) => {
+    if (!r.cfg_info || (plat && r.platform !== plat)) return;
+    const x = runTime(r), key = r.platform + "|" + Math.floor(x / 86400);
+    const g = groups[key] || (groups[key] = { x: Infinity, entries: [] });
+    g.x = Math.min(g.x, x);
+    g.entries.push(r.cfg_info);
+  });
+  const marks = Object.values(groups).map((g) => ({ x: g.x, color: CFGC, band: "bottom", tip: cfgTipHtml(g.entries) }));
+  (M.annotations || []).forEach((a) => {
+    if (plat && a.platform && a.platform !== plat) return;
+    const x = Date.parse(a.date) / 1000;
+    if (!isFinite(x)) return;
+    marks.push({ x, color: CFGC, band: "bottom", tip: `<b>note</b>${a.branch ? ` · ${a.branch}` : ""}<br>${a.text}` });
+  });
+  return marks;
+}
 // Persisted history x-window [min, max] so the time range survives branch/geom/run/group re-renders
 // until a double-click reset (which restores the full range) or a page refresh.  null = auto/full.
 let histXWindow = null;
@@ -1279,7 +1316,7 @@ function renderHistory() {
     });
     return Object.values(groups).map((g) => ({ x: g.x, color: DEPC, tip: depTipHtml(g.entries) }));
   };
-  const depMk = depChanges();
+  const depMk = depChanges().concat(cfgChangeMarks(null));
   // ANY failed/OOM config in a run -> one off-scale red ⊗ at that run's x (run-level, like the tests /
   // correctness marks), with a tooltip listing every failed (geom, op, size, n).  Where the headline
   // largest-size cell is the one that OOM'd, its time+mem are null too (see aggregate), so the glyph is
@@ -1466,7 +1503,7 @@ function renderPerOp() {
   const xr = xs.length < 2 ? [xs[0] - DAY / 2, xs[0] + DAY / 2] : null;
   const xpad = xs.length > 1 ? (xs[xs.length - 1] - xs[0]) * 0.05 : 0;
   const poOnX = (min, max) => { poXWindow = (min != null && max != null && min <= xs[0] && max >= xs[xs.length - 1]) ? null : [min, max]; };
-  const depMk = depChangeMarks(plat);
+  const depMk = depChangeMarks(plat).concat(cfgChangeMarks(plat));
   const yr = (M.perop_yranges || {})[`${plat}|${geom}|${op}`] || {};   // fixed per-(platform, geom, op) y-axis (build-time)
   const poGroup = [];
   const base = { xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yfmt: fmtNum, onPick: pickRun,
