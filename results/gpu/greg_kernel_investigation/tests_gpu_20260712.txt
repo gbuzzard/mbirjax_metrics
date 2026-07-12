@@ -1,0 +1,1555 @@
+Running pytest with multiple workers on all tests.
+Fatal Python error: Aborted
+
+Fatal Python error: Thread 0xAborted000014f692fac640
+
+ (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py"Thread 0x, line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py"000014e249c40640, line  (most recent call first):
+567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in   File _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py, line "411 in _perform_spawn
+
+Current thread 0x000014f69a65eb80, line  (most recent call first):
+534 in   File "read/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py
+"  File , line 158 in "make_c_api_client/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py
+"  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py, line "567 in , line 563 in from_iomake_pjrt_c_api_client
+
+  File   File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 910 in _init_backend
+, line   File 1160" in /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py"_thread_receiver
+  File , line 826 in "backends/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py
+"  File , line "341/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py" in , line 937 in _get_backend_uncachedrun
+
+  File   File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line "958/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py in "get_backend
+  File ", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py411" in , line 1024 in devices_perform_spawn
+
+  File 
+Current thread 0x"000014e2512f2b80/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py (most recent call first):
+", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line   File 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+"  File /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py""<frozen importlib._bootstrap_external>", line 940, line  in 158exec_module
+ in   File "<frozen importlib._bootstrap>"make_c_api_client
+  File , line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 563, line  in 1176 in _find_and_load
+  File make_pjrt_c_api_client"
+<frozen importlib._bootstrap>  File "", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py241" in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line , line 9101232 in  in _handle_fromlist
+  File _init_backend"
+/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py"  File , line "1/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py in "<module>
+  File "<frozen importlib._bootstrap>", line , line 241826 in  in _call_with_frames_removedbackends
+
+  File "  File <frozen importlib._bootstrap_external>", line 940 in "exec_module/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py
+"  File "<frozen importlib._bootstrap>, line "937 in , line 690 in _load_unlocked
+_get_backend_uncached  File 
+"  File <frozen importlib._bootstrap>""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py, line "1147, line  in 958_find_and_load_unlocked in 
+get_backend  File 
+"  File <frozen importlib._bootstrap>", line "1176/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py in "_find_and_load, line 
+1024  File  in "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py"devices
+, line 4  File  in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py""/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 188 in exec_module
+, line   File 128" in <frozen importlib._bootstrap>", line _setup_devices690
+ in   File _load_unlocked
+  File "<frozen importlib._bootstrap>""/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>, line "250, line  in 1176<module> in 
+_find_and_load  File 
+  File "<frozen importlib._bootstrap>", line 1204 in "_gcd_import<frozen importlib._bootstrap>
+"  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py, line "241 in , line _call_with_frames_removed126
+ in   File import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py""<frozen importlib._bootstrap_external>", line , line 940596 in  in import_path
+  File exec_module"
+/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py  File ", line "508<frozen importlib._bootstrap> in "importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line , line 561690 in  in _getobj_load_unlocked
+
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py  File ", line 290 in obj"
+<frozen importlib._bootstrap>  File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line , line 5771147 in  in _register_setup_module_fixture_find_and_load_unlocked
+
+  File   File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py<frozen importlib._bootstrap>"", line 564 in collect
+  File , line 1176" in /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py"_find_and_load, line 
+406  File  in "collect<frozen importlib._bootstrap>
+"  File , line "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py241" in , line _call_with_frames_removed361
+ in   File from_call
+"  File <frozen importlib._bootstrap>""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 1232, line  in 408_handle_fromlist in 
+  File pytest_make_collect_report
+  File ""/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py"", line 1, line  in 121 in _multicall<module>
+
+  File   File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py<frozen importlib._bootstrap>"", line , line 241120 in  in _call_with_frames_removed_hookexec
+
+  File   File ""<frozen importlib._bootstrap_external>/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py"", line , line 940512 in  in exec_module
+__call__  File 
+  File "<frozen importlib._bootstrap>""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 690, line  in 589_load_unlocked in 
+  File collect_one_node"<frozen importlib._bootstrap>"
+  File ", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py1147" in _find_and_load_unlocked, line 
+895  File  in "<frozen importlib._bootstrap>_collect_one_node"
+, line 1176  File  in "_find_and_load/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py
+"  File , line 1032" in /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.pygenitems"
+  File ", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py4" in , line <module>1035
+ in   File genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py, line "1035 in genitems
+  File ", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py188" in exec_module
+  File ", line <frozen importlib._bootstrap>869" in , line perform_collect690
+ in   File _load_unlocked"
+/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py"  File , line "394<frozen importlib._bootstrap> in pytest_collection"
+, line   File 1147" in /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py"_find_and_load_unlocked
+  File , line "121<frozen importlib._bootstrap> in "_multicall, line 
+1176  File  in "_find_and_load/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py
+"  File , line "120<frozen importlib._bootstrap> in "_hookexec, line 
+1204  File  in "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py_gcd_import"
+, line   File 512 in __call__
+  File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py"", line 383 in , line _main126
+ in   File import_module"
+/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py  File ", line 330 in wrap_session"
+/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py  File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File ", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py596" in , line 121 in _multicallimport_path
+
+  File   File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec"
+/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py  File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line , line 508 in 512 in __call__
+importtestmodule  File 
+"  File /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line , line 427 in 561<module> in 
+  File "_getobj/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py"
+  File , line "1291 in /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py"executetask
+  File ", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py290", line  in 341 in objrun
+
+  File   File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py, line "411 in _perform_spawn, line 
+577  File  in "_register_setup_module_fixture/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py
+"  File , line 389 in "integrate_as_primary_thread/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py
+"  File , line "564/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py in ", line collect1273
+ in   File serve
+  File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py"", line 1806 in serve
+, line   File 406" in <string>collect"
+, line   File 8 in <module>"
+/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py  File ""<string>", line , line 3611 in  in <module>from_call
+
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 
+Extension modules: 411jaxlib.cpu_feature_guard in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File , numpy._core._multiarray_umath"/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in , servenumpy.linalg._umath_linalg
+  File "<string>", line 8 in <module>
+  File "<string>", numpy.random._common, line 1 in <module>
+, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000014908ccb3640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000149094365b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py"Fatal Python error: , line 4Aborted in 
+
+<module>
+  File Thread 0x"/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py"000014b0fe17d640 (most recent call first):
+, line 188 in exec_module
+  File "<frozen importlib._bootstrap>"  File , line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in "_find_and_load/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py
+"  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import, line 
+  File 534 in read"
+  File /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.pyimport_module"
+  File , line "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py567" in , line 596 in from_io
+import_path  File 
+  File ""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py"", line 1160, line  in 508 in importtestmodule_thread_receiver
+
+  File   File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py"", line /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py561" in _getobj, line 
+341  File  in "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.pyrun"
+  File , line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in , line _register_setup_module_fixture411
+ in   File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py"_perform_spawn, line 
+564
+ in Current thread 0x000014b10582fb80collect (most recent call first):
+
+  File "  File /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py""/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 361 in from_call
+, line   File 158" in /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line make_c_api_client408
+ in   File pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+"/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File 
+Extension modules: "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.pyjaxlib.cpu_feature_guard", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in , numpy._core._multiarray_umathcollect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File , numpy.linalg._umath_linalg"/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in , numpy.random._commonintegrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", numpy.random.bit_generator, line 1273 in , numpy.random._bounded_integersserve
+  File , "numpy.random._pcg64/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", , line numpy.random._generator1806 in serve
+  File ", <string>numpy.random._mt19937", line 8 in <module>
+, numpy.random._philox  File "<string>, "numpy.random._sfc64, line 1 in <module>
+, numpy.random.mtrand (total: 12)
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x0000147ae243d640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000147ae9aefb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x00001539444a1640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x000015394b541b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000014dba39ed640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x000014dbaf0c8b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000014d5d83d9640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x000014d5dfa8bb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000014c0e337c640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x000014c0eaa2eb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x0000154e7759c640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000154e7ec4eb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x00001525d150a640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x00001525d8bbcb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x00001458913b8640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000145898a6ab80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x00001515fd8c3640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000151604f75b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000015089e11f640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x00001508a57d1b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x0000150dc9981640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000150dd1033b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000014b145abf640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x000014b14d171b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000014b5523b0640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x000014b559a62b80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x000015053f609640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000150546cbbb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+Fatal Python error: Aborted
+
+Thread 0x0000146c560ed640 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 534 in read
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 567 in from_io
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1160 in _thread_receiver
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+
+Current thread 0x0000146c5d79fb80 (most recent call first):
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jaxlib/xla_client.py", line 158 in make_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 563 in make_pjrt_c_api_client
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 910 in _init_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 826 in backends
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 937 in _get_backend_uncached
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 958 in get_backend
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/jax/_src/xla_bridge.py", line 1024 in devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 128 in _setup_devices
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/_device_setup.py", line 250 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1232 in _handle_fromlist
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/__init__.py", line 1 in <module>
+  File "<frozen importlib._bootstrap>", line 241 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 940 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "/home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/tests/geometries/test_auto_geometry.py", line 4 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/assertion/rewrite.py", line 188 in exec_module
+  File "<frozen importlib._bootstrap>", line 690 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1147 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1176 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1204 in _gcd_import
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/importlib/__init__.py", line 126 in import_module
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/pathlib.py", line 596 in import_path
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 508 in importtestmodule
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 561 in _getobj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 290 in obj
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 577 in _register_setup_module_fixture
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/python.py", line 564 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 406 in collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 361 in from_call
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 408 in pytest_make_collect_report
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/runner.py", line 589 in collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 895 in _collect_one_node
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1032 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 1035 in genitems
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 869 in perform_collect
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 394 in pytest_collection
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 383 in _main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 330 in wrap_session
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/_pytest/main.py", line 377 in pytest_cmdline_main
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_callers.py", line 121 in _multicall
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_manager.py", line 120 in _hookexec
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/pluggy/_hooks.py", line 512 in __call__
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/xdist/remote.py", line 427 in <module>
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1291 in executetask
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 341 in run
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 411 in _perform_spawn
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 389 in integrate_as_primary_thread
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1273 in serve
+  File "/home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/execnet/gateway_base.py", line 1806 in serve
+  File "<string>", line 8 in <module>
+  File "<string>", line 1 in <module>
+
+Extension modules: jaxlib.cpu_feature_guard, numpy._core._multiarray_umath, numpy.linalg._umath_linalg, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._pcg64, numpy.random._generator, numpy.random._mt19937, numpy.random._philox, numpy.random._sfc64, numpy.random.mtrand (total: 12)
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 4/4 workers
+[gw1] node down: Not properly terminated
+
+replacing crashed worker gw1
+[gw2] node down: Not properly terminated
+
+replacing crashed worker gw2
+[gw3] node down: Not properly terminated
+
+replacing crashed worker gw3
+[gw0] node down: Not properly terminated
+
+replacing crashed worker gw0
+[gw4] node down: Not properly terminated
+
+replacing crashed worker gw4
+[gw5] node down: Not properly terminated
+
+replacing crashed worker gw5
+[gw6] node down: Not properly terminated
+
+replacing crashed worker gw6
+[gw7] node down: Not properly terminated
+
+replacing crashed worker gw7
+[gw9] node down: Not properly terminated
+
+replacing crashed worker gw9
+[gw8] node down: Not properly terminated
+
+replacing crashed worker gw8
+[gw10] node down: Not properly terminated
+
+replacing crashed worker gw10
+[gw11] node down: Not properly terminated
+
+replacing crashed worker gw11
+[gw13] node down: Not properly terminated
+
+replacing crashed worker gw13
+[gw14] node down: Not properly terminated
+
+replacing crashed worker gw14
+[gw15] node down: Not properly terminated
+
+replacing crashed worker gw15
+[gw16] node down: Not properly terminated
+
+replacing crashed worker gw16
+[gw17] node down: Not properly terminated
+
+maximum crashed workers reached: 16
+[gw18] node down: Not properly terminated
+
+maximum crashed workers reached: 16
+[gw19] node down: Not properly terminated
+
+maximum crashed workers reached: 16
+
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17
+  /home/buzzard/.mbirjax/regression/lib_greg_kernel_investigation/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== xdist: maximum crashed workers reached: 16 ==================
+======================== 1 warning in 62.47s (0:01:02) =========================
