@@ -59,7 +59,7 @@ def build_nsi(tag, spec):
     rs.setdefault('positivity_flag', True)
     sidecar = {
         'model_class': 'ConeBeamModel',
-        'auto_set_recon_geometry': False,
+        'auto_set_recon_geometry': True,  # the NSI flow re-runs auto after the detector params are set
         'recon_settings': rs,
         'provenance': {'source': spec['path'], 'detector_factor': df,
                        'view_factor': vf, 'built': time.strftime('%Y-%m-%d')},
