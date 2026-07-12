@@ -429,7 +429,7 @@ def _annotate_dep_info(runs: list[dict]) -> None:
         }
 
 
-_POLICY_FIELDS = ("partition_sequence", "granularity", "max_iterations_default")
+_POLICY_FIELDS = ("partition_sequence", "granularity", "max_iterations_default", "axial_extension")
 
 
 def _annotate_config_changes(runs: list[dict]) -> None:

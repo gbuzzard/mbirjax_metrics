@@ -8,3 +8,12 @@
   text: "prerelease merged in: partition_sequence default reverted [4, 7] -> [0, 2, 4, 6, 7]
     (granularity-1 returns -> vcd_nonconst memory up 12-40%, matching prerelease/main levels;
     subset count per 3 iterations 272 -> 21 -> times down; max_iterations default 25 -> 15)"
+- date: 2026-07-12
+  branch: greg/kernel_investigation
+  text: "flash-remediation padding regime (commits a872695..dbc9c3b; policy flag
+    axial_extension): cone auto shapes extend per end to the visibility bound (+R/SID
+    slices, geometry-dependent ~10-40%) -> cone recon shapes/values/memory step, for the
+    better (end flash/ringing removed, faster to the 0.2% stop); split_sino_recon taper
+    retired for the geometry-derived recon overlap; NSI flow re-runs auto-geometry after
+    real detector params (lilly shapes SHRINK once caches rebuild, e.g. ds4 667 -> 572
+    slices).  Validated on SiC/Lilly/BGA -- plans/flash_remediation/phase_3_results.html"

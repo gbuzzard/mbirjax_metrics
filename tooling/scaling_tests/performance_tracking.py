@@ -722,7 +722,12 @@ def _mbirjax_policy_defaults(root):
         "print(json.dumps({"
         "'partition_sequence': list(d['partition_sequence'].val), "
         "'granularity': list(d['granularity'].val), "
-        "'max_iterations_default': inspect.signature(mbirjax.TomographyModel.recon).parameters['max_iterations'].default}))"
+        "'max_iterations_default': inspect.signature(mbirjax.TomographyModel.recon).parameters['max_iterations'].default, "
+        # The 2026-07 flash-remediation padding regime (per-end axial extension, split
+        # h_recon formula + taper retirement, NSI cleanup — landed together on the branch):
+        # get_support_radius is its capability marker, so this flag flips exactly when the
+        # cone-cell shape/value/memory step appears.
+        "'axial_extension': bool(getattr(mbirjax, 'get_support_radius', None))}))"
     )
     try:
         r = subprocess.run([sys.executable, "-c", snippet], capture_output=True, text=True,
