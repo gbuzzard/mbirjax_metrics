@@ -1,0 +1,34 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_greg_gpu_headroom
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 8/8 workers
+8 workers [321 items]
+
+........................................................................ [ 22%]
+.........................................................s.............. [ 44%]
+........................................................................ [ 67%]
+........................................................................ [ 89%]
+.......................s.........                                        [100%]
+=============================== warnings summary ===============================
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /Users/gbuzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/geometries/test_auto_geometry.py::TestConeAxialExtension::test_helical_fdk_and_recon_finite_with_extension
+  /Users/gbuzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/cone_beam.py:1237: UserWarning: Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.
+    warnings.warn('Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.')
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /Users/gbuzzard/miniforge3/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+============ 319 passed, 2 skipped, 6 warnings in 150.41s (0:02:30) ============
