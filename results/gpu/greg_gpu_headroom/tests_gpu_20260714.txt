@@ -1,0 +1,100 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 4/4 workers
+4 workers [321 items]
+
+........................................................................ [ 22%]
+s............................................s.......................... [ 44%]
+........................................................................ [ 67%]
+............................................F......s....F.s............. [ 89%]
+........................s........                                        [100%]
+=================================== FAILURES ===================================
+_____ TestProjectorCacheSharing.test_two_instances_share_compiled_programs _____
+[gw0] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_projector_cache_sharing.TestProjectorCacheSharing testMethod=test_two_instances_share_compiled_programs>
+
+    def test_two_instances_share_compiled_programs(self):
+        rng = np.random.default_rng(0)
+    
+        # First model + inputs.  Building the model does NOT call the projectors (no trace yet).
+        m1 = self._make_model()
+        recon_shape = tuple(int(x) for x in m1.get_params('recon_shape'))
+        idx = jnp.asarray(mbirjax.gen_full_indices(recon_shape,
+                                                   use_ror_mask=m1.get_params('use_ror_mask')))
+        num_pixels = int(idx.shape[0])
+        flat = jnp.asarray(rng.standard_normal((num_pixels, recon_shape[2]), dtype=np.float32))
+        sino = jnp.asarray(rng.standard_normal(self.SINO_SHAPE, dtype=np.float32))
+    
+        fwd_before = projectors._jit_sparse_forward_project._cache_size()
+        bak_before = projectors._jit_sparse_back_project._cache_size()
+    
+        proj1 = m1.projector_functions
+        f1 = np.asarray(proj1.sparse_forward_project(flat, idx))
+        b1 = np.asarray(proj1.sparse_back_project(sino, idx))
+    
+        fwd_after_1 = projectors._jit_sparse_forward_project._cache_size()
+        bak_after_1 = projectors._jit_sparse_back_project._cache_size()
+        # The module-level cache grew by exactly one program -> create_projectors really
+        # routes through the shared module-level jit (not a per-instance closure).
+>       self.assertEqual(fwd_after_1, fwd_before + 1, msg="forward projector did not trace one shared program")
+E       AssertionError: 32 != 33 : forward projector did not trace one shared program
+
+../tests/test_projector_cache_sharing.py:63: AssertionError
+______________ TestScatterCenters.test_wrapper_refuses_outer_jit _______________
+[gw3] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_scatter_centers.TestScatterCenters testMethod=test_wrapper_refuses_outer_jit>
+
+    def test_wrapper_refuses_outer_jit(self):
+        # The CONCRETENESS contract: inside an outer jit the centers would become tracers
+        # and the rounding-bug precondition would silently return -- the wrapper must fail
+        # loudly instead.
+        model = make_model()
+        recon_shape = model.get_params('recon_shape')
+        idx = mbirjax.gen_full_indices(recon_shape, use_ror_mask=False)
+        vox = np.zeros((len(idx), recon_shape[2]), dtype=np.float32)
+    
+        def wrapped(v):
+            return model.projector_functions.sparse_forward_project(v, idx)
+    
+>       with self.assertRaises(AssertionError):
+E       AssertionError: AssertionError not raised
+
+../tests/test_scatter_centers.py:100: AssertionError
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+  /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/geometries/test_auto_geometry.py::TestConeAxialExtension::test_helical_fdk_and_recon_finite_with_extension
+  /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/cone_beam.py:1237: UserWarning: Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.
+    warnings.warn('Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.')
+
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:212: CPU-only behavior (a GPU applies platform overrides)
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+SKIPPED [1] ../tests/test_device_config.py:40: GPU backend present; the no-GPU error path is not reachable
+SKIPPED [1] ../tests/test_tile_policy.py:34: CPU-only behavior (a GPU applies platform overrides)
+FAILED ../tests/test_projector_cache_sharing.py::TestProjectorCacheSharing::test_two_instances_share_compiled_programs
+FAILED ../tests/test_scatter_centers.py::TestScatterCenters::test_wrapper_refuses_outer_jit
+====== 2 failed, 314 passed, 5 skipped, 10 warnings in 708.00s (0:11:48) =======
