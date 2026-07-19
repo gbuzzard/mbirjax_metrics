@@ -1,0 +1,29 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_main
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 8/8 workers
+8 workers [231 items]
+
+........................................................................ [ 31%]
+...............................s........................................ [ 62%]
+....s................................................................... [ 93%]
+...............                                                          [100%]
+=============================== warnings summary ===============================
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /Users/gbuzzard/.mbirjax/regression/lib_main/mbirjax/multiaxis_parallel.py:88: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /Users/gbuzzard/miniforge3/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+============ 229 passed, 2 skipped, 5 warnings in 103.32s (0:01:43) ============
