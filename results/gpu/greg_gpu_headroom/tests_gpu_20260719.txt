@@ -1,0 +1,112 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 4/4 workers
+4 workers [345 items]
+
+........................................................................ [ 20%]
+.........................................s..........s..........s........ [ 41%]
+.................................FF.F................................... [ 62%]
+.................s...................................................... [ 83%]
+..........s..............................................                [100%]
+=================================== FAILURES ===================================
+_________ TestDeltaNormPerSlice.test_matches_volume_diff_multi_subset __________
+[gw3] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_vcd.TestDeltaNormPerSlice testMethod=test_matches_volume_diff_multi_subset>
+
+    def test_matches_volume_diff_multi_subset(self):
+        # Granularity index 2 -> 4 subsets: exercises the accumulation across subsets; the
+        # tolerance covers the few duplicated-pixel cross terms.
+        model, sino = self._make_model_and_sino()
+        model.set_params(partition_sequence=[2])
+        recon_shape = model.get_params('recon_shape')
+        init = jnp.zeros(recon_shape)
+        np.random.seed(4)
+        x1, d1 = model.recon(sino, init_recon=init, max_iterations=1, stop_threshold_change_pct=0)
+>       row0 = np.array(d1['recon_params']['delta_norm_per_slice'][0])
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'delta_norm_per_slice'
+
+../tests/geometries/test_vcd.py:385: KeyError
+_________ TestDeltaNormPerSlice.test_matches_volume_diff_single_subset _________
+[gw3] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_vcd.TestDeltaNormPerSlice testMethod=test_matches_volume_diff_single_subset>
+
+    def test_matches_volume_diff_single_subset(self):
+        # partition_sequence=[0] -> granularity 1 -> ONE subset: exact pixel tiling, no
+        # duplicated pixels, so each recorded row must match the volume difference to float
+        # accuracy (reduction-order noise only).  Same seed -> same trajectory, so the
+        # 2-iteration run's first row reproduces the 1-iteration run's.
+        model, sino = self._make_model_and_sino()
+        model.set_params(partition_sequence=[0])
+        recon_shape = model.get_params('recon_shape')
+        init = jnp.zeros(recon_shape)
+    
+        np.random.seed(3)
+        x1, d1 = model.recon(sino, init_recon=init, max_iterations=1, stop_threshold_change_pct=0)
+        np.random.seed(3)
+        x2, d2 = model.recon(sino, init_recon=init, max_iterations=2, stop_threshold_change_pct=0)
+    
+>       row0 = np.array(d1['recon_params']['delta_norm_per_slice'][0])
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'delta_norm_per_slice'
+
+../tests/geometries/test_vcd.py:367: KeyError
+__________ TestDeltaNormPerSlice.test_row_count_tracks_iterations_run __________
+[gw3] linux -- Python 3.11.15 /home/buzzard/.conda/envs/mbirjax_regression/bin/python
+
+self = <test_vcd.TestDeltaNormPerSlice testMethod=test_row_count_tracks_iterations_run>
+
+    def test_row_count_tracks_iterations_run(self):
+        # Early stop (a huge threshold trips after iteration 1): the recorded rows must be
+        # cropped to the iterations actually run.
+        model, sino = self._make_model_and_sino()
+        np.random.seed(5)
+        _, d = model.recon(sino, max_iterations=3, stop_threshold_change_pct=1e6)
+>       rows = d['recon_params']['delta_norm_per_slice']
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'delta_norm_per_slice'
+
+../tests/geometries/test_vcd.py:394: KeyError
+----------------------------- Captured stderr call -----------------------------
+Change threshold stopping condition reached
+------------------------------ Captured log call -------------------------------
+WARNING  ParallelBeamModel:tomography_model.py:3456 Change threshold stopping condition reached
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+  /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/geometries/test_auto_geometry.py::TestConeAxialExtension::test_helical_fdk_and_recon_finite_with_extension
+  /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/cone_beam.py:1267: UserWarning: Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.
+    warnings.warn('Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.')
+
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /home/buzzard/.mbirjax/regression/lib_greg_gpu_headroom/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:212: CPU-only behavior (a GPU applies platform overrides)
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+SKIPPED [1] ../tests/test_device_config.py:40: GPU backend present; the no-GPU error path is not reachable
+SKIPPED [1] ../tests/test_tile_policy.py:34: CPU-only behavior (a GPU applies platform overrides)
+FAILED ../tests/geometries/test_vcd.py::TestDeltaNormPerSlice::test_matches_volume_diff_multi_subset
+FAILED ../tests/geometries/test_vcd.py::TestDeltaNormPerSlice::test_matches_volume_diff_single_subset
+FAILED ../tests/geometries/test_vcd.py::TestDeltaNormPerSlice::test_row_count_tracks_iterations_run
+====== 3 failed, 337 passed, 5 skipped, 10 warnings in 564.53s (0:09:24) =======
