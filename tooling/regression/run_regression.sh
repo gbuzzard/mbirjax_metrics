@@ -92,7 +92,11 @@ reg_activate_env || exit $?
 read -r PLAT EXTRAS <<<"$(reg_plat_extras)"
 RES="$METRICS_REPO/results/$PLAT"; STATE="$METRICS_REPO/state/$PLAT"
 mkdir -p "$RES" "$STATE"
-log "platform=$PLAT extras=[$EXTRAS] env=$CONDA_ENV metrics=$METRICS_REPO"
+# Active env's Python (M.m) — the interpreter floor that decides which jax can install (a newer jax
+# whose requires_python exceeds this resolves DOWN).  Used by the jax headroom diagnosis and to
+# invalidate jax_seen when the env Python changes (a previously-held-back release can then install).
+ENV_PY="$(python -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo "")"
+log "platform=$PLAT extras=[$EXTRAS] env=$CONDA_ENV (python ${ENV_PY:-?}) metrics=$METRICS_REPO"
 
 # Credential for unattended push (cluster), scoped to this repo only.  TOKEN_FILE must be a git
 # credential-STORE file (chmod 600), i.e. ONE line:  https://<user>:<PAT>@github.com  (not the bare
@@ -103,12 +107,24 @@ if [ -n "${TOKEN_FILE:-}" ] && [ -f "$TOKEN_FILE" ]; then
   git -C "$METRICS_REPO" config credential.helper "store --file=$TOKEN_FILE"
 fi
 
-# jax-release watch (best-effort, NON-FATAL, runs every night even on no-change): emit a one-line WARN
-# into the log/email when a jax newer than JAX_LAST_REVIEWED ships, so the 0.10.2-style forward-perf
-# regression gets re-tested (measure_one_cell.py) instead of silently riding in on the next clean
-# install.  Placed BEFORE the no-change exit below so it fires regardless of branch activity.
+# jax-release watch (best-effort, NON-FATAL, runs every night even on no-change): warn when a jax newer
+# than JAX_LAST_REVIEWED ships, so the 0.10.2-style forward-perf regression gets re-tested
+# (measure_one_cell.py) instead of silently riding in on the next clean install.  The companion
+# --headroom line says WHETHER that newer jax can even install on this env's Python, or is held back by
+# the Python floor (the 2026-07 case: jax 0.11.0 needs Python >=3.12, env is 3.11).  Both are captured
+# (not just printed) so the NEW_JAX notify email below can carry them.  BEFORE the no-change exit so
+# they fire regardless of branch activity.
+JAXWATCH=""; HEADROOM=""
 if [ -n "${JAX_LAST_REVIEWED:-}" ] && [ -f "$HERE/check_jax_release.py" ]; then
-  python "$HERE/check_jax_release.py" "$JAX_LAST_REVIEWED" 2>/dev/null || true
+  JAXWATCH="$(python "$HERE/check_jax_release.py" "$JAX_LAST_REVIEWED" 2>/dev/null || true)"
+  # Diagnose headroom ONLY when a jax NEWER than the last-reviewed one exists — so bumping
+  # JAX_LAST_REVIEWED to the current latest quiets BOTH lines (an already-reviewed, held-back jax
+  # doesn't nag nightly).  It re-appears the moment a genuinely new jax ships.
+  if [ -n "$JAXWATCH" ]; then
+    log "$JAXWATCH"
+    HEADROOM="$(python "$HERE/check_jax_release.py" --headroom "$ENV_PY" 2>/dev/null || true)"
+    [ -n "$HEADROOM" ] && log "$HEADROOM"
+  fi
 fi
 
 # ── Change detection via ls-remote (don't clone mbirjax unless something moved) ────────────────
@@ -139,6 +155,15 @@ if [ "${DEP_CANARY_ENABLED:-0}" = "1" ] && [ -f "$HERE/check_jax_release.py" ]; 
   CANARY="${DEP_CANARY_BRANCH:-main}"; _g="$(cat "$STATE/depgen" 2>/dev/null || echo 0)"
   PYPI_JAX="$(python "$HERE/check_jax_release.py" --print-latest 2>/dev/null || true)"
   SEEN="$(cat "$STATE/jax_seen" 2>/dev/null || true)"
+  # jax_seen records the PyPI-latest we've ALREADY reacted to (so an excluded/held-back release doesn't
+  # re-fire the canary nightly).  But if the env Python changed since then, a release the OLD Python
+  # floor held back could now install — so treat jax_seen as stale and re-evaluate, else NEW_JAX stays 0
+  # and the newly-installable jax rides in silently.  First run has no recorded python -> no invalidation.
+  SEEN_PY="$(cat "$STATE/jax_seen_python" 2>/dev/null || true)"
+  if [ -n "$ENV_PY" ] && [ -n "$SEEN_PY" ] && [ "$ENV_PY" != "$SEEN_PY" ]; then
+    log "dep-canary: env Python changed ($SEEN_PY -> $ENV_PY) — invalidating jax_seen ('$SEEN') to re-evaluate."
+    SEEN=""
+  fi
   [ -n "$PYPI_JAX" ] && [ "$PYPI_JAX" != "$SEEN" ] && NEW_JAX=1
   _last="$(cat "$STATE/last_full_refresh" 2>/dev/null || echo 0)"
   [ $(( $(date +%s) - _last )) -gt $(( ${DEP_FULL_REFRESH_DAYS:-14} * 86400 )) ] && FULL_REFRESH=1
@@ -196,7 +221,7 @@ measure_commit() {   # $1=branch $2=sha $3=outdir $4=dep_gen $5=reason $6=upgrad
     log "  dep-canary: install of ${_sha:0:8} failed — skip step."; rm -rf "$_wt"; return 2; fi
   mkdir -p "$_out"
   REG_LIB_ROOT="$_wt" REG_OUT_DIR="$_out" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$_br" \
-    REG_DEP_GEN="$_dg" REG_RUN_REASON="$_reason" \
+    REG_DEP_GEN="$_dg" REG_RUN_REASON="$_reason" REG_JAX_AVAILABLE="$PYPI_JAX" \
     python "$HARNESS_DIR/scaling_tests/run_nightly.py" || _rc=$?
   rm -rf "$_wt"; return "$_rc"
 }
@@ -302,7 +327,7 @@ for i in "${!CHANGED_BR[@]}"; do
   log "$BR: running perf engine (output follows)..."
   GLOG="$(mktemp)"   # capture engine output to grep the gate detail for the alert email; tee keeps it live
   REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
-       REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" \
+       REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" REG_JAX_AVAILABLE="$PYPI_JAX" \
        python "$HARNESS_DIR/scaling_tests/run_nightly.py" 2>&1 | tee "$GLOG"
   engine_rc="${PIPESTATUS[0]}"
   # The engine can print an abort ("produced no result" / a CUDA "Check failed") yet still exit 0,
@@ -347,6 +372,8 @@ fi
 # last_full_refresh stamps the timer (written even if the deps-step gated, so it doesn't re-fire daily).
 if [ "${REG_SMOKE:-0}" != "1" ]; then
   [ "$NEW_JAX" = "1" ] && echo "$PYPI_JAX" >"$STATE/jax_seen"
+  # Stamp the env Python that jax_seen was assessed under, so a later Python change invalidates it above.
+  [ "${DEP_CANARY_ENABLED:-0}" = "1" ] && [ -n "$ENV_PY" ] && echo "$ENV_PY" >"$STATE/jax_seen_python"
   if   [ "$FULL_REFRESH" = "1" ]; then echo "$FULL_GEN" >"$STATE/depgen"; echo "$(date +%s)" >"$STATE/last_full_refresh"
   elif [ "$NEW_JAX" = "1" ];      then echo "$DEP_GEN"  >"$STATE/depgen"; fi
 fi
@@ -387,28 +414,45 @@ else
 fi
 fi   # end REG_SMOKE publish guard
 
-# ── Alert email (A): ONE message with the perf-gate + test-failure detail, if any ────────────────
-# Fires on a perf-gate regression OR a (non-fatal) test failure.  Slurm's --mail-type=FAIL is kept as
-# the reliable backstop and fires only on the non-zero exit below (perf gate) — so a gate fail sends 2
-# mails (Slurm generic + this detailed one), a test-only fail sends just this one, a green night none.
-if { [ "$GATE_FAIL" != "0" ] || [ "$TEST_FAIL" != "0" ]; } && [ -s "$ALERT_BODY" ]; then
+# ── Alert / notify email (A): perf-gate + test-failure detail, and/or a NEW-jax notice ────────────
+# Fires on: a perf-gate regression, a (non-fatal) test failure, OR a new jax on PyPI (NEW_JAX — which
+# advances jax_seen, so this sends ONCE per release, not nightly).  The new-jax notice makes "a new jax
+# shipped" an ACTIVE signal instead of a log-only line that is easy to miss on a green night (the jax
+# watch + headroom diagnosis printed above otherwise live only in the log).  Slurm's --mail-type=FAIL
+# remains the backstop and fires only on the non-zero exit below (perf gate).
+# Notify on a new jax only when it is UNREVIEWED (JAXWATCH fired).  A jax already in JAX_LAST_REVIEWED —
+# e.g. the OTHER platform's canary catching up to a version we've assessed, or an env-Python re-eval —
+# still re-measures via NEW_JAX above but does NOT re-notify (bumping JAX_LAST_REVIEWED silences it).
+NEWJAX_NOTIFY=0; [ "$NEW_JAX" = "1" ] && [ -n "$JAXWATCH" ] && NEWJAX_NOTIFY=1
+if [ "$GATE_FAIL" != "0" ] || [ "$TEST_FAIL" != "0" ] || [ "$NEWJAX_NOTIFY" = "1" ]; then
   SM="$(command -v sendmail || echo /usr/sbin/sendmail)"
   if [ -x "$SM" ]; then
     _brs="$(IFS=,; echo "${CHANGED_BR[*]}")"
-    { printf 'Subject: [mbirjax-nightly] %s regression: %s\nTo: %s\n\n' "$PLAT" "$_brs" "$MAIL_TO"
-      echo "mbirjax nightly ($PLAT) detected regressions on $(hostname) at $(date '+%F %T')."
-      echo "Branches measured this run: $_brs"
+    if [ "$GATE_FAIL" != "0" ] || [ "$TEST_FAIL" != "0" ]; then _subj="regression: ${_brs:-<none>}"
+    else _subj="new jax available: ${PYPI_JAX}"; fi
+    { printf 'Subject: [mbirjax-nightly] %s %s\nTo: %s\n\n' "$PLAT" "$_subj" "$MAIL_TO"
+      echo "mbirjax nightly ($PLAT) on $(hostname) at $(date '+%F %T')."
+      echo "Branches measured this run: ${_brs:-<none>}"
       echo
-      cat "$ALERT_BODY"
+      if [ "$NEWJAX_NOTIFY" = "1" ]; then
+        echo "### NEW jax on PyPI: ${PYPI_JAX}  (previously acted-on: ${SEEN:-none}; env Python: ${ENV_PY:-?})"
+        [ -n "$JAXWATCH" ] && echo "$JAXWATCH"
+        [ -n "$HEADROOM" ] && echo "$HEADROOM"
+        echo "  Installed jax this run is in each run's toolchain block (held to the newest jax the env Python allows)."
+        echo "  If ${PYPI_JAX} is unwanted: add it to the jax!=... exclusion in mbirjax/pyproject.toml AND bump"
+        echo "  JAX_LAST_REVIEWED in action_scripts/run_configs.env.  If good: just bump JAX_LAST_REVIEWED."
+        echo
+      fi
+      [ -s "$ALERT_BODY" ] && cat "$ALERT_BODY"
       [ -n "${SLURM_JOB_ID:-}" ] && echo "Full log: ~/.mbirjax/regression/nightly-${SLURM_JOB_ID}.log"
       echo "Records:  $RES/<branch>/  (record book records_${PLAT}.yaml)"
       echo
-      echo "Note: a perf-gate regression AUTO-ADVANCES the baseline, so this alert fires ONCE per"
+      echo "Note: a perf-gate regression AUTO-ADVANCES the baseline, so that alert fires ONCE per"
       echo "regressing change — review and revert if it is not an expected/accepted change.  Test"
       echo "failures are non-fatal (they do not change the exit code)."
-    } | "$SM" -t && log "alert email sent to $MAIL_TO." || log "WARN: alert email send failed (non-fatal)."
+    } | "$SM" -t && log "notify email sent to $MAIL_TO." || log "WARN: notify email send failed (non-fatal)."
   else
-    log "WARN: no sendmail found — alert email skipped (Slurm --mail-type=FAIL still covers gate fails)."
+    log "WARN: no sendmail found — notify email skipped (Slurm --mail-type=FAIL still covers gate fails)."
   fi
 fi
 rm -f "$ALERT_BODY"

@@ -59,6 +59,11 @@ def main():
     run_reason = os.environ.get("REG_RUN_REASON")
     if run_reason:
         overrides["run_reason"] = run_reason
+    # PyPI-latest jax at run time (set by run_regression.sh from check_jax_release.py --print-latest).
+    # Recorded in the run header so the dashboard can distinguish "available" from "installed" jax.
+    jax_available = os.environ.get("REG_JAX_AVAILABLE")
+    if jax_available:
+        overrides["jax_available"] = jax_available
 
     if os.environ.get("REG_SMOKE") == "1":
         # Fast plumbing smoke (NOT a real measurement): a trivial 1-cell sweep to shake out the

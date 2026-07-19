@@ -1117,8 +1117,16 @@ function depTipHtml(entries) {
                     : e.reason === "jax-step" ? "jax bump"
                     : e.reason === "code-step" ? "code + new jax" : "dep change";
   const parts = entries.slice().sort((a, b) => (a.gen || 0) - (b.gen || 0)).map((e) => {
-    const jax = (e.jax_from && e.jax_from !== e.jax_to) ? `jax ${e.jax_from} → ${e.jax_to}`
-              : (e.jax_to ? `jax ${e.jax_to}` : "");
+    // Prefer "available X, installed Y" when a newer jax shipped but the install resolved to an older
+    // one (held back by the env Python floor or the pyproject jax!=... exclusion); else the installed-
+    // version delta between generations; else the bare installed version.
+    let jax;
+    if (e.jax_available && e.jax_to && e.jax_available !== e.jax_to)
+      jax = `jax ${e.jax_available} available, installed ${e.jax_to}`;
+    else if (e.jax_from && e.jax_from !== e.jax_to)
+      jax = `jax ${e.jax_from} → ${e.jax_to}`;
+    else
+      jax = e.jax_to ? `jax ${e.jax_to}` : "";
     let s = `<b>${head(e)}</b>${jax ? ` · ${jax}` : ""}`;
     const ch = e.pkg_changes || [];
     if (ch.length) {
@@ -1312,7 +1320,7 @@ function renderHistory() {
       const x = runTime(r), key = r.platform + "|" + Math.floor(x / 86400);
       const g = groups[key] || (groups[key] = { x: Infinity, entries: [] });
       g.x = Math.min(g.x, x);
-      g.entries.push(r.dep_info || { reason: r.run_reason, gen: r.dep_gen, jax_to: r.jax, pkg_changes: [], pkg_n: 0 });
+      g.entries.push(r.dep_info || { reason: r.run_reason, gen: r.dep_gen, jax_to: r.jax, jax_available: r.jax_available, pkg_changes: [], pkg_n: 0 });
     });
     return Object.values(groups).map((g) => ({ x: g.x, color: DEPC, tip: depTipHtml(g.entries) }));
   };
@@ -1400,7 +1408,7 @@ function depChangeMarks(plat) {
     const x = runTime(r), key = Math.floor(x / 86400);
     const g = groups[key] || (groups[key] = { x: Infinity, entries: [] });
     g.x = Math.min(g.x, x);
-    g.entries.push(r.dep_info || { reason: r.run_reason, gen: r.dep_gen, jax_to: r.jax, pkg_changes: [], pkg_n: 0 });
+    g.entries.push(r.dep_info || { reason: r.run_reason, gen: r.dep_gen, jax_to: r.jax, jax_available: r.jax_available, pkg_changes: [], pkg_n: 0 });
   });
   return Object.values(groups).map((g) => ({ x: g.x, color: DEPC, tip: depTipHtml(g.entries) }));
 }

@@ -151,6 +151,10 @@ class Config:
     # name, no suffix).  run_reason records what triggered this run.  Default = a plain code run.
     dep_gen: int = 0
     run_reason: str = "commit"   # "commit" | "jax-step" | "code-step" | "deps-step"
+    jax_available: str = ""      # PyPI-latest jax at run time (REG_JAX_AVAILABLE from the wrapper).  Records
+                                 # what was AVAILABLE even when the install resolved to an older jax (held
+                                 # back by the env Python floor or the pyproject jax!=... exclusion), so the
+                                 # dashboard can say "X available, installed Y" instead of a bare "jax Y".
     lib_root: str = ""     # library checkout to MEASURE (PYTHONPATH + provenance); "" -> beta_root()
                            # (this harness's own checkout).  The nightly sets it to a per-branch worktree.
 
@@ -1197,6 +1201,7 @@ def run(config):
         "toolchain": sc.toolchain_info(),   # jax/jaxlib/CUDA stack — attributes a perf shift to the toolchain
         "packages": sc.installed_packages(),   # WHOLE env {name: version} — lets a deps-step name the dep that moved
         "dep_gen": config.dep_gen, "run_reason": config.run_reason,   # dependency-canary provenance
+        "jax_available": config.jax_available or None,   # PyPI-latest jax at run time (None if unknown)
         # WHEN this run was measured (local ISO, like git_commit_date).  Stamped here in the orchestrator
         # (not a worker), once per run.  The dashboard plots a dep-canary re-run at this time rather than
         # the (older) commit time, so it doesn't stack on the commit's original point.

@@ -424,6 +424,8 @@ def _annotate_dep_info(runs: list[dict]) -> None:
             "gen": g,
             "jax_from": (prior or {}).get("jax"),
             "jax_to": r.get("jax"),
+            "jax_available": r.get("jax_available"),   # PyPI-latest at run time: if it differs from
+            #   jax_to, the tooltip shows "available X, installed Y" (seen-but-not-installed)
             "pkg_changes": changes[:20],   # cap so a first-ever full env doesn't bloat the tooltip
             "pkg_n": len(changes),
         }
@@ -541,6 +543,9 @@ def _parse_run(path: Path, platform: str, branch_dir: str) -> dict:
         "dep_gen": int(doc.get("dep_gen") or 0),
         "run_reason": doc.get("run_reason") or "commit",
         "jax": (doc.get("toolchain") or {}).get("jax") if isinstance(doc.get("toolchain"), dict) else None,
+        "jax_available": doc.get("jax_available"),   # PyPI-latest jax at run time (None on older runs) —
+        #                                              lets the marker say "available X, installed Y"
+
         "version": doc.get("mbirjax_version"),
         "dirty": bool(doc.get("git_dirty", False)),
         "dirty_files": doc.get("git_dirty_files"),   # None on older runs
