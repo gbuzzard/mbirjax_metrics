@@ -222,6 +222,7 @@ measure_commit() {   # $1=branch $2=sha $3=outdir $4=dep_gen $5=reason $6=upgrad
   mkdir -p "$_out"
   REG_LIB_ROOT="$_wt" REG_OUT_DIR="$_out" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$_br" \
     REG_DEP_GEN="$_dg" REG_RUN_REASON="$_reason" REG_JAX_AVAILABLE="$PYPI_JAX" \
+    REG_MEM_GATE_WINDOW="${MEM_GATE_WINDOW:-}" \
     python "$HARNESS_DIR/scaling_tests/run_nightly.py" || _rc=$?
   rm -rf "$_wt"; return "$_rc"
 }
@@ -328,6 +329,7 @@ for i in "${!CHANGED_BR[@]}"; do
   GLOG="$(mktemp)"   # capture engine output to grep the gate detail for the alert email; tee keeps it live
   REG_LIB_ROOT="$WT" REG_OUT_DIR="$OUT" REG_DATE="$DATE" REG_GATE=1 REG_RUN_TAG="$BR" \
        REG_DEP_GEN="$DGEN" REG_RUN_REASON="$RREASON" REG_JAX_AVAILABLE="$PYPI_JAX" \
+       REG_MEM_GATE_WINDOW="${MEM_GATE_WINDOW:-}" \
        python "$HARNESS_DIR/scaling_tests/run_nightly.py" 2>&1 | tee "$GLOG"
   engine_rc="${PIPESTATUS[0]}"
   # The engine can print an abort ("produced no result" / a CUDA "Check failed") yet still exit 0,

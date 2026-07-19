@@ -165,7 +165,9 @@ class Config:
                                     # Cross-branch comparison (vs main/prerelease) + best-ever drift
                                     # are surfaced on the dashboard, not gated here.
     mem_hard_pct: float = 8.0       # memory growth threshold (%); HARD on GPU, soft on CPU
-    mem_gate_window: int = 4        # rolling-MIN window (runs) for the memory gate.  peak_bytes_in_use
+    mem_gate_window: int = 3        # rolling-MIN window (runs) for the memory gate.  Operationally set via
+                                    # action_scripts/run_configs.env (MEM_GATE_WINDOW); this is the fallback.
+                                    # peak_bytes_in_use
                                     # on the sharded (n>1) path is bimodal per-run — a sporadic ~30-100 MB
                                     # scratch transient rides on a stable floor (measured: n=2 wanders
                                     # ~12% single-shot, n=1/n=4 byte-frozen).  Gating the WINDOWED MIN

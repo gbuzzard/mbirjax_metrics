@@ -20,6 +20,7 @@ Env vars (set by the wrapper):
   REG_DATE      (optional)  YYYYMMDD, resolved ONCE by the wrapper (default: today)
   REG_GATE      (optional)  "1" (default) to set a non-zero exit on a hard-gate regression
   REG_RUN_TAG   (optional)  label recorded in the YAML (e.g. the branch name)
+  REG_MEM_GATE_WINDOW (optional)  rolling-min memory-gate window in runs (MEM_GATE_WINDOW in run_configs.env)
 """
 import os
 from datetime import datetime
@@ -64,6 +65,12 @@ def main():
     jax_available = os.environ.get("REG_JAX_AVAILABLE")
     if jax_available:
         overrides["jax_available"] = jax_available
+
+    # Rolling-min memory-gate window (runs) — MEM_GATE_WINDOW in action_scripts/run_configs.env.
+    # Empty -> keep performance_tracking.Config.mem_gate_window's default.
+    mem_gate_window = os.environ.get("REG_MEM_GATE_WINDOW")
+    if mem_gate_window:
+        overrides["mem_gate_window"] = int(mem_gate_window)
 
     if os.environ.get("REG_SMOKE") == "1":
         # Fast plumbing smoke (NOT a real measurement): a trivial 1-cell sweep to shake out the
