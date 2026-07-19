@@ -17,3 +17,12 @@
     retired for the geometry-derived recon overlap; NSI flow re-runs auto-geometry after
     real detector params (lilly shapes SHRINK once caches rebuild, e.g. ds4 667 -> 572
     slices).  Validated on SiC/Lilly/BGA -- plans/flash_remediation/phase_3_results.html"
+- date: 2026-07-14
+  branch: greg/gpu_headroom
+  text: "cone recon_shape PINNED in the regression harness (performance_tracking.make_model
+    CONE_RECON_SHAPE_PINS) to the pre-change shipped shapes, decoupling the vs-prior
+    time/memory series from the upcoming cone axial-padding change (geometry-at-construction
+    + fan-reach cap on the per-end extension).  The padding regime is still surfaced via the
+    run-header policy block (axial_extension) and these markers; it will NO LONGER move cone
+    peak_bytes/wall-time baselines.  Cone baselines do not re-baseline -- pins equal the
+    current 0.7.1 auto shapes."

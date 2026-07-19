@@ -176,6 +176,24 @@ class Config:
         return cls(**{k: v for k, v in (d or {}).items() if k in names})
 
 
+# Cone recon_shape pins — padding-policy decoupling ────────────────────────────
+# The cone auto recon_shape depends on the library's axial-padding policy, so a change to
+# that policy would silently move recon_shape (and thus every cone cell's peak_bytes /
+# wall-time baseline).  We pin cone recon_shape per sinogram size to the current shipped
+# shape so padding-policy changes no longer move the vs-prior time/memory series — that
+# regime is tracked deliberately via the run-header policy block and results/annotations.yaml
+# instead.  The pinned values equal the current auto-derived shapes (baselines do not move);
+# pinning only makes _recon_geometry_is_auto False so future auto-padding can't reshape a cell.
+CONE_RECON_SHAPE_PINS = {
+    (128, 112, 96):    (96, 96, 126),
+    (129, 113, 97):    (97, 97, 129),
+    (200, 208, 160):   (160, 160, 234),
+    (512, 448, 384):   (384, 384, 504),
+    (513, 449, 385):   (385, 385, 507),
+    (1024, 1008, 992): (992, 992, 1134),
+}
+
+
 # ── Op-specific builders (used by the worker body) ────────────────────────────
 def make_model(config, geometry, size):
     """Build a single-device model of ``geometry`` for SINOGRAM ``size``.
@@ -201,6 +219,18 @@ def make_model(config, geometry, size):
         sid = sdd / 2.0
         model = mbirjax.ConeBeamModel((n_views, n_rows, n_channels), angles,
                                       source_detector_dist=sdd, source_iso_dist=sid)
+        # Pin recon_shape so the cone axial-padding POLICY (which is changing) cannot move
+        # the measured shape/memory/time — see CONE_RECON_SHAPE_PINS above.
+        pin = CONE_RECON_SHAPE_PINS.get((int(n_views), int(n_rows), int(n_channels)))
+        if pin is not None:
+            model.set_params(recon_shape=tuple(int(x) for x in pin))
+        else:
+            # A new cone size with no pin falls back to the library auto shape (current
+            # behavior) but is flagged so its baseline can be pinned deliberately.
+            print(f"WARNING: cone size {(n_views, n_rows, n_channels)} has no recon_shape "
+                  f"pin; using auto {tuple(int(x) for x in model.get_params('recon_shape'))}"
+                  f" — add it to CONE_RECON_SHAPE_PINS to decouple from padding policy.",
+                  file=sys.stderr)
     elif geometry == "multiaxis_parallel":
         azimuths = np.linspace(0, np.pi, n_views, endpoint=False)
         elevation = np.full(n_views, np.deg2rad(config.multiaxis_elevation_deg), dtype=np.float64)
@@ -226,6 +256,8 @@ def make_model(config, geometry, size):
         model = mbirjax.TranslationModel(sino_shape, tv, source_detector_dist=sdd, source_iso_dist=sid)
         model.set_params(delta_det_channel=delta_det, delta_det_row=delta_det)
         model.set_params(delta_voxel=delta_voxel, voxel_row_aspect=1.0, voxel_slice_aspect=1.0)
+        # Setting recon_shape explicitly also decouples translation from the padding policy
+        # (_recon_geometry_is_auto is already False here) — same rationale as CONE_RECON_SHAPE_PINS.
         model.set_params(recon_shape=(config.tct_recon_rows, cols, slices))
     elif geometry == "denoiser":
         # The denoiser has no sinogram/projection: the size tuple IS the image (= recon) shape, and the
