@@ -21,20 +21,13 @@ fields, and YAML I/O.  The genuinely new pieces over ``cone_baseline_scaling.py`
     subprocess hop, fully step-through-able in PyCharm.  The cost: peak memory is then cumulative
     across the sweep, not per-config (``peak_bytes_in_use`` is a high-water mark), so inline is
     for debugging logic/correctness; trust the isolated-subprocess numbers for the memory ruler.
-  * **per-device-count isolation** (isolated/subprocess path only): the orchestrator spawns a
-    SEPARATE worker for each device count of a cell (descending, with the OOM early-stop lifted up
-    from ``run_measure_loop``), because ``peak_bytes_in_use`` is a process-cumulative high-water
-    mark with no in-process reset in jax — a shared-process descent lets one count's warmup/compile
-    scratch inflate the next count's peak (the n>1 memory-gate false-positive source).
 
 Roles (mirrors cone_baseline_scaling.py):
-  - orchestrator (default, no args)            : ``run(Config)`` — per (geom, op, size, device
-                                                  count) spawn a worker (or, inline, one call for
-                                                  the whole cell), collect rows, write YAML.
+  - orchestrator (default, no args)            : ``run(Config)`` — per (geom, op, size) spawn a
+                                                  worker (or call inline), collect rows, write YAML.
   - worker --mode setup                        : report platform / devices.
-  - worker --mode measure --config --geometry --op --size --device-counts : measure the given
-                                                  device count(s) of one cell and write its rows
-                                                  (the isolated orchestrator passes ONE count).
+  - worker --mode measure --config --geometry --op --size : measure one cell group (all device
+                                                  counts) and write its rows.
 
 mbirjax/jax are imported INSIDE the worker functions only (device-setup-first; the default
 orchestrator role stays JAX-free so a subprocess worker can read peak memory cleanly).  In
@@ -1152,9 +1145,6 @@ def run(config):
             for label in size_labels:
                 print(f"\n=== {geometry} | {op} | {label} @ n={gdc} ===")
                 if config.inline:
-                    # Debug path: single step-through-able process; peak memory is CUMULATIVE
-                    # across the device-count descent (see module docstring) -- trust the
-                    # isolated-subprocess numbers, not these, for the memory ruler.
                     fd, tmp = tempfile.mkstemp(suffix=".yaml", prefix="perf_inline_")
                     os.close(fd)
                     try:
@@ -1162,54 +1152,22 @@ def run(config):
                     finally:
                         if os.path.exists(tmp):
                             os.remove(tmp)
-                    per_count_results = [res] if res else []
                 else:
-                    # Isolate EACH device count in its own fresh worker so peak_bytes_in_use
-                    # (a process-cumulative high-water mark with no in-process reset in jax) starts
-                    # clean per config.  A shared-process descent lets one count's warmup/compile
-                    # scratch inflate the next count's cumulative peak -- the source of the n>1
-                    # memory-gate false positives.  Descend so the OOM early-stop still holds:
-                    # fewer-device configs need MORE per-device memory, so once one OOMs the rest do.
-                    per_count_results = []
-                    for n in sorted(set(gdc), reverse=True):
-                        args = ["--worker", "--mode", "measure", "--config", cfg_path,
-                                "--geometry", geometry, "--op", op, "--size", label,
-                                "--device-counts", str(n)]
-                        res, _rc = sc.run_worker(script, args, extra_env=worker_env)
-                        if not res:
-                            # Hard worker death (OOM-killer / segfault / XLA abort) writes nothing,
-                            # so run_worker returns None.  Record a VISIBLE failure marker (else this
-                            # count silently vanishes from the cell) and STOP the descent: in the
-                            # descending sweep fewer-device configs need MORE per-device memory, so a
-                            # hard death here -- most often OOM -- would only repeat at smaller n.
-                            print(f"  no result for {geometry}/{op}/{label} @ n={n} "
-                                  f"(hard worker death, likely OOM); stopping descent")
-                            per_count_results.append({"failures": [{
-                                "n_devices": n, "oom": None,
-                                "error": "worker produced no result (hard crash / likely OOM-killed)"}]})
-                            break
-                        per_count_results.append(res)
-                        if any(f.get("oom") for f in (res.get("failures") or [])):
-                            print(f"  stopping descent at {geometry}/{op}/{label}: n={n} OOMed; "
-                                  f"fewer-device configs need more per-device memory")
-                            break
-                if not per_count_results:
+                    args = ["--worker", "--mode", "measure", "--config", cfg_path,
+                            "--geometry", geometry, "--op", op, "--size", label,
+                            "--device-counts", *[str(n) for n in gdc]]
+                    res, _rc = sc.run_worker(script, args, extra_env=worker_env)
+                if not res:
                     print(f"  (no result for {geometry}/{op}/{label})")
                     continue
-                # Merge the per-count workers back into one cell group.  Speedups are relative to
-                # the fewest-device run WITHIN the group, so annotate only after all counts land.
-                rows, group_failures, group_skips = [], [], []
-                for res in per_count_results:
-                    rows.extend(res.get("rows") or [])
-                    group_failures.extend(res.get("failures") or [])
-                    group_skips.extend(res.get("skips") or [])
+                rows = res.get("rows") or []
                 sc.annotate_speedups(rows)   # 'speedup' vs the fewest-device run in this group
                 cells.extend(rows)
-                for f in group_failures:
+                for f in (res.get("failures") or []):
                     cells.append({"geometry": geometry, "op": op, "size": label,
                                   "n_devices": f["n_devices"], "failed": True,
                                   "oom": bool(f.get("oom")), "error": f.get("error")})
-                for s in group_skips:
+                for s in (res.get("skips") or []):
                     cells.append({"geometry": geometry, "op": op, "size": label,
                                   "n_devices": s["n_devices"], "skipped": True,
                                   "reason": s["reason"]})
