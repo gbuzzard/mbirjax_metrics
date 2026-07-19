@@ -165,6 +165,14 @@ class Config:
                                     # Cross-branch comparison (vs main/prerelease) + best-ever drift
                                     # are surfaced on the dashboard, not gated here.
     mem_hard_pct: float = 8.0       # memory growth threshold (%); HARD on GPU, soft on CPU
+    mem_gate_window: int = 4        # rolling-MIN window (runs) for the memory gate.  peak_bytes_in_use
+                                    # on the sharded (n>1) path is bimodal per-run — a sporadic ~30-100 MB
+                                    # scratch transient rides on a stable floor (measured: n=2 wanders
+                                    # ~12% single-shot, n=1/n=4 byte-frozen).  Gating the WINDOWED MIN
+                                    # (min over the last N runs, both sides) rejects the transient without
+                                    # extra runtime; the tradeoff is ~(N-1)-run detection lag on a real
+                                    # floor shift.  1 = off (single-shot, legacy).  memory-only; timing gates
+                                    # unchanged.  Set from the 2026-07-19 gpu_headroom variance ablation.
     speedup_warn_pct: float = 15.0  # speedup-ratio drop WARN threshold (%); soft on all platforms
     time_soft_pct: float = 25.0     # absolute-time WARN threshold (%)
     fp_rtol_single: float = 1e-5    # fingerprint robust-aggregate rel tol (single-shot ops)
@@ -926,7 +934,9 @@ def _gate_metrics(key, t, r, lab, plat, config, hard, soft):
     if rm and tm is not None and (tm - rm) / rm * 100.0 > config.mem_hard_pct:
         bucket = hard if plat == "gpu" else soft
         cpu_note = "" if plat == "gpu" else " [CPU RSS, coarse]"
-        bucket.append(pre + "memory " + _fmt_delta(tm, rm, " MB") + cpu_note)
+        win = getattr(config, "mem_gate_window", 1)
+        win_note = f" [rolling-min over {win} runs]" if win and win > 1 else ""
+        bucket.append(pre + "memory " + _fmt_delta(tm, rm, " MB") + win_note + cpu_note)
     # speedup-ratio drop — SOFT everywhere (ratio of noisy timings).
     rsp, tsp = r.get("speedup"), t.get("speedup")
     if t["n_devices"] > 1 and rsp and tsp is not None and (rsp - tsp) / rsp * 100.0 > config.speedup_warn_pct:
@@ -1021,20 +1031,65 @@ def gate_run(result, references, config):
             "hard": hard, "soft": soft, "compared_to": [lab for lab, _ in refs]}
 
 
-def _find_prior(out_dir, plat, current_tag):
-    """Most-recent run file STRICTLY BEFORE current_tag (by name), or None.
+def _find_priors(out_dir, plat, current_tag, n):
+    """The ``n`` most-recent run files STRICTLY BEFORE current_tag, NEWEST FIRST (or []).
 
     Filenames embed the commit-time tag, so a lexicographic sort is chronological by COMMIT time;
-    the prior is therefore the immediately-preceding commit's run (not just 'yesterday's file').
+    prior[0] is therefore the immediately-preceding commit's run (not just 'yesterday's file').
     """
     import glob
     cur_name = f"regression_{plat}_{current_tag}.yaml"
     # Exclude the sibling *_table.yaml dumps: they match this glob and, since '_table.yaml' sorts AFTER
-    # '.yaml', the prior run's table would otherwise be picked as the prior run (gate vs a non-run).
-    befores = sorted(n for n in (os.path.basename(f)
+    # '.yaml', the prior run's table would otherwise be picked as a prior run (gate vs a non-run).
+    befores = sorted(nm for nm in (os.path.basename(f)
                      for f in glob.glob(os.path.join(out_dir, f"regression_{plat}_*.yaml")))
-                     if n < cur_name and not n.endswith("_table.yaml"))
-    return os.path.join(out_dir, befores[-1]) if befores else None
+                     if nm < cur_name and not nm.endswith("_table.yaml"))
+    return [os.path.join(out_dir, nm) for nm in befores[-n:][::-1]]   # newest first
+
+
+def _find_prior(out_dir, plat, current_tag):
+    """Most-recent run file STRICTLY BEFORE current_tag (by name), or None."""
+    pri = _find_priors(out_dir, plat, current_tag, 1)
+    return pri[0] if pri else None
+
+
+def _apply_mem_window(result, ref, prior_paths, W):
+    """Return (result_win, ref_win): COPIES of tonight's + the reference run with each cell's ``mem_mb``
+    replaced by a rolling-MIN over the last ``W`` runs, so a sporadic per-run peak transient on the
+    sharded (n>1) path can't false-gate.  MEMORY ONLY — every other field is copied unchanged, so the
+    timing/speedup/structural gates are unaffected; and the ORIGINALS are untouched, so the dated YAML
+    still records the true single-shot peak.
+
+      current-window (tonight)   = min(tonight, p1..p_{W-1})     [tonight anchors its own window]
+      reference-window (=p1)     = min(p1..pW)                   [the window ending at the prior run]
+
+    ``prior_paths`` is newest-first (p1 = immediately-prior).  A real floor shift is still caught, with
+    ~(W-1)-run lag; a one-run transient never moves either windowed min.  Missing/failed cells fall back
+    to single-shot (min over whatever is present)."""
+    prior_mems = {}   # cell_key -> [mem_mb in p1, p2, ... pW]  (newest first, missing runs skipped)
+    for p in prior_paths:
+        d = sc.load_yaml(p) or {}
+        for c in d.get("cells", []):
+            m = c.get("mem_mb")
+            if m is not None and not c.get("failed") and not c.get("skipped"):
+                prior_mems.setdefault(_cell_key(c), []).append(m)
+
+    def win_cells(cells, include_tonight):
+        out = []
+        for c in cells:
+            c2 = dict(c)
+            m = c.get("mem_mb")
+            if m is not None and not c.get("failed") and not c.get("skipped"):
+                pri = prior_mems.get(_cell_key(c), [])
+                pool = ([m] + pri[:W - 1]) if include_tonight else pri[:W]
+                if pool:
+                    c2["mem_mb"] = min(pool)
+            out.append(c2)
+        return out
+
+    result_win = {**result, "cells": win_cells(result.get("cells", []), include_tonight=True)}
+    ref_win = {**ref, "cells": win_cells(ref.get("cells", []), include_tonight=False)}
+    return result_win, ref_win
 
 
 def _print_gate(g):
@@ -1222,11 +1277,20 @@ def run(config):
     gen_tag = f"{file_tag}_g{config.dep_gen:04d}" if config.dep_gen else file_tag
     gate_dict = None
     if config.compare_to_prior:
-        refs = []
-        pp = _find_prior(config.out_dir, plat, gen_tag)
-        if pp:
-            refs.append((f"prior:{os.path.basename(pp)}", sc.load_yaml(pp)))
-        gate_dict = gate_run(result, refs, config)
+        W = max(1, int(getattr(config, "mem_gate_window", 1)))
+        priors = _find_priors(config.out_dir, plat, gen_tag, W)
+        if priors:
+            ref = sc.load_yaml(priors[0]) or {}   # empty/corrupt prior -> {} (degrade to cold-start-ish,
+            #                                        never crash the run before its YAML is written)
+            # Rolling-MIN the memory metric over the last W runs (both sides) so a sporadic per-run peak
+            # transient on the sharded path can't false-gate; the dated YAML keeps the true single-shot
+            # peak (we gate on COPIES).  W=1 -> legacy single-shot behaviour.
+            gate_result, gate_ref = ((result, ref) if W <= 1
+                                     else _apply_mem_window(result, ref, priors, W))
+            refs = [(f"prior:{os.path.basename(priors[0])}", gate_ref)]
+            gate_dict = gate_run(gate_result, refs, config)
+        else:
+            gate_dict = gate_run(result, [], config)   # cold start (no prior) -> all-SOFT
         result["gate"] = gate_dict
 
     out_path = os.path.join(config.out_dir, f"regression_{plat}_{gen_tag}.yaml")
