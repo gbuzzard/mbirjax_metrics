@@ -1132,6 +1132,45 @@ def _print_summary(cells):
                 r.get("speedup", float("nan")), mark))
 
 
+def _assert_platform_matches_out_dir(plat, out_dir):
+    """Abort if the platform THIS process measured on is not the one out_dir claims.
+
+    Two independent platform decisions exist in a nightly run, and they can disagree:
+
+    * the SHELL (run_regression.sh -> reg_plat_extras) picks ``results/<plat>/`` and the pip
+      extras from whether ``nvidia-smi -L`` succeeds -- i.e. from the hardware being PRESENT;
+    * THIS process picks ``plat`` from ``jax.devices()`` -- i.e. from jax actually being able
+      to USE it, which additionally needs a working CUDA plugin.
+
+    On 2026-07-21 they diverged: nvidia-smi saw the H100s so the run wrote to results/gpu/,
+    but the installed CUDA-12 plugin could not initialise under the node's cuda/13.3.0
+    (``cusparseGetProperty(...) failed: The cuSPARSE library was not found``) and jax fell
+    back to CPU.  The sweep measured the whole GPU suite ON CPU and filed it as
+    ``regression_cpu_*.yaml`` + ``records_cpu.yaml`` inside ``results/gpu/`` -- a records file
+    the dashboard never reads.  Tests passed, the engine exited 0, ``--mail-type=FAIL`` stayed
+    quiet, and the only symptom was GPU charts silently not updating, for three branches.
+
+    A CPU-measured run must never be filed as a GPU run.  Fail loudly instead: a crashed
+    engine is alerted on, a silently mislabelled one is not.  Manual runs
+    (``results/manual/<tag>/``) make no platform claim and are exempt.
+    """
+    parts = os.path.normpath(out_dir).split(os.sep)
+    claimed = next((p for p in reversed(parts) if p in ("gpu", "cpu")), None)
+    if claimed is None or claimed == plat:
+        return
+    raise RuntimeError(
+        "PLATFORM MISMATCH: out_dir claims '{claimed}' but jax reports '{plat}'.\n"
+        "  out_dir: {out_dir}\n"
+        "  Measuring on {plat} and filing under {claimed}/ would write records_{plat}.yaml\n"
+        "  into the {claimed} tree, where the dashboard does not read it -- the charts would\n"
+        "  go quiet with no other symptom.  Aborting instead.\n"
+        "  Most likely cause: jax could not initialise the accelerator and fell back to CPU.\n"
+        "  Look ABOVE for a 'Jax plugin configuration error'.  The usual culprit is the CUDA\n"
+        "  plugin extra (INSTALL_EXTRAS_gpu in run_configs.env) not matching the CUDA module\n"
+        "  the node loads (PREAMBLE_FILE -> `module load cuda`).".format(
+            claimed=claimed, plat=plat, out_dir=out_dir))
+
+
 def run(config):
     """Run the full GEOMETRY × OP × size × device-count sweep and write the dated YAML."""
     if not config.out_dir:
@@ -1166,6 +1205,9 @@ def run(config):
             return None
         plat, max_dev, dev_label, _corr, _mpath = sc.print_setup_banner(setup)
         shard_by_geom = setup.get("sharding_by_geom", {})
+
+    # Before ANY measurement: refuse to file a run under a platform it did not run on.
+    _assert_platform_matches_out_dir(plat, config.out_dir)
 
     device_counts = [n for n in config.device_counts if n <= max_dev]
     # Per geometry: a projector that can't shard (cone on prerelease; anything on pre-sharding main;
