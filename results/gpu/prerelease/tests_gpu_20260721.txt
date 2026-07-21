@@ -1,0 +1,41 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 4/4 workers
+4 workers [345 items]
+
+........................................................................ [ 20%]
+......................................................s...........s..... [ 41%]
+........................................................................ [ 62%]
+........................................................................ [ 83%]
+.........................................................                [100%]
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/geometries/test_auto_geometry.py::TestConeAxialExtension::test_helical_fdk_and_recon_finite_with_extension
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/cone_beam.py:1267: UserWarning: Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.
+    warnings.warn('Using FDK for helical direct reconstruction. This will produce an approximate reconstruction with artifacts, but is suitable for MBIR initialization.')
+
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+=========== 343 passed, 2 skipped, 10 warnings in 300.48s (0:05:00) ============
