@@ -1,0 +1,330 @@
+run:
+  kind: regression
+  platform: gpu
+  branch: prerelease
+  commit: bd8902ad
+  commit_date: '2026-07-21T15:09:55-04:00'
+  mbirjax_version: 0.7.1
+  date: '20260722'
+  device: GPU (NVIDIA H100 80GB HBM3)
+  toolchain:
+    jax: 0.10.1
+    jaxlib: 0.10.1
+    cuda: 13030
+    cudnn: 92500
+    cublas: 130600
+    xla_flags:
+  sharding_by_geom:
+    parallel: true
+    cone: true
+    multiaxis_parallel: true
+    translation: true
+    denoiser: true
+  device_counts:
+  - 1
+  - 2
+  - 4
+  gate:
+    result: fail
+    hard: 100
+    soft: 66
+GEOMETRY parallel:
+  OP direct_filter:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.4 ms       58.3 MB   1.00x'
+      n=2: '        2.9 ms       33.0 MB   1.17x'
+      n=4: '        3.2 ms       20.3 MB   1.05x'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       12.7 ms      690.4 MB   1.00x'
+      n=2: '        7.6 ms      354.4 MB   1.66x'
+      n=4: '        5.4 ms      186.4 MB   2.36x'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       18.5 ms      699.6 MB   1.00x'
+      n=2: '       10.2 ms      362.7 MB   1.81x'
+      n=4: '        6.8 ms      275.5 MB   2.73x'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      121.4 ms    7,861.5 MB   1.00x'
+      n=2: '       60.8 ms    3,955.5 MB   2.00x'
+      n=4: '       32.9 ms    2,002.5 MB   3.69x'
+  OP forward:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        4.2 ms      226.0 MB   1.00x'
+      n=2: '        4.3 ms      184.0 MB   0.99x     soft: speedup -46.7%'
+      n=4: '        9.4 ms       90.7 MB   0.45x     soft: speedup -85.2%'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       77.7 ms    1,925.0 MB   1.00x'
+      n=2: '       40.3 ms    1,644.2 MB   1.93x'
+      n=4: '       29.5 ms    1,427.0 MB   2.63x     soft: speedup -41.0%'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       81.9 ms    1,937.1 MB   1.00x'
+      n=2: '       43.4 ms    1,654.5 MB   1.89x'
+      n=4: '       33.7 ms    1,443.8 MB   2.43x     soft: speedup -38.1%'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    2,357.4 ms   15,658.0 MB   1.00x'
+      n=2: '    1,189.6 ms   12,859.6 MB   1.98x'
+      n=4: '      605.6 ms   11,888.6 MB   3.89x'
+  OP back:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        2.0 ms      136.3 MB   1.00x'
+      n=2: '        5.1 ms      100.2 MB   0.39x     soft: speedup -56.5%'
+      n=4: '       13.4 ms       49.5 MB   0.15x     soft: speedup -90.4%; soft: time +51.1%'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       38.3 ms    1,512.2 MB   1.00x'
+      n=2: '       23.5 ms    1,018.5 MB   1.63x     soft: speedup -17.0%'
+      n=4: '       43.0 ms      574.9 MB   0.89x     soft: speedup -78.1%'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       39.6 ms    1,520.2 MB   1.00x'
+      n=2: '       36.9 ms      913.0 MB   1.07x     soft: speedup -40.9%'
+      n=4: '       66.5 ms      440.1 MB   0.60x     soft: speedup -84.4%'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    1,148.5 ms   15,068.7 MB   1.00x     throttled'
+      n=2: '      567.7 ms    7,881.4 MB   2.02x     throttled'
+      n=4: '      479.7 ms    6,210.5 MB   2.39x     soft: speedup -37.0%'
+  OP vcd_nonconst:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      550.4 ms      322.1 MB   1.00x     HARD: fingerprint sum: reldiff 9.99e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 9.99e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 2.01e-01 > rtol 0.00; soft: time +54.4%; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+      n=2: '    1,185.8 ms      233.7 MB   0.46x     HARD: fingerprint sum: reldiff 9.99e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 9.99e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 2.01e-01 > rtol 0.00; soft: speedup -58.7%; soft: time +274.1%; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+      n=4: '    2,666.8 ms      111.4 MB   0.21x     HARD: fingerprint sum: reldiff 9.99e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 9.99e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 2.01e-01 > rtol 0.00; soft: speedup -70.7%; soft: time +426.5%; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    1,327.2 ms    3,829.3 MB   1.00x     HARD: fingerprint sum: reldiff 8.80e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 8.80e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 1.06e-01 > rtol 0.00; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+      n=2: '    1,554.5 ms    2,155.1 MB   0.85x     HARD: fingerprint sum: reldiff 8.80e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 8.80e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 1.06e-01 > rtol 0.00; soft: speedup -57.2%; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+      n=4: '    2,829.3 ms    1,700.4 MB   0.47x     HARD: fingerprint sum: reldiff 8.80e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 8.80e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 1.06e-01 > rtol 0.00; soft: speedup -87.1%; soft: time +27.2%; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    1,477.6 ms    3,797.0 MB   1.00x     HARD: fingerprint sum: reldiff 8.82e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 8.82e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 1.13e-01 > rtol 0.00'
+      n=2: '    2,000.6 ms    2,206.7 MB   0.74x     HARD: fingerprint sum: reldiff 8.82e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 8.82e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 1.13e-01 > rtol 0.00; soft: speedup -59.9%'
+      n=4: '    3,847.7 ms    1,688.6 MB   0.38x     HARD: fingerprint sum: reldiff 8.82e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 8.82e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 1.13e-01 > rtol 0.00; soft: speedup -88.8%; soft: time +50.3%'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '   22,344.2 ms   42,553.0 MB   1.00x     throttled; HARD: fingerprint sum: reldiff 6.92e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 6.92e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 4.38e-02 > rtol 0.00; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+      n=2: '   10,380.2 ms   20,382.1 MB   2.15x     throttled; HARD: fingerprint sum: reldiff 6.92e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 6.92e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 4.38e-02 > rtol 0.00; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+      n=4: '    8,096.6 ms   15,167.9 MB   2.76x     throttled; HARD: fingerprint sum: reldiff 6.92e-03 > rtol 0.0001 ; HARD: fingerprint mean: reldiff 6.92e-03 > rtol 0.0001; HARD: fingerprint l2norm: reldiff 4.38e-02 > rtol 0.00; soft: speedup -31.1%; soft: 8/12 fingerprint samples deviate (rtol 0.0001)'
+GEOMETRY cone:
+  OP direct_filter:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        4.7 ms       59.1 MB   1.00x'
+      n=2: '        4.4 ms       33.7 MB   1.06x'
+      n=4: '        5.0 ms       21.0 MB   0.94x'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       14.0 ms      694.4 MB   1.00x'
+      n=2: '        8.9 ms      358.4 MB   1.57x'
+      n=4: '        7.0 ms      190.4 MB   1.98x'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       20.9 ms      703.5 MB   1.00x'
+      n=2: '       12.5 ms      365.9 MB   1.68x'
+      n=4: '        8.8 ms      197.1 MB   2.38x'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      124.9 ms    7,888.2 MB   1.00x'
+      n=2: '       65.3 ms    3,982.2 MB   1.91x'
+      n=4: '       36.2 ms    2,025.3 MB   3.45x'
+  OP forward:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       13.9 ms      257.0 MB   1.00x     HARD: fingerprint sum: reldiff 4.50e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 4.50e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 9.15e-03 > rtol 1e-0; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=2: '       20.3 ms       89.8 MB   0.68x     HARD: fingerprint sum: reldiff 4.50e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 4.50e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 9.15e-03 > rtol 1e-0; soft: speedup -60.1%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=4: '       54.7 ms       47.3 MB   0.25x     HARD: fingerprint sum: reldiff 4.50e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 4.50e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 9.15e-03 > rtol 1e-0; soft: speedup -71.6%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      319.3 ms    1,851.2 MB   1.00x     HARD: fingerprint sum: reldiff 5.61e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 5.61e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.09e-02 > rtol 1e-0; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=2: '      252.4 ms      982.7 MB   1.26x     HARD: fingerprint sum: reldiff 5.61e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 5.61e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.09e-02 > rtol 1e-0; soft: speedup -34.0%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=4: '      274.8 ms      554.0 MB   1.16x     HARD: fingerprint sum: reldiff 5.61e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 5.61e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.09e-02 > rtol 1e-0; soft: speedup -55.2%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      327.1 ms    1,862.3 MB   1.00x     HARD: fingerprint sum: reldiff 2.45e+00 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 2.45e+00 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.07e-02 > rtol 1e-0; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=2: '      289.0 ms    1,006.7 MB   1.13x     HARD: fingerprint sum: reldiff 2.45e+00 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 2.45e+00 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.07e-02 > rtol 1e-0; soft: speedup -41.4%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=4: '      348.4 ms      587.6 MB   0.94x     HARD: fingerprint sum: reldiff 2.45e+00 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 2.45e+00 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.07e-02 > rtol 1e-0; soft: speedup -69.6%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    8,268.3 ms   15,906.6 MB   1.00x     HARD: fingerprint sum: reldiff 6.12e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 6.12e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.10e-02 > rtol 1e-0; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=2: '    6,304.5 ms    9,678.0 MB   1.31x     HARD: fingerprint sum: reldiff 6.12e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 6.12e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.10e-02 > rtol 1e-0; soft: speedup -27.7%; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+      n=4: '    3,115.6 ms    5,006.3 MB   2.65x     HARD: fingerprint sum: reldiff 6.12e-01 > rtol 1e-05 (; HARD: fingerprint mean: reldiff 6.12e-01 > rtol 1e-05 ; HARD: fingerprint l2norm: reldiff 1.10e-02 > rtol 1e-0; soft: 12/12 fingerprint samples deviate (rtol 1e-05)'
+  OP back:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        6.6 ms      151.6 MB   1.00x     HARD: fingerprint shape [19856, 208] -> [19856, 234]'
+      n=2: '        6.5 ms      116.9 MB   1.01x     HARD: fingerprint shape [19856, 208] -> [19856, 234]'
+      n=4: '       15.8 ms       64.9 MB   0.42x     HARD: fingerprint shape [19856, 208] -> [19856, 234]; soft: speedup -75.7%'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      151.9 ms    1,793.3 MB   1.00x     HARD: fingerprint shape [115164, 448] -> [115164, 504]'
+      n=2: '       83.4 ms    1,429.5 MB   1.82x     HARD: fingerprint shape [115164, 448] -> [115164, 504]'
+      n=4: '       63.3 ms      867.6 MB   2.40x     HARD: fingerprint shape [115164, 448] -> [115164, 504]'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      153.6 ms    1,802.9 MB   1.00x     HARD: fingerprint shape [115781, 449] -> [115781, 507]'
+      n=2: '       87.5 ms    1,322.6 MB   1.76x     HARD: back band count 2 -> 3; HARD: fingerprint shape [115781, 449] -> [115781, 507]'
+      n=4: '       73.2 ms      931.9 MB   2.10x     HARD: fingerprint shape [115781, 449] -> [115781, 507]'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    4,576.2 ms   17,063.3 MB   1.00x     throttled; HARD: back band count 8 -> 9; HARD: fingerprint shape [771240, 1008] -> [771240, 113'
+      n=2: '    2,628.9 ms   10,380.7 MB   1.74x     HARD: back band count 4 -> 5; HARD: fingerprint shape [771240, 1008] -> [771240, 113'
+      n=4: '    2,319.2 ms    8,320.4 MB   1.97x     throttled; HARD: back band count 4 -> 5; HARD: fingerprint shape [771240, 1008] -> [771240, 113'
+  OP vcd_nonconst:
+    size 200x208x160:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      593.3 ms      336.5 MB   1.00x     HARD: fingerprint shape [160, 160, 208] -> [160, 160, ; soft: time +36.0%'
+      n=2: '    1,150.0 ms      223.9 MB   0.52x     HARD: fingerprint shape [160, 160, 208] -> [160, 160, ; soft: speedup -54.9%; soft: time +201.2%'
+      n=4: '    2,678.2 ms      105.0 MB   0.22x     HARD: fingerprint shape [160, 160, 208] -> [160, 160, ; soft: speedup -69.4%; soft: time +343.9%'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    2,749.7 ms    4,014.5 MB   1.00x     HARD: fingerprint shape [384, 384, 448] -> [384, 384,'
+      n=2: '    2,425.2 ms    2,308.4 MB   1.13x     HARD: fingerprint shape [384, 384, 448] -> [384, 384,'
+      n=4: '    3,589.2 ms    1,235.3 MB   0.77x     HARD: fingerprint shape [384, 384, 448] -> [384, 384, ; soft: speedup -64.6%'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    2,880.3 ms    3,906.3 MB   1.00x     HARD: fingerprint shape [385, 385, 449] -> [385, 385,'
+      n=2: '    2,830.6 ms    2,142.8 MB   1.02x     HARD: fingerprint shape [385, 385, 449] -> [385, 385, ; soft: speedup -26.2%'
+      n=4: '    4,649.9 ms    1,342.0 MB   0.62x     HARD: fingerprint shape [385, 385, 449] -> [385, 385, ; soft: speedup -72.8%'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '   61,801.2 ms   47,669.0 MB   1.00x     throttled; HARD: fingerprint shape [992, 992, 1008] -> [992, 992,'
+      n=2: '   43,766.6 ms   22,672.7 MB   1.41x     throttled; HARD: fingerprint shape [992, 992, 1008] -> [992, 992,'
+      n=4: '   27,027.5 ms   13,053.7 MB   2.29x     throttled; HARD: fingerprint shape [992, 992, 1008] -> [992, 992,'
+GEOMETRY translation:
+  OP direct_filter:
+    size 15x65x65:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.0 ms        4.2 MB   1.00x'
+      n=2: '        3.4 ms        2.3 MB   0.89x'
+      n=4: '        4.1 ms        1.2 MB   0.74x'
+    size 15x256x256:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.4 ms       21.0 MB   1.00x'
+      n=2: '        3.7 ms       17.5 MB   0.92x'
+      n=4: '        4.2 ms       15.5 MB   0.80x'
+    size 15x257x257:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.6 ms       24.1 MB   1.00x'
+      n=2: '        4.0 ms       20.6 MB   0.92x'
+      n=4: '        4.4 ms       18.6 MB   0.82x'
+  OP forward:
+    size 15x65x65:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        1.1 ms       17.8 MB   1.00x'
+      n=2: '        6.7 ms        9.9 MB   0.17x'
+      n=4: '       14.6 ms        5.2 MB   0.08x'
+    size 15x256x256:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        2.9 ms       83.8 MB   1.00x'
+      n=2: '       11.2 ms       48.5 MB   0.26x'
+      n=4: '       28.0 ms       26.7 MB   0.10x'
+    size 15x257x257:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.0 ms      101.2 MB   1.00x'
+      n=2: '       14.3 ms       56.8 MB   0.21x'
+      n=4: '       35.0 ms       30.0 MB   0.08x'
+  OP back:
+    size 15x65x65:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        2.7 ms        2.8 MB   1.00x'
+      n=2: '        4.5 ms        1.5 MB   0.61x'
+      n=4: '        8.4 ms        1.1 MB   0.33x'
+    size 15x256x256:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.6 ms       96.6 MB   1.00x'
+      n=2: '        3.5 ms       27.1 MB   1.01x'
+      n=4: '        7.8 ms       16.2 MB   0.46x'
+    size 15x257x257:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        3.7 ms      113.9 MB   1.00x'
+      n=2: '        4.4 ms       23.0 MB   0.85x'
+      n=4: '        8.3 ms       16.5 MB   0.45x'
+GEOMETRY multiaxis_parallel:
+  OP direct_filter:
+    size 129x113x97:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        2.5 ms       14.2 MB   1.00x'
+      n=2: '        2.9 ms        9.3 MB   0.86x     soft: time +31.5%'
+      n=4: '        3.1 ms        6.4 MB   0.82x'
+    size 256x224x192:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        4.5 ms       93.1 MB   1.00x'
+      n=2: '        3.5 ms       51.1 MB   1.29x'
+      n=4: '        3.5 ms       30.1 MB   1.31x'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       12.2 ms      690.4 MB   1.00x'
+      n=2: '        7.3 ms      354.4 MB   1.67x'
+      n=4: '        5.3 ms      186.4 MB   2.29x'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       19.2 ms      699.6 MB   1.00x'
+      n=2: '       10.7 ms      361.9 MB   1.79x'
+      n=4: '        6.9 ms      193.1 MB   2.78x'
+  OP forward:
+    size 129x113x97:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        7.2 ms      358.7 MB   1.00x'
+      n=2: '       10.6 ms      185.6 MB   0.68x     soft: speedup -21.7%'
+      n=4: '       25.3 ms       95.2 MB   0.29x     soft: speedup -19.8%'
+    size 256x224x192:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       87.6 ms    1,268.2 MB   1.00x'
+      n=2: '       50.2 ms      797.4 MB   1.75x'
+      n=4: '       69.7 ms      394.9 MB   1.26x     soft: speedup -32.8%'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    1,739.8 ms    4,879.2 MB   1.00x'
+      n=2: '      947.6 ms    4,879.2 MB   1.84x'
+      n=4: '      742.2 ms    2,727.4 MB   2.34x'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    1,954.5 ms    3,777.8 MB   1.00x'
+      n=2: '    1,031.9 ms    3,109.2 MB   1.89x'
+      n=4: '      617.9 ms    2,739.5 MB   3.16x'
+  OP back:
+    size 129x113x97:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '        9.0 ms      197.8 MB   1.00x'
+      n=2: '        5.1 ms      101.3 MB   1.76x'
+      n=4: '        9.1 ms       29.7 MB   0.99x'
+    size 256x224x192:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '       39.4 ms      695.8 MB   1.00x'
+      n=2: '       39.7 ms      454.2 MB   0.99x'
+      n=4: '       27.4 ms      156.0 MB   1.44x'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      577.4 ms    2,399.8 MB   1.00x'
+      n=2: '      725.5 ms    1,255.0 MB   0.80x'
+      n=4: '      348.1 ms      503.9 MB   1.66x'
+    size 513x449x385:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      531.5 ms    2,150.8 MB   1.00x'
+      n=2: '      572.5 ms    1,114.9 MB   0.93x'
+      n=4: '      267.1 ms      524.5 MB   1.99x'
+GEOMETRY denoiser:
+  OP denoise:
+    size 225x241x257:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '      717.6 ms      229.5 MB   1.00x'
+      n=2: '    1,586.5 ms      106.5 MB   0.45x'
+      n=4: '    2,554.9 ms       53.8 MB   0.28x     soft: speedup -18.2%'
+    size 512x448x384:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    1,016.3 ms    1,450.0 MB   1.00x'
+      n=2: '    1,706.3 ms      506.6 MB   0.60x'
+      n=4: '    2,802.0 ms      253.8 MB   0.36x'
+    size 1024x1008x992:
+      labels: '   min time      peak mem   speedup   notes'
+      n=1: '    4,115.7 ms   17,093.9 MB   1.00x'
+      n=2: '    3,775.5 ms    5,870.8 MB   1.09x'
+      n=4: '    5,300.7 ms    2,941.3 MB   0.78x'
