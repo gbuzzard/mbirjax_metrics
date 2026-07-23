@@ -1,0 +1,40 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/buzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 4/4 workers
+4 workers [346 items]
+
+........................................................................ [ 20%]
+................................................s....................... [ 41%]
+......s.............s..........................s........................ [ 62%]
+........................................................................ [ 83%]
+...........s..............................................               [100%]
+=============================== warnings summary ===============================
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+../mbirjax/viewer.py:17
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/viewer.py:17: UserWarning: TkAgg not available for matplotlib. slice_viewer menus may not display correctly.
+    warnings.warn("TkAgg not available for matplotlib. slice_viewer menus may not display correctly.")
+
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /home/buzzard/.mbirjax/regression/lib_prerelease/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+  /home/buzzard/.conda/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] ../tests/sharding/test_hooks.py:212: CPU-only behavior (a GPU applies platform overrides)
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+SKIPPED [1] ../tests/test_device_config.py:40: GPU backend present; the no-GPU error path is not reachable
+SKIPPED [1] ../tests/test_tile_policy.py:34: CPU-only behavior (a GPU applies platform overrides)
+============ 341 passed, 5 skipped, 9 warnings in 643.70s (0:10:43) ============
