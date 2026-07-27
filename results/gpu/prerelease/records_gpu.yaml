@@ -129,10 +129,10 @@ parallel|direct_filter|1024x1008x992|1:
     prev:
 parallel|forward|512x448x384|4:
   min_ms:
-    value: 29.513208999560447
-    commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
-    date: '20260725'
-    prev: 29.545338940806687
+    value: 29.396879952400923
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 29.513208999560447
   mem_mb:
     value: 256.357177734375
     commit: 987a2ad8a3624575985b59ea8fb5a542ebc586e0
@@ -145,10 +145,10 @@ parallel|forward|512x448x384|4:
     prev: 4.474441943172143
 parallel|forward|512x448x384|2:
   min_ms:
-    value: 39.75821891799569
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 39.96717371046543
+    value: 39.74006092175841
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 39.75821891799569
   mem_mb:
     value: 540.463134765625
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
@@ -161,10 +161,10 @@ parallel|forward|512x448x384|2:
     prev: 2.031900070510836
 parallel|forward|512x448x384|1:
   min_ms:
-    value: 76.81661425158381
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 76.94282988086343
+    value: 76.58031396567822
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 76.81661425158381
   mem_mb:
     value: 745.2158203125
     commit: 5168813a3ee58ac8d1601ee858f19c09dec1bc2d
@@ -172,10 +172,10 @@ parallel|forward|512x448x384|1:
     prev: 1081.2158203125
 parallel|forward|513x449x385|4:
   min_ms:
-    value: 33.057843800634146
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 33.45670085400343
+    value: 32.92069397866726
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 33.057843800634146
   mem_mb:
     value: 257.443115234375
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
@@ -188,26 +188,26 @@ parallel|forward|513x449x385|4:
     prev: 4.0102927930971
 parallel|forward|513x449x385|2:
   min_ms:
-    value: 42.8361389786005
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 42.9318668320775
+    value: 42.592041194438934
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 42.8361389786005
   mem_mb:
     value: 491.467529296875
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
     date: '20260705'
     prev: 548.09619140625
   speedup:
-    value: 1.8967421187115439
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 1.8884588726375984
+    value: 1.899208060611828
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.8967421187115439
 parallel|forward|513x449x385|1:
   min_ms:
-    value: 81.07506483793259
-    commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
-    date: '20260723'
-    prev: 81.90850308164954
+    value: 80.89114795438945
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 81.07506483793259
   mem_mb:
     value: 1087.098388671875
     commit: 5168813a3ee58ac8d1601ee858f19c09dec1bc2d
@@ -317,10 +317,10 @@ parallel|back|513x449x385|4:
     prev: 4.389636861092628
 parallel|back|513x449x385|2:
   min_ms:
-    value: 36.60261600089143
-    commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
-    date: '20260725'
-    prev: 36.93098109215498
+    value: 36.29304398782551
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 36.60261600089143
   mem_mb:
     value: 806.96826171875
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
@@ -333,10 +333,10 @@ parallel|back|513x449x385|2:
     prev: 1.639775310774651
 parallel|back|513x449x385|1:
   min_ms:
-    value: 38.8652291148901
-    commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
-    date: '20260723'
-    prev: 39.61171593982726
+    value: 38.77475392073393
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 38.8652291148901
   mem_mb:
     value: 1520.180419921875
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
@@ -403,10 +403,10 @@ parallel|vcd_nonconst|512x448x384|4:
     prev: 3.6296453125144934
 parallel|vcd_nonconst|512x448x384|2:
   min_ms:
-    value: 1554.4930219184607
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 4031.993684999179
+    value: 1542.257633060217
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1554.4930219184607
   mem_mb:
     value: 2106.82470703125
     commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
@@ -446,10 +446,10 @@ parallel|vcd_nonconst|513x449x385|4:
     prev: 3.3086497951903695
 parallel|vcd_nonconst|513x449x385|2:
   min_ms:
-    value: 2000.5956910317764
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 4255.271369940601
+    value: 1988.4322870057076
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2000.5956910317764
   mem_mb:
     value: 2117.76416015625
     commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
@@ -473,10 +473,10 @@ parallel|vcd_nonconst|513x449x385|1:
     prev: 4733.50537109375
 parallel|vcd_nonconst|1024x1008x992|4:
   min_ms:
-    value: 8096.647512982599
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 63092.592355038505
+    value: 8008.858447894454
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 8096.647512982599
   mem_mb:
     value: 12568.494384765625
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
@@ -489,15 +489,15 @@ parallel|vcd_nonconst|1024x1008x992|4:
     prev: 4.379840513808509
 parallel|vcd_nonconst|1024x1008x992|2:
   min_ms:
-    value: 10359.211363829672
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 10371.812251396477
+    value: 10316.959954798222
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 10359.211363829672
   mem_mb:
-    value: 20137.22705078125
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 20147.8486328125
+    value: 20067.685302734375
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 20137.22705078125
   speedup:
     value: 2.2692386013778814
     commit: c7e17bcd596f75c7c6f14cd06948e3b8f023e535
@@ -615,21 +615,21 @@ cone|back|1024x1008x992|1:
     prev: 16263.220458984375
 cone|vcd_nonconst|512x448x384|1:
   min_ms:
-    value: 2746.1433922871947
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 2749.716393998824
+    value: 2743.148128967732
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2746.1433922871947
   mem_mb:
-    value: 3985.048583984375
-    commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
-    date: '20260725'
-    prev: 4014.548583984375
+    value: 3939.071533203125
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 3985.048583984375
 cone|vcd_nonconst|513x449x385|1:
   min_ms:
-    value: 2880.312597961165
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 9012.986542948056
+    value: 2877.6682750321925
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2880.312597961165
   mem_mb:
     value: 3898.8251953125
     commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
@@ -758,10 +758,10 @@ multiaxis_parallel|forward|256x224x192|1:
     prev: 1444.305908203125
 multiaxis_parallel|forward|512x448x384|1:
   min_ms:
-    value: 1738.4355370886624
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 1739.1052274033427
+    value: 1737.8572900779545
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1738.4355370886624
   mem_mb:
     value: 4863.44091796875
     commit: f0f3a06c5488dac81063f9179c63bdf701aca665
@@ -769,10 +769,10 @@ multiaxis_parallel|forward|512x448x384|1:
     prev: 4870.453369140625
 multiaxis_parallel|forward|513x449x385|1:
   min_ms:
-    value: 1953.0586409382522
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 1954.4339748099446
+    value: 1952.790408860892
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1953.0586409382522
   mem_mb:
     value: 3325.820068359375
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
@@ -909,10 +909,10 @@ cone|direct_filter|1024x1008x992|2:
     prev: 1.9071252940337349
 cone|forward|512x448x384|4:
   min_ms:
-    value: 272.5875600008294
-    commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
-    date: '20260725'
-    prev: 274.465206079185
+    value: 267.6162989810109
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 272.5875600008294
   mem_mb:
     value: 552.085205078125
     commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
@@ -925,10 +925,10 @@ cone|forward|512x448x384|4:
     prev: 2.697690957742723
 cone|forward|512x448x384|2:
   min_ms:
-    value: 251.260279212147
-    commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
-    date: '20260723'
-    prev: 252.43438791949302
+    value: 248.59871086664498
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 251.260279212147
   mem_mb:
     value: 982.7119140625
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
@@ -973,10 +973,10 @@ cone|forward|513x449x385|2:
     prev: 1.941979463621084
 cone|forward|1024x1008x992|4:
   min_ms:
-    value: 3106.445918790996
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 3115.640112082474
+    value: 3040.814043954015
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 3106.445918790996
   mem_mb:
     value: 4988.594970703125
     commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
@@ -1005,36 +1005,36 @@ cone|forward|1024x1008x992|2:
     prev: 1.90244107714696
 cone|back|512x448x384|4:
   min_ms:
-    value: 63.20282584056258
-    commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
-    date: '20260723'
-    prev: 63.303670031018555
+    value: 62.862661899998784
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 63.20282584056258
   mem_mb:
     value: 391.912841796875
     commit: 6ec404d8b9aa10a676eac50ec633b057f47e5772
     date: '20260701'
     prev: 391.917236328125
   speedup:
-    value: 2.3991832366285513
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 1.8800660782563303
+    value: 2.415006737376455
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2.3991832366285513
 cone|back|512x448x384|2:
   min_ms:
-    value: 83.17013783380389
-    commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
-    date: '20260723'
-    prev: 83.44335900619626
+    value: 83.11285101808608
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 83.17013783380389
   mem_mb:
     value: 959.598388671875
     commit: d8e71b0c4243dae7b0a410a9ed1a52e24f9f011e
     date: '20260705'
     prev: 1195.24462890625
   speedup:
-    value: 1.8201221255271731
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 0.906301818937268
+    value: 1.826597814396708
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.8201221255271731
 cone|back|513x449x385|4:
   min_ms:
     value: 73.2497739372775
@@ -1095,16 +1095,16 @@ cone|back|1024x1008x992|2:
     date: '20260621'
     prev:
   speedup:
-    value: 1.7418837928778073
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 1.7406950615399341
+    value: 1.7538529779826761
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.7418837928778073
 cone|vcd_nonconst|512x448x384|4:
   min_ms:
-    value: 3587.042437400669
-    commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
-    date: '20260723'
-    prev: 3589.173209038563
+    value: 3439.0317189972848
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 3587.042437400669
   mem_mb:
     value: 1235.306884765625
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
@@ -1117,10 +1117,10 @@ cone|vcd_nonconst|512x448x384|4:
     prev: 2.1542353757487507
 cone|vcd_nonconst|512x448x384|2:
   min_ms:
-    value: 2425.158774945885
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 6511.85511998483
+    value: 2422.632581088692
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2425.158774945885
   mem_mb:
     value: 2152.13134765625
     commit: 0b5f9d628d66aabe8b94da556a0b55962d45d579
@@ -1191,10 +1191,10 @@ cone|vcd_nonconst|1024x1008x992|2:
     date: '20260722'
     prev: 24396.33642578125
   speedup:
-    value: 1.4163508189379128
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 1.4120622502488198
+    value: 1.4190048691884458
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.4163508189379128
 parallel|direct_filter|200x208x160|4:
   min_ms:
     value: 3.012537956237793
@@ -1299,10 +1299,10 @@ parallel|back|200x208x160|4:
     prev: 2.444069477364263
 parallel|back|200x208x160|2:
   min_ms:
-    value: 5.050857085734606
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 15.025632921606302
+    value: 4.929770948365331
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 5.050857085734606
   mem_mb:
     value: 100.18994140625
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
@@ -1315,10 +1315,10 @@ parallel|back|200x208x160|2:
     prev: 1.451267531618797
 parallel|back|200x208x160|1:
   min_ms:
-    value: 1.9521518843248487
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 13.405170058831573
+    value: 1.8771910108625889
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.9521518843248487
   mem_mb:
     value: 136.251220703125
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
@@ -1471,26 +1471,26 @@ cone|back|200x208x160|4:
     prev: 1.7187239138508656
 cone|back|200x208x160|2:
   min_ms:
-    value: 6.490942090749741
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 25.512487161904573
+    value: 6.149597000330687
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 6.490942090749741
   mem_mb:
     value: 116.891845703125
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
     date: '20260722'
     prev: 303.273681640625
   speedup:
-    value: 1.0146361340491477
-    commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
-    date: '20260725'
-    prev: 1.0099139534056207
+    value: 1.0500564547193472
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.0146361340491477
 cone|back|200x208x160|1:
   min_ms:
-    value: 6.555292988196015
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 23.38987699477002
+    value: 6.457424024119973
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 6.555292988196015
   mem_mb:
     value: 151.589599609375
     commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
@@ -1541,10 +1541,10 @@ cone|vcd_nonconst|200x208x160|1:
     prev: 752.44140625
 translation|direct_filter|15x65x65|1:
   min_ms:
-    value: 2.9238579991215374
-    commit: 32f949bccd12143a20b9539d7aa57f06bfc50c26
-    date: '20260725'
-    prev: 2.9672018717974424
+    value: 2.9199018608778715
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2.9238579991215374
   mem_mb:
     value: 4.192626953125
     commit: e9f0ed585ae8df76004d2f8ef4cbb4e974ecf827
@@ -2061,10 +2061,10 @@ multiaxis_parallel|forward|129x113x97|4:
     date: '20260715'
     prev: 23.173680063337088
   mem_mb:
-    value: 95.164306640625
-    commit: 38b6633bd1c935daef6e169f9336f75e05a51dfa
-    date: '20260724'
-    prev: 95.16455078125
+    value: 94.736572265625
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 95.164306640625
   speedup:
     value: 0.37332538187078923
     commit: 99e07d8ff0ec9fdde9273b0e6894e8cbefc0ae41
@@ -2125,10 +2125,10 @@ multiaxis_parallel|forward|512x448x384|4:
     date: '20260723'
     prev: 742.1993119642138
   mem_mb:
-    value: 2726.865966796875
-    commit: e2182b5ad13a2c95d628bbb0fa3d4a35cbc77a28
-    date: '20260702'
-    prev: 2728.61181640625
+    value: 2724.736083984375
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 2726.865966796875
   speedup:
     value: 2.956828257654821
     commit: d608a477ad9a51253ff59c1f54fb99937f6a32fa
@@ -2141,10 +2141,10 @@ multiaxis_parallel|forward|512x448x384|2:
     date: '20260724'
     prev: 947.6278239162639
   mem_mb:
-    value: 4875.69189453125
-    commit: e68d796fe88c22df5e53be8cbb6b388d2a8fa217
-    date: '20260709'
-    prev: 4889.70166015625
+    value: 4874.44873046875
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 4875.69189453125
   speedup:
     value: 1.9537261216804216
     commit: 35432b6be0e3dec99c5dc3a3a35e6f298648b9fc
@@ -2168,10 +2168,10 @@ multiaxis_parallel|forward|513x449x385|4:
     prev: 3.1092341275229245
 multiaxis_parallel|forward|513x449x385|2:
   min_ms:
-    value: 1031.9311189232394
-    commit: bd8902add3f1568b39b8c9effb38f6ffdbe74c3c
-    date: '20260722'
-    prev: 1221.3336509885266
+    value: 1023.4840768389404
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1031.9311189232394
   mem_mb:
     value: 3067.24951171875
     commit: 84e9f18de836550cea2f90bb4696d46f9dc722c6
@@ -2402,7 +2402,7 @@ denoiser|denoise|1024x1008x992|2:
     date: '20260701'
     prev: 5870.81298828125
   speedup:
-    value: 1.0919647107351338
-    commit: 9350ad1f16252dc6f70f55000797ad3d9651d084
-    date: '20260627'
-    prev: 1.0810716237728777
+    value: 1.1218673471301495
+    commit: e99bc7662816d40464dc2a19c7ec81d3ed7c980f
+    date: '20260727'
+    prev: 1.0919647107351338
