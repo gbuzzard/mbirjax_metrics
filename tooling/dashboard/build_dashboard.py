@@ -367,8 +367,13 @@ def _analyze_correctness(runs: list[dict]) -> dict:
                     findings.append({"reference": "vs_main", "cell": key, "basis": mlabel, "discrepancies": discr})
         # cross-platform — this run's cells vs the OTHER platform's run at the same (branch, commit).
         # Only fires where a cell is measured on BOTH platforms (a shared size — none yet; see Config).
+        # Backend families are compared only within themselves: platform keys carry the backend
+        # ('gpu'/'cpu' are the jax rows; 'gpu-torch'/'cpu-torch' the torch rows), and a cross-
+        # BACKEND value comparison belongs to the port's golden gates, not this analyzer (the two
+        # repos' commits never coincide anyway; the guard makes it principled rather than lucky).
         partners = by_bc.get((r["branch"], r.get("commit_full")), {})
-        other = next((p for p in partners if p != plat), None)
+        fam = lambda p: "torch" if p.endswith("-torch") else "jax"   # noqa: E731
+        other = next((p for p in partners if p != plat and fam(p) == fam(plat)), None)
         if other is not None:
             ofps, olabel = (partners[other].get("_fps") or {}), f"{other.upper()} · {partners[other]['commit']} · {_commit_minute(partners[other])}"
             for key, fp in fps.items():

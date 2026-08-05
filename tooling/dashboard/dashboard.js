@@ -11,7 +11,14 @@ const $ = (id) => document.getElementById(id);
 const DEVC = { 1: "#378ADD", 2: "#1D9E75", 4: "#D85A30" };           // by device count
 const SIZEC = ["#378ADD", "#1D9E75", "#D85A30", "#7F77DD", "#BA7517"]; // by size index
 const GEOMC = { cone: "#D85A30", parallel: "#378ADD" };               // by geometry
-const PLATC = { gpu: "#185fa5", cpu: "#BA7517" };                     // history: by platform
+const PLATC = { gpu: "#185fa5", cpu: "#BA7517",                       // history: by platform
+  "gpu-torch": "#0d9488", "cpu-torch": "#b8336a" };                   // torch rows: teal / rose
+// Platform keys carry the backend implicitly: the original 'gpu'/'cpu' directories are the
+// jax series and display as 'gpu-jax'/'cpu-jax'; torch series live under 'gpu-torch'/
+// 'cpu-torch' result directories and display as-is (the 2026-08-04 dashboard design).
+const platLabel = (p) => (p.includes("-") ? p : p + "-jax");
+const PLAT_IS_TORCH = (p) => p.endsWith("-torch");
+const platLabels = () => M.platforms.map(platLabel);   // parallel to M.platforms, for fillSelect
 const IDEAL = "#9b9b94", FAILC = "#E24B4A", REFC = "#1f1f1d"; // ideal=grey, gate=red, reference=near-black
 const THROTC = "#E8950C";                                    // amber: a GPU ran hot / throttled (timing unreliable)
 const CORRC = "#a32d2d";                                      // deep red: a CORRECTNESS divergence (more severe than a perf hit)
@@ -729,7 +736,7 @@ function renderTiles() {
          <button class="rn-plat" ${otherR ? "" : "disabled"} title="${otherR ? "same commit on " + (otherPlat || "").toUpperCase() : "no " + (otherPlat || "other").toUpperCase() + " run for this commit"}">⇄&nbsp;${(otherPlat || "").toUpperCase()}</button>
        </div>
        <div class="when">${commitMinute(cur)}</div>
-       <div class="sub"><b>${ui_state.branch}</b> · <b>${ui_state.platform.toUpperCase()}</b> · ${cur.commit}${cur.dirty ? " · dirty" : ""}</div>
+       <div class="sub"><b>${ui_state.branch}</b> · <b>${platLabel(ui_state.platform).toUpperCase()}</b> · ${cur.commit}${cur.dirty ? " · dirty" : ""}</div>
        ${warnLine}
      </div>`;
   box.innerHTML = health.map((t) =>
@@ -1095,13 +1102,13 @@ function aggregate(run, n, geoms, timeOp) {
 // hooks read currentRun() live, so a redraw() suffices) — so the marker tracks navigation while the
 // panels' zoom survives.
 function refreshHistoryNow() {
-  ["hVcd", "hMem", "hGate", "poTime", "poMem"].forEach((id) => { const el = $(id); if (el && el._u) el._u.redraw(); });
+  ["hVcd", "hMem", "hGate", "hVcdT", "hMemT", "hGateT", "poTime", "poMem"].forEach((id) => { const el = $(id); if (el && el._u) el._u.redraw(); });
 }
 function showRun(r, resetOpen) {
   if (!r) return;
   ui_state.platform = r.platform; ui_state.branch = r.branch; ui_state.runKey = runKey(r);
   if (resetOpen) ui_state.openTile = null;
-  fillSelect("platform", M.platforms, ui_state.platform);
+  fillSelect("platform", M.platforms, ui_state.platform, platLabels());
   fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
   renderTiles(); renderDetail(); syncGoSelect(); renderScaling(); refreshHistoryNow();
 }
@@ -1175,7 +1182,7 @@ let histXWindow = null;
 // Per-panel y-zoom windows for the History time/mem panels, persisted across re-renders the same way
 // histXWindow persists the x-window — so a y-zoom survives a branch/device change.  Reset when the
 // geometry GROUP changes (its fixed y-range differs, so another group's zoom wouldn't map). null = full.
-let histYWin = { time: null, mem: null };
+let histYWin = { "": { time: null, mem: null }, T: { time: null, mem: null } };
 let histYWinGroup = null;
 function renderHistory() {
   // The history spans BOTH platforms and all branches; x is commit time
@@ -1183,13 +1190,25 @@ function renderHistory() {
   const xs = uniq(M.runs.map(runTime)).sort((a, b) => a - b);
   const n = ui_state.histN;
   const group = HIST_GROUPS.find((g) => g.id === ui_state.histGroup) || HIST_GROUPS[0];
-  if (group.id !== histYWinGroup) { histYWin.time = null; histYWin.mem = null; histYWinGroup = group.id; }
+  if (group.id !== histYWinGroup) { histYWin[""] = { time: null, mem: null }; histYWin.T = { time: null, mem: null }; histYWinGroup = group.id; }
   // Branch filter: "all" shows every branch (colour=platform, style=geometry); selecting one
   // restricts all three panels to that branch only.
   const branches = (ui_state.histBranch && ui_state.histBranch !== "all")
     ? M.branches.filter((b) => b === ui_state.histBranch) : M.branches;
-  $("hCapVcd").textContent = `${group.opLabel} time at largest size (n=${n})`;
-  $("hCapMem").textContent = `peak memory at largest size (n=${n})`;
+  // Two rows, one per backend: the jax row (the original panels) always draws; the torch row
+  // (the *-torch platforms) appears below it once torch runs exist.  One shared sync group
+  // keeps the x-zoom mirrored across every panel of both rows.
+  const histGroup = [];
+  const torchPlats = M.platforms.filter(PLAT_IS_TORCH);
+  const torchHasRuns = M.runs.some((r) => PLAT_IS_TORCH(r.platform));
+  $("hist-row-torch").style.display = torchHasRuns ? "" : "none";
+  const rowsToDraw = [[M.platforms.filter((p) => !PLAT_IS_TORCH(p)), ""]];
+  if (torchHasRuns) rowsToDraw.push([torchPlats, "T"]);
+  rowsToDraw.forEach(([rowPlats, sfx]) => drawRow(rowPlats, sfx));
+
+  function drawRow(rowPlats, sfx) {
+  $("hCapVcd" + sfx).textContent = `${group.opLabel} time at largest size (n=${n})`;
+  $("hCapMem" + sfx).textContent = `peak memory at largest size (n=${n})`;
   const aggByPB = {};  // "platform|branch" -> runTime -> aggregate (for the active geometry group)
   M.runs.forEach((r) => { const key = r.platform + "|" + r.branch; (aggByPB[key] = aggByPB[key] || {})[runTime(r)] = aggregate(r, n, group.geoms, group.op); });
 
@@ -1197,7 +1216,7 @@ function renderHistory() {
   const cellField = (pick) => (pick === "time" ? "timeCell" : "memCell");
   const specsFor = (pick) => {
     const out = [], markers = [];
-    M.platforms.forEach((plat) => branches.forEach((b) => group.geoms.forEach((gm) => {
+    rowPlats.forEach((plat) => branches.forEach((b) => group.geoms.forEach((gm) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       const ys = xs.map((t) => { const a = agg[t]; return a && a[pick][gm] != null ? a[pick][gm] : null; });
       if (!ys.some((y) => y != null)) return;
@@ -1266,20 +1285,19 @@ function renderHistory() {
     const jaxNote = r.jax
       ? `<br><span class="tdim">jax</span> ${r.jax}${r.dep_gen ? ` · dep-canary re-measure (gen ${r.dep_gen})` : ""}`
       : "";
-    return `<b>${r.branch}</b><br>${r.platform.toUpperCase()} · ${commitMinute(r)}`
+    return `<b>${r.branch}</b><br>${platLabel(r.platform).toUpperCase()} · ${commitMinute(r)}`
       + `<br><span class="tdim">commit</span> ${r.commit}${r.dirty ? " · dirty" : ""}`
       + jaxNote + valSection + warn + corrWarn + testWarn;
   };
-  // All three history plots share one x (commit time): a sync group links their zoom so dragging
-  // any one re-ranges all three to the same window (and a double-click reset clears all three).
-  const histGroup = [];
+  // All history plots (both rows) share one x (commit time) through the hoisted sync group,
+  // so dragging any panel re-ranges every panel to the same window.
   // Red triangle on a run that had FAILING TESTS (a run-level flag, not per-cell like the thermal
   // markers): one per (platform, branch) failing run, sat on its drawn point for the panel's metric.
   // run-level overlay marks sat on the run's drawn point for the panel's metric: a red triangle for
   // FAILING TESTS, a bold ✕ for an unacknowledged CORRECTNESS divergence (flag = the aggregate field).
   const runMarks = (pick, flag, extra) => {
     const out = [];
-    M.platforms.forEach((plat) => branches.forEach((b) => {
+    rowPlats.forEach((plat) => branches.forEach((b) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       xs.forEach((t) => {
         const a = agg[t]; if (!a || !a[flag]) return;
@@ -1294,7 +1312,7 @@ function renderHistory() {
   // re-measure of an existing commit on a NEWER dep set, distinct from a normal commit circle.
   const depDiamonds = (pick) => {
     const out = [];
-    M.platforms.forEach((plat) => branches.forEach((b) => {
+    rowPlats.forEach((plat) => branches.forEach((b) => {
       const agg = aggByPB[plat + "|" + b]; if (!agg) return;
       runsFor(plat, b).forEach((r) => {
         if (!r.dep_gen) return;
@@ -1316,7 +1334,7 @@ function renderHistory() {
   const depChanges = () => {
     const groups = {};
     M.runs.forEach((r) => {
-      if (!r.dep_gen) return;
+      if (!r.dep_gen || !rowPlats.includes(r.platform)) return;
       const x = runTime(r), key = r.platform + "|" + Math.floor(x / 86400);
       const g = groups[key] || (groups[key] = { x: Infinity, entries: [] });
       g.x = Math.min(g.x, x);
@@ -1331,7 +1349,7 @@ function renderHistory() {
   // the only signal there — an OOM never masquerades as a fast time or a memory win.
   const failMk = (() => {
     const byX = {};
-    M.platforms.forEach((plat) => branches.forEach((b) => {
+    rowPlats.forEach((plat) => branches.forEach((b) => {
       runsFor(plat, b).forEach((r) => {
         (r.cells || []).forEach((c) => {
           if (!c.failed) return;
@@ -1353,18 +1371,18 @@ function renderHistory() {
   // no fixed y-range, so it stays x-only.)
   const opts = (yl) => ({ xTime: true, xRange: xr, xPadAdd: xpad, yLog: true, yLabelText: yl, yfmt: fmtNum, onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk, boxZoom: true });
   const yr = (M.hist_yranges || {})[group.id] || {};   // fixed per-(geom-group, metric) y-axis (build-time)
-  linePlot($("hVcd"), xs, specsFor("time"), { width: $("hVcd").clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk, yRange: yr.time, yInit: histYWin.time, onYChange: (w) => { histYWin.time = w; } });
-  linePlot($("hMem"), xs, specsFor("mem"), { width: $("hMem").clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk, yRange: yr.mem, yInit: histYWin.mem, onYChange: (w) => { histYWin.mem = w; } });
+  linePlot($("hVcd" + sfx), xs, specsFor("time"), { width: $("hVcd" + sfx).clientWidth || 320, ...opts("min"), marks: allMarks("time"), failMarks: failMk, yRange: yr.time, yInit: histYWin[sfx].time, onYChange: (w) => { histYWin[sfx].time = w; } });
+  linePlot($("hMem" + sfx), xs, specsFor("mem"), { width: $("hMem" + sfx).clientWidth || 320, ...opts("GB"), marks: allMarks("mem"), failMarks: failMk, yRange: yr.mem, yInit: histYWin[sfx].mem, onYChange: (w) => { histYWin[sfx].mem = w; } });
   const gateSpecs = [];
-  M.platforms.forEach((plat) => branches.forEach((b) => {
+  rowPlats.forEach((plat) => branches.forEach((b) => {
     const agg = aggByPB[plat + "|" + b]; if (!agg) return;
     const ys = xs.map((t) => { const a = agg[t]; return a ? a.gatePerf : null; });
     if (ys.some((y) => y != null)) gateSpecs.push({ label: `${plat} ${b}`, color: PLATC[plat] || IDEAL, ys, _xs: xs, meta: { platform: plat, branch: b } });
   }));
-  linePlot($("hGate"), xs, gateSpecs, { width: $("hGate").clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk });
+  linePlot($("hGate" + sfx), xs, gateSpecs, { width: $("hGate" + sfx).clientWidth || 320, xTime: true, xRange: xr, xPadAdd: xpad, yLabelText: "count", yfmt: (v) => v.toFixed(0), onPick: pickRun, tooltip: histTip, syncX: histGroup, onXChange: histOnX, showNow: true, depMarks: depMk });
   // Re-open at the persisted window (if any) via setScale — NOT a clamped xRange — so drag-zoom and the
   // double-click reset keep working; syncX mirrors it to the other two panels.
-  if (histXWindow && $("hVcd")._u) $("hVcd")._u.setScale("x", { min: histXWindow[0], max: histXWindow[1] });
+  if (histXWindow && $("hVcd" + sfx)._u) $("hVcd" + sfx)._u.setScale("x", { min: histXWindow[0], max: histXWindow[1] });
 
   const k = (c, t, dash) => `<span class="k"><span class="sw" style="background:${c};${dash ? "height:0;border-top:2px dashed " + c : ""}"></span>${t}</span>`;
   // Only surface the dep-canary legend entries once a dep change has actually been recorded (gen>0 runs),
@@ -1377,9 +1395,9 @@ function renderHistory() {
     : "";
   // Two fixed rows: platforms + geometries on line 1 (these change with the geom group), the symbol keys
   // on line 2 (constant) — so switching groups never reflows the symbols and the plots don't jump.
-  $("hist-legend").innerHTML =
+  $("hist-legend" + sfx).innerHTML =
     `<span class="hl-line">` +
-      `<span class="grp">${M.platforms.map((p) => k(PLATC[p] || IDEAL, p)).join("")}</span>` +
+      `<span class="grp">${rowPlats.map((p) => k(PLATC[p] || IDEAL, platLabel(p))).join("")}</span>` +
       `<span class="grp">${group.geoms.map((gm) => k("#888", `${GEOM_LABEL[gm]} (${GEOM_DASH[gm] ? "dashed" : "solid"})`, !!GEOM_DASH[gm])).join("")}</span>` +
     `</span>` +
     `<span class="hl-line">` +
@@ -1390,6 +1408,7 @@ function renderHistory() {
       `<span class="k"><span class="ring" style="border-color:${CORRC}"></span>run shown</span>` +
       `<span class="k"><span class="cx" style="color:${CORRC}">✕</span>incorrect</span>` +
     `</span>`;
+  }
 }
 
 // ---- per-op history ----------------------------------------------------------
@@ -1433,7 +1452,7 @@ function poNOptions(plat, geom, op, shape) {
 // (e.g. a shape the newly-chosen op never ran) falls back to a sensible default (largest shape, fewest n).
 function syncPerOpSelectors() {
   if (!M.platforms.includes(ui_state.poPlat)) ui_state.poPlat = M.platforms.includes("gpu") ? "gpu" : (ui_state.platform || M.platforms[0]);
-  fillSelect("poPlat", M.platforms, ui_state.poPlat);
+  fillSelect("poPlat", M.platforms, ui_state.poPlat, platLabels());
   const ops = poOpOptions(ui_state.poPlat);
   if (!ops.includes(ui_state.poGo)) ui_state.poGo = ops.includes("cone|vcd_nonconst") ? "cone|vcd_nonconst" : ops[0];
   fillSelect("poOp", ops, ui_state.poGo, ops.map((s) => s.replace("|", " · ")));
@@ -1632,7 +1651,7 @@ function init() {
   ui_state.platform = newest.platform;
   ui_state.branch = newest.branch;
   ui_state.runKey = runKey(newest);
-  fillSelect("platform", M.platforms, ui_state.platform);
+  fillSelect("platform", M.platforms, ui_state.platform, platLabels());
   fillSelect("branch", branchesFor(ui_state.platform), ui_state.branch);
 
   $("platform").onchange = onPlatform;

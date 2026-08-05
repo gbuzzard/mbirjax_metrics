@@ -96,6 +96,18 @@
       <div class="panel"><div class="pcap" id="hCapMem">peak memory at largest size (n=1)</div><div id="hMem" class="chart"></div></div>
       <div class="panel"><div class="pcap">performance regressions (correctness ✕ on the panels above)</div><div id="hGate" class="chart"></div></div>
     </div>
+    <!-- torch backend row: the same three panels for the *-torch platforms, below the
+         jax row (the 2026-08-04 dashboard design).  Hidden until torch runs exist
+         (results/{gpu,cpu}-torch/); the x-zoom stays synced with the jax row through
+         the shared sync group. -->
+    <div id="hist-row-torch" style="display:none">
+      <div id="hist-legendT" class="legend"></div>
+      <div class="panels hist">
+        <div class="panel"><div class="pcap" id="hCapVcdT">VCD time at largest size (n=1)</div><div id="hVcdT" class="chart"></div></div>
+        <div class="panel"><div class="pcap" id="hCapMemT">peak memory at largest size (n=1)</div><div id="hMemT" class="chart"></div></div>
+        <div class="panel"><div class="pcap">performance regressions (torch row)</div><div id="hGateT" class="chart"></div></div>
+      </div>
+    </div>
   </section>
 
   <section>
