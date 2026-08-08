@@ -139,9 +139,15 @@ for BR in "${CHANGED_BR[@]}"; do
   fi
   SHA="$(git -C "$WT" rev-parse HEAD)"   # the tip we actually got; recorded as state below
 
+  # The install log lives OUTSIDE the clone, for two reasons.  Inside the clone it survives
+  # neither path: a failed install deletes the clone with the log in it, and on success the
+  # untracked file makes git_provenance read the pristine origin tip as git_dirty: true
+  # (mbirtorch's .gitignore, unlike mbirjax's, has no *.log rule), stamping a false dirty
+  # badge on every nightly row.
+  ILOG="$WORK_DIR/install_${SLUG}.log"
   log "$BR: installing mbirtorch [$TORCH_INSTALL_EXTRAS] into ${REG_TORCH_VENV:-$CONDA_ENV} ..."
-  if ! reg_torch_install_lib "$WT" >"$WT/.install.log" 2>&1; then
-    log "ERROR $BR: install of '$WT' failed (see $WT/.install.log) — skip."
+  if ! reg_torch_install_lib "$WT" >"$ILOG" 2>&1; then
+    log "ERROR $BR: install of '$WT' failed (see $ILOG) — skip."
     rm -rf "$WT"; continue
   fi
 
