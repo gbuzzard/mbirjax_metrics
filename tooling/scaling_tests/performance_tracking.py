@@ -922,20 +922,38 @@ def _gate_fingerprint(key, tf, rf, op, lab, config, hard, soft):
         hard.append(f"[{lab}] {key} padding leak: padding_zero {rf.get('padding_zero')} -> False")
 
 
+def _memory_is_device_peak(plat):
+    """True when this platform's ``mem_mb`` is a per-device ACCELERATOR PEAK, False when it is
+    coarse whole-process RSS.  This is what decides whether the memory gate is HARD or SOFT.
+
+    'gpu' is jax reading ``peak_bytes_in_use``; 'gpu-torch' is mbirtorch reading
+    ``max_memory_allocated`` — the same class of deterministic device-side counter, and the
+    ruler the port plan names for the torch series.  Both therefore earn the HARD gate.
+    Everything else ('cpu', 'cpu-torch') is process RSS, which is too coarse to hard-gate.
+
+    Written as a predicate rather than a `plat == "gpu"` test so that adding a backend does
+    not silently demote its memory gate to a warning (a torch run's memory findings would
+    otherwise land in `soft` carrying a '[CPU RSS, coarse]' note that is false for it).
+    """
+    return plat in ("gpu", "gpu-torch")
+
+
 def _gate_metrics(key, t, r, lab, plat, config, hard, soft):
     """Metric gates for an ok->ok cell.  Structural changes and the correctness fingerprint are
-    HARD on every platform.  Of the PERFORMANCE signals, only MEMORY is HARD, and only on GPU,
-    where peak_bytes_in_use is ~deterministic (it is also what catches the gather-bug class —
-    memory that fails to shard); on CPU memory is whole-process RSS (coarse) so it is SOFT.
+    HARD on every platform.  Of the PERFORMANCE signals, only MEMORY is HARD, and only where
+    mem_mb is a device-side peak (see _memory_is_device_peak): peak_bytes_in_use / torch's
+    max_memory_allocated are ~deterministic, and memory is what catches the gather-bug class —
+    memory that fails to shard.  Where mem_mb is whole-process RSS (coarse) it is SOFT.
     Speedup and absolute time are SOFT on every platform — both derive from timings, which are
     noisy even on GPU (especially small runs).  Every delta shows the value vs expected with BOTH
     the absolute and the percentage difference."""
     pre = f"[{lab}] {key} "
-    # memory — HARD on GPU, SOFT (coarse RSS) on CPU.
+    # memory — HARD where mem_mb is a device peak, SOFT (coarse RSS) elsewhere.
     rm, tm = r.get("mem_mb"), t.get("mem_mb")
     if rm and tm is not None and (tm - rm) / rm * 100.0 > config.mem_hard_pct:
-        bucket = hard if plat == "gpu" else soft
-        cpu_note = "" if plat == "gpu" else " [CPU RSS, coarse]"
+        device_peak = _memory_is_device_peak(plat)
+        bucket = hard if device_peak else soft
+        cpu_note = "" if device_peak else " [CPU RSS, coarse]"
         win = getattr(config, "mem_gate_window", 1)
         win_note = f" [rolling-min over {win} runs]" if win and win > 1 else ""
         bucket.append(pre + "memory " + _fmt_delta(tm, rm, " MB") + win_note + cpu_note)

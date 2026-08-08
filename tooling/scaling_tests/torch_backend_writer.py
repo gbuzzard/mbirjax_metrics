@@ -1,316 +1,815 @@
-"""Write mbirtorch (PyTorch backend) regression runs in the harness schema.
-
-Produces ``results/{cpu,gpu}-torch/<branch>/regression_{platform}_<stamp>.yaml``
-plus the companion ``tests_{platform}_<date>.txt`` -- the torch rows the
-dashboard's backend design consumes (a separate torch History row; the
-gpu-torch / cpu-torch Platform entries).  The measurement protocol mirrors
-``performance_tracking``: one subprocess per (geometry, op, size) for honest
-peak memory; warmup + trials with the harness's per-op trial counts; the same
-sinogram sizes; the same fingerprint form (float64 reductions + K deterministic
-samples) so the vs-prior correctness gating can apply to the torch series.
-
-Scope: n=1 only (mbirtorch has no sharding yet), geometries parallel +
-denoiser.  The vcd cell approximates the harness's ``vcd_nonconst``
-(3 iterations, transmission-root-style weights, seed 13 partitions) -- the
-torch series is self-consistent; it is NOT meant to be fingerprint-identical
-to the jax series (cross-backend value comparison lives in mbirtorch's golden
-tests, and the dashboard's cross-platform analyzer is family-guarded).
-
-Run inside the mbirtorch environment (no CLI args; edit CONFIG):
-    <mbirtorch-env python> tooling/scaling_tests/torch_backend_writer.py
 """
+tooling/scaling_tests/torch_backend_writer.py
+─────────────────────────────────────────────
+Nightly / manual REGRESSION engine for the PyTorch backend (mbirtorch).  Writes
+``results/{gpu,cpu}-torch/<branch>/regression_<plat>_<commit-tag>.yaml`` plus the
+sibling ``_table.yaml``, ``records_<plat>.yaml`` and ``tests_<plat>_<date>.txt`` —
+the torch rows the dashboard's backend design consumes (its own History row, the
+backend-qualified Platform entries).
 
-import json
+This is a torch MEASUREMENT layer over ``performance_tracking``'s DECISION layer.
+It imports that module and reuses its Config, its correctness fingerprint, its
+gate, its record book, its prior-run selection, its rolling-min memory window and
+its commit-time file tag.  Only the parts that must touch torch live here: model
+construction, device pinning, the op bodies, the timing loop and the memory read.
+
+Why not a private gate: two gate implementations drift, and the drift is
+invisible until a torch regression is silently not caught.  One gate model means
+the memory threshold, the fingerprint tolerances, the status-transition rules and
+the cold-start rule are defined once.  The split is possible because
+``scaling_common`` defers every jax import into the functions that need it, so
+``import performance_tracking`` from a torch env initialises no jax backend.
+The torch env must supply ruamel.yaml and matplotlib (scaling_common imports them
+at module level).
+
+Design record: ``mbirjax_plans/plans/torch_port/nightly_plan.md``.
+
+THE OPS ARE THE JAX ENGINE'S OPS.  ``forward`` is ``sparse_forward_project`` over
+the full ROR pixel set, ``back`` is ``sparse_back_project``, and ``vcd_nonconst``
+is ``vcd_recon`` with the partitions built OUTSIDE the timed region — not the
+user-facing whole-volume calls, and not ``recon()`` with its initialisation timed.
+The inputs are the engine's own generators at the engine's own seeds.  An earlier
+version of this file measured different operations under the same names, which
+made the adjacent torch and jax dashboard rows an apples-to-oranges comparison.
+
+Roles (mirrors performance_tracking.py):
+  - orchestrator (default, no args)   : run() — per (geom, op, size) spawn a worker,
+                                        collect rows, gate, write YAML.
+  - worker --mode measure ...         : measure one cell group (all device counts).
+
+Env vars (set by tooling/regression/run_torch_regression.sh):
+  REG_TORCH_LIB_ROOT   (required)  the mbirtorch checkout under test (PYTHONPATH + provenance)
+  REG_TORCH_OUT_DIR    (required)  results/<plat>/<branch_slug>/
+  REG_TORCH_PLATFORM   (required)  'gpu-torch' | 'cpu-torch' — DECLARED, then verified
+  REG_TORCH_DATE       (optional)  YYYYMMDD, resolved once by the wrapper
+  REG_TORCH_GATE       (optional)  '1' (default) to exit non-zero on a hard regression
+  REG_TORCH_RUN_TAG    (optional)  branch name recorded in the YAML
+  REG_TORCH_DEVICE_COUNTS (optional)  space-separated, default '1'
+  REG_TORCH_MEM_GATE_WINDOW (optional) rolling-min window in runs; default 1 (see build_config)
+  REG_TORCH_SMOKE      (optional)  '1' -> a toy 1-cell sweep, for plumbing checks
+"""
+import argparse
+import contextlib
+import datetime
+import gc
+import io
 import os
 import platform as _platform
 import resource
 import subprocess
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
+import tempfile
+import time
 
 import numpy as np
-import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
 
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-TORCH_PYTHON = sys.executable
-MBIRTORCH_ROOT = os.environ.get(
-    "MBIRTORCH_ROOT",
-    str(Path(REPO_ROOT).parent / "mbirtorch"))
+import scaling_common as sc                # noqa: E402  jax-free at module level
+import performance_tracking as pt          # noqa: E402  ditto (the decision layer)
 
-# Harness sizes (performance_tracking.Config): parallel per platform, denoiser
-# image shapes per platform; the 1024-class entries run at trials=1.
-PARALLEL_SIZES = {
-    "cpu": [(128, 112, 96), (129, 113, 97), (200, 208, 160)],
-    "gpu": [(200, 208, 160), (512, 448, 384), (513, 449, 385), (1024, 1008, 992)],
+
+# ── Cone recon_shape pins — padding-policy decoupling ─────────────────────────
+# Same rationale as performance_tracking.CONE_RECON_SHAPE_PINS, but mbirtorch's OWN
+# shapes: pin them so a future change to mbirtorch's axial-padding policy cannot
+# silently move a cone cell's memory and time baselines.  The values below are
+# mbirtorch's current auto-derived shapes, so pinning moves no baseline.
+#
+# NOTE these differ from the jax pins: mbirtorch's cone recon equals its parallel
+# recon, while mbirjax's carries the flash-remediation axial extension (e.g.
+# (200,208,160) -> (160,160,208) here vs (160,160,234) there).  So the cone cells
+# are genuinely different problem sizes on the two backends, over and above any
+# implementation difference.  Read the cone rows within a backend, not across.
+CONE_RECON_SHAPE_PINS = {
+    (128, 112, 96):    (96, 96, 112),
+    (129, 113, 97):    (97, 97, 113),
+    (200, 208, 160):   (160, 160, 208),
+    (512, 448, 384):   (384, 384, 448),
+    (513, 449, 385):   (385, 385, 449),
+    (1024, 1008, 992): (992, 992, 1008),
+}
+
+# Sinogram sizes per platform key — the harness's own cells (port_plan.md §4), so the
+# torch and jax rows sit at identical coordinates.  Keyed by the FULL platform key,
+# because performance_tracking._expected_cells looks them up by result['platform'].
+SIZES = {
+    "gpu-torch": [(200, 208, 160), (512, 448, 384), (513, 449, 385), (1024, 1008, 992)],
+    "cpu-torch": [(128, 112, 96), (129, 113, 97), (200, 208, 160)],
 }
 DENOISER_SIZES = {
-    "cpu": [(128, 144, 160), (225, 241, 257)],
-    "gpu": [(225, 241, 257), (512, 448, 384), (1024, 1008, 992)],
+    "gpu-torch": [(225, 241, 257), (512, 448, 384), (1024, 1008, 992)],
+    "cpu-torch": [(128, 144, 160), (225, 241, 257)],
 }
-SINGLE_TRIAL_SIZES = ["1024x1008x992"]
-OPS = ["direct_filter", "forward", "back", "vcd_nonconst"]
-TRIALS_BY_OP = {"direct_filter": 3, "forward": 3, "back": 3, "vcd_nonconst": 1,
-                "denoise": 1}
-WARMUP = 1
-VCD_ITERATIONS = 3
-VCD_SEED = 13
-DENOISE_ITERATIONS = 20
-DENOISE_SIGMA = 0.1
-DENOISE_SHARPNESS = 0.0
-INPUT_SEED = 0
-# ──────────────────────────────────────────────────────────────────────────────
 
 
-def fingerprint(result, k_samples=12):
-    """The harness fingerprint form (float64 reductions + K deterministic
-    samples); no padding handling needed -- torch outputs are unpadded."""
-    flat = np.asarray(result).ravel()
-    n = int(flat.size)
-    flat64 = flat.astype(np.float64)
-    idx = (np.linspace(0, n - 1, min(k_samples, n)).astype(int) if n else np.array([], int))
-    return {
-        "sum": float(flat64.sum()),
-        "mean": float(flat64.mean()) if n else 0.0,
-        "l2norm": float(np.sqrt(np.sum(flat64 * flat64))),
-        "min": float(flat.min()) if n else 0.0,
-        "max": float(flat.max()) if n else 0.0,
-        "samples": [float(flat[i]) for i in idx],
-        "shape": list(np.asarray(result).shape),
-        "dtype": str(np.asarray(result).dtype),
-        "padding_zero": True,
-    }
+def build_config(platform_key, out_dir, date, run_tag, lib_root, device_counts, gate):
+    """The nightly torch sweep as a performance_tracking.Config.
+
+    Building a REAL Config (not a hand-rolled dict) is what makes the run file
+    carry the five gate-threshold keys the dashboard reads for its threshold
+    explanation, and what lets _expected_cells reconstruct the sweep this run was
+    supposed to attempt.
+    """
+    cfg = pt.Config(
+        geometries=["parallel", "cone", "denoiser"],
+        ops=["direct_filter", "forward", "back", "vcd_nonconst"],
+        geom_ops={"denoiser": ["denoise"]},
+        sizes={platform_key: [list(s) for s in SIZES[platform_key]]},
+        geom_sizes={"denoiser": {platform_key: [list(s) for s in DENOISER_SIZES[platform_key]]}},
+        device_counts=list(device_counts),
+        out_dir=out_dir, date=date, run_tag=run_tag, lib_root=lib_root, gate=gate,
+    )
+    # Rolling-min memory window.  The jax default of 3 exists for a jax artefact: its
+    # sharded-path peak_bytes_in_use is bimodal per run (n=2 wandered ~12%, n=1 and n=4
+    # were byte-frozen).  torch reads max_memory_allocated, a different instrument, and
+    # this sweep is n=1 — so the default here is 1 (single-shot, no detection lag) until
+    # the trial run's repeat ablation says otherwise.  nightly_plan.md §3(c-ii).
+    cfg.mem_gate_window = int(os.environ.get("REG_TORCH_MEM_GATE_WINDOW") or 1)
+    return cfg
 
 
-def gpu_health():
-    """nvidia-smi clocks/temps, as in the harness (empty off-GPU)."""
-    try:
-        out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=index,clocks.sm,clocks.mem,temperature.gpu",
-             "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=10)
-        rows = []
-        for line in out.stdout.strip().splitlines():
-            i, sm, mem, t = [int(x) for x in line.split(",")]
-            rows.append({"index": i, "sm_mhz": sm, "mem_mhz": mem, "temp_c": t,
-                         "mem_temp_c": None})
-        return rows
-    except Exception:                                          # noqa: BLE001
-        return []
+# ── Guards ────────────────────────────────────────────────────────────────────
+def assert_platform(declared):
+    """Abort unless the hardware matches the platform key the WRAPPER declared.
+
+    The platform key is declared, never inferred.  Inferring it from
+    torch.cuda.is_available() cannot fail loudly: a GPU night on which CUDA did not
+    initialise would quietly file itself under cpu-torch, and the gpu-torch charts
+    would go silent with no other symptom.  That is exactly the 2026-07-21 failure
+    in which the jax nightly measured the whole GPU suite on CPU and filed it under
+    results/gpu/ (see performance_tracking._assert_platform_matches_out_dir, whose
+    'gpu'/'cpu' membership test does not cover the hyphenated torch keys).
+    """
+    import torch
+    if declared not in ("gpu-torch", "cpu-torch"):
+        raise SystemExit(f"REG_TORCH_PLATFORM must be gpu-torch or cpu-torch, got {declared!r}")
+    on_gpu = bool(torch.cuda.is_available())
+    want_gpu = (declared == "gpu-torch")
+    if on_gpu != want_gpu:
+        raise RuntimeError(
+            "PLATFORM MISMATCH: the wrapper declared REG_TORCH_PLATFORM={d!r} but "
+            "torch.cuda.is_available() is {a}.\n"
+            "  Measuring on one platform and filing under the other would write "
+            "records_{d}.yaml into a tree the dashboard reads for the OTHER platform, "
+            "and the charts would simply go quiet.  Aborting instead.\n"
+            "  If this is a GPU night: check that the node actually allocated a GPU "
+            "(no --gpus-per-node, or a CUDA/driver mismatch in the torch build).".format(
+                d=declared, a=on_gpu))
+    if want_gpu and torch.cuda.device_count() < 1:
+        raise RuntimeError("PLATFORM MISMATCH: cuda is available but device_count() is 0.")
 
 
-def cell_worker(cfg):
-    """One (geometry, op, size) measurement in its own process."""
+def assert_no_calibration():
+    """Refuse to measure with mbirtorch's memory-calibration mode on.
+
+    That mode calls reset_peak_memory_stats at the top of vcd_recon and OWNS the peak
+    counter, so it would clobber the very number these rows record.  Checked rather
+    than trusted, because it is an ambient environment variable.
+    """
+    val = os.environ.get("MBIRTORCH_MEMORY_CALIBRATION")
+    if val and val.lower() not in ("", "0", "false"):
+        raise RuntimeError(
+            f"MBIRTORCH_MEMORY_CALIBRATION={val!r} is set.  That mode resets and owns "
+            "torch.cuda.max_memory_allocated, which is the memory ruler these rows read. "
+            "Unset it before measuring.")
+
+
+# ── Devices: pin explicitly, then verify what was BOUND ───────────────────────
+def pin_devices(model, n):
+    """Pin the model to EXACTLY n devices and return the realized device list.
+
+    The pin is mandatory on every row, at every count including n=1.  mbirtorch's
+    device policy is moving to an all-device default for automatic CUDA models
+    (device_policy_design.md), and an unindexed 'cuda' model is eligible for that
+    widening.  Without this call every row would silently start measuring an
+    all-device run under a cell labelled n=1 the moment the flip lands — the same
+    defect the device-policy design records in p4_gate_readout.py, where the n=1 arm
+    was also the reference the value diffs were taken against.
+
+    configure_devices() sets device_layout_is_automatic=False permanently, which is
+    the flag the automatic path consults, so it is the durable pin.  It also rebuilds
+    the placements and recreates the projectors, so it must run BEFORE any warmup.
+
+    Verification is the layer that makes the pin checkable: read back what the model
+    actually bound and refuse to measure if it is not n (the arm-check discipline of
+    phase5_findings.md, applied to device count).
+    """
+    import torch
+    if n == 1:
+        model.configure_devices(num_devices=1)
+    elif torch.cuda.is_available():
+        model.configure_devices(num_devices=n)
+    else:
+        # No CUDA: mbirtorch's own sharding tests use repeated virtual cpu devices.
+        model.configure_devices(devices=["cpu"] * n)
+    devices = list(model.sino_placement.devices)
+    if len(devices) != n:
+        raise RuntimeError(
+            f"DEVICE PIN FAILED: asked for {n} device(s), model bound {len(devices)} "
+            f"({[str(d) for d in devices]}).  Refusing to file this row under n={n}.")
+    return devices
+
+
+def placement_info(model, devices):
+    """The per-row record of WHAT WAS BOUND (not what was requested)."""
+    return {"is_sharded": not bool(model.sino_placement.is_trivial),
+            "n_shard_devices": int(model.sino_placement.n_devices),
+            "devices": [str(d) for d in devices]}
+
+
+# ── Model + inputs ────────────────────────────────────────────────────────────
+def make_model(config, geometry, size, platform_key):
+    """Build a single-device mbirtorch model of ``geometry`` for SINOGRAM ``size``.
+
+    Mirrors performance_tracking.make_model: the same cone geometry convention
+    (magnification 2 via source_detector_dist = 4 * channels), the same recon-shape
+    pinning for cone, verbose off.  ``device`` is named explicitly rather than left
+    at 'auto' so the constructor's choice is recorded, not inferred.
+    """
+    import mbirtorch
+    n_views, n_rows, n_channels = size
+    dev = "cuda" if platform_key == "gpu-torch" else "cpu"
+    angles = np.linspace(0, np.pi, n_views, endpoint=False)
+    if geometry == "parallel":
+        model = mbirtorch.ParallelBeamModel((n_views, n_rows, n_channels), angles, device=dev)
+    elif geometry == "cone":
+        sdd = config.cone_sdd_over_channels * n_channels
+        model = mbirtorch.ConeBeamModel((n_views, n_rows, n_channels), angles,
+                                        source_detector_dist=sdd, source_iso_dist=sdd / 2.0,
+                                        device=dev)
+        pin = CONE_RECON_SHAPE_PINS.get((int(n_views), int(n_rows), int(n_channels)))
+        if pin is not None:
+            model.set_params(recon_shape=tuple(int(x) for x in pin), no_warning=True)
+        else:
+            print(f"WARNING: cone size {(n_views, n_rows, n_channels)} has no recon_shape pin; "
+                  f"using auto {tuple(int(x) for x in model.get_params('recon_shape'))} — add it "
+                  f"to CONE_RECON_SHAPE_PINS to decouple from padding policy.", file=sys.stderr)
+    elif geometry == "denoiser":
+        model = mbirtorch.QGGMRFDenoiser(tuple(int(x) for x in size), device=dev)
+        model.set_params(sharpness=config.denoise_sharpness, no_warning=True)
+    else:
+        raise ValueError(f"unknown geometry {geometry!r} (expected parallel/cone/denoiser)")
+    model.set_params(verbose=0, no_warning=True)
+    return model
+
+
+def make_indices(model):
+    """Full field-of-view pixel indices — the jax engine's definition, verbatim."""
+    import mbirtorch
+    recon_shape = model.get_params('recon_shape')
+    return mbirtorch.gen_full_indices(tuple(int(x) for x in recon_shape),
+                                      use_ror_mask=model.get_params('use_ror_mask'))
+
+
+def to_device(model, arr, kind):
+    """Pre-place a HOST input in the model's device form, OUTSIDE the timing loop.
+
+    Measure the op, not the host->device transfer.  ``kind`` is 'sino' (view axis)
+    or 'recon' (slice axis); at n=1 both are a plain tensor on the model's device.
+    """
+    import torch
+    if kind == "sino":
+        placed = model._shard_sinogram(arr)
+    else:
+        placed = model._shard_recon(arr)
+    _sync(model)
+    return placed
+
+
+def to_numpy(out):
+    """Device form (tensor or Shards) -> numpy, for the fingerprint.
+
+    Test for a tensor FIRST: torch.Tensor also has a .gather method (the indexing
+    one), so duck-typing on 'gather' alone calls that with no arguments.
+    """
+    import torch
+    if torch.is_tensor(out):
+        return out.detach().cpu().numpy()
+    if hasattr(out, "tensors") and hasattr(out, "placement"):   # _sharding.Shards
+        return out.gather().detach().cpu().numpy()
+    return np.asarray(out)
+
+
+def _sync(model):
+    import torch
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
+# ── Op bodies — the jax engine's definitions ──────────────────────────────────
+def run_filter(model, sino):
+    return model.direct_filter(sino, output_sharded=True)
+
+
+def run_forward(model, cylinders, pixel_indices):
+    return model.sparse_forward_project(cylinders, pixel_indices)
+
+
+def run_back(model, sino, pixel_indices):
+    return model.sparse_back_project(sino, pixel_indices)
+
+
+def build_partitions(model, sino_np, weights, max_iterations, seed):
+    """Build the VCD partitions + sequence once, OUTSIDE the timing loop.
+
+    gen_pixel_partition draws from the un-seeded global RNG, so without the seed the
+    partitions — and therefore the recon — vary run to run and the day-over-day VCD
+    fingerprint would false-positive.  The jax engine seeds for the same reason.
+    """
+    np.random.seed(seed)
+    ret = model.initialize_recon(sino_np, weights=weights, max_iterations=max_iterations)
+    return ret[3], ret[4]        # partitions, partition_sequence
+
+
+def run_vcd(model, sino_np, weights, partitions, partition_sequence, measure_seed):
+    """Timed op: one full VCD reconstruction with NONCONSTANT weights."""
+    np.random.seed(measure_seed)
+    recon, _stats = model.vcd_recon(sino_np, partitions, partition_sequence,
+                                    stop_threshold_change_pct=0.0,
+                                    weights=weights, init_recon=None)
+    return recon
+
+
+def run_denoise(model, image, config):
+    np.random.seed(config.measure_seed)
+    out, _ = model.denoise(image, sigma_noise=config.denoise_sigma,
+                           max_iterations=config.denoise_iterations,
+                           stop_threshold_change_pct=0.0, output_sharded=True)
+    return out
+
+
+# ── Timing + memory ───────────────────────────────────────────────────────────
+def time_op(model, run_fn, warmup, trials):
+    """Time run_fn() over warmup + trials iterations, synchronising each result.
+
+    Mirrors scaling_common.time_op, including the memory discipline: drop the PREVIOUS
+    iteration's result before allocating the next, so the device peak reflects a single
+    call (input + one output) rather than two outputs alive at once.  gc.collect() sits
+    outside the timed region so it cannot perturb the timing.
+    """
+    result = None
+    times = []
+    for i in range(warmup + trials):
+        result = None
+        gc.collect()
+        t0 = time.perf_counter()
+        result = run_fn()
+        _sync(model)
+        dt = time.perf_counter() - t0
+        if i >= warmup:
+            times.append(dt)
+    arr = np.array(times) * 1e3
+    return ({"min_ms": float(arr.min()), "mean_ms": float(arr.mean()),
+             "std_ms": float(arr.std())}, result)
+
+
+def reset_peak_memory(devices):
+    import torch
+    if torch.cuda.is_available():
+        for d in devices:
+            if d.type == "cuda":
+                torch.cuda.reset_peak_memory_stats(d)
+
+
+def peak_memory_mb(devices):
+    """Peak memory in MB over the row's PINNED devices, and the ruler's name.
+
+    GPU: max over the pinned devices of torch.cuda.max_memory_allocated — ALLOCATED,
+    not reserved, which is the ruler port_plan.md §3 names for the torch series and the
+    counterpart of jax's peak_bytes_in_use.  Reading only the pinned devices (rather
+    than every visible one, as mbirtorch.get_memory_stats does) keeps an n=2 row from
+    picking up a neighbour's allocation.
+    CPU: whole-process RSS, coarse — which is why the memory gate is soft there.
+    """
+    import torch
+    if torch.cuda.is_available():
+        peak = 0
+        for d in devices:
+            if d.type == "cuda":
+                peak = max(peak, int(torch.cuda.max_memory_allocated(d)))
+        return peak / (1024 ** 2), "gpu_peak_per_device"
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    rss_mb = rss / (1024 ** 2) if _platform.system() == "Darwin" else rss / 1024
+    return rss_mb, "cpu_rss"
+
+
+def run_measure_loop(size_label, device_counts, out_file, build_and_time, header_extra=""):
+    """Device-count descent for one problem size — the torch counterpart of
+    scaling_common.run_measure_loop (which cannot be reused: it picks devices through
+    jax).  Same semantics: descend so per-device allocation ascends within this fresh
+    process, stop the descent on an OOM (fewer devices need MORE per-device memory),
+    publish incrementally so a hard crash still returns the completed configs, sample
+    GPU clocks/temps during each timed region, and free between configs.
+    """
+    desc = sorted(set(device_counts), reverse=True)
+    print(f"\n[measure {size_label}{header_extra}]  device counts (descending): {desc}")
+    rows, failures = [], []
+    mem_kind = "n/a"
+
+    def _publish():
+        sc.write_worker_result(out_file, {"size": size_label, "mem_kind": mem_kind,
+                                          "rows": rows, "failures": failures})
+
+    gpu_present = bool(sc.sample_gpu_health())
+    for n in desc:
+        sampler = sc._GpuSampler().start() if gpu_present else None
+        try:
+            timed = build_and_time(n)
+        except Exception as e:                    # noqa: BLE001 — never abort the sweep
+            if sampler:
+                sampler.stop()
+            import traceback
+            tb = traceback.format_exc()
+            oom = sc.is_oom(tb)
+            failures.append({"n_devices": n, "oom": oom,
+                             "error": str(e).replace("\n", " ")[:300], "traceback": tb})
+            print(f"  n_devices={n:2d}  {'OOM' if oom else 'ERROR'}: {str(e)[:120]}")
+            if not oom:
+                print(tb)
+            _publish()
+            if oom:
+                print(f"  stopping descent at {size_label}: fewer-device configs need "
+                      f"more per-device memory and would also OOM")
+                break
+            continue
+        if sampler:
+            sampler.stop()
+        stats, mem_mb, mem_kind, extra = timed
+        gpu_health = (sampler.worst() if sampler else []) or sc.sample_gpu_health()
+        hot = sc.throttled_gpus(gpu_health)
+        rows.append({"n_devices": n, **stats, "mem_mb": mem_mb,
+                     "gpu_health": gpu_health, "throttled": bool(hot), **extra})
+        print(f"  n_devices={n:2d}  min={stats['min_ms']:9.1f} ms  "
+              f"mean={stats['mean_ms']:9.1f} ms  mem={mem_mb:8.1f} MB ({mem_kind})")
+        if hot:
+            print("  !! THROTTLING — this timing is UNRELIABLE: "
+                  + ", ".join(sc._fmt_hot_gpu(g) for g in hot))
+        _publish()
+        gc.collect()
+    _publish()
+    return rows, failures
+
+
+# ── Worker body ───────────────────────────────────────────────────────────────
+def measure_cell_group(config, geometry, op, size_label, device_counts, platform_key, out_file):
+    """Measure one (geometry, op, size) across ``device_counts``."""
+    import mbirtorch  # noqa: F401
+    assert_no_calibration()
+    size = pt.parse_size_label(size_label)
+    is_denoiser = (geometry == "denoiser")
+
+    # Inputs come from the JAX ENGINE's generators at its seeds — pure numpy, so they
+    # are reusable verbatim and the two backends see the same arrays.
+    sino_np = None if is_denoiser else pt.make_sinogram(config, size)
+    image_np = pt.make_noisy_image(config, size) if is_denoiser else None
+
+    base_model = make_model(config, geometry, size, platform_key)
+    pin_devices(base_model, 1)
+    recon_shape = tuple(int(x) for x in base_model.get_params('recon_shape'))
+    if is_denoiser:
+        idx = cylinders = num_pixels = None
+    else:
+        idx = make_indices(base_model)
+        num_pixels = len(idx)
+        cylinders = (pt.make_cylinders(num_pixels, recon_shape[2], config.input_seed)
+                     if op == "forward" else None)
+    weights = pt.make_weights(config, size) if op == "vcd_nonconst" else None
+    del base_model
+    gc.collect()
+
+    # TRUE (unpadded) output shape per op, for the fingerprint crop.
+    op_true_shape = {
+        "direct_filter": tuple(size),
+        "forward": tuple(size),
+        "back": (num_pixels, recon_shape[2]),
+        "vcd_nonconst": tuple(recon_shape),
+        "denoise": tuple(recon_shape),
+    }.get(op, tuple(size))
+
+    trials = 1 if size_label in config.single_trial_sizes else config.trials_by_op.get(op, 3)
+
+    def build_and_time(n):
+        model = make_model(config, geometry, size, platform_key)
+        devices = pin_devices(model, n)          # pin FIRST, before any warmup
+        info = placement_info(model, devices)
+        if op == "direct_filter":
+            sino_dev = to_device(model, sino_np, "sino")
+            run_fn = lambda: run_filter(model, sino_dev)
+        elif op == "forward":
+            cyl_dev = to_device(model, cylinders, "recon")
+            run_fn = lambda: run_forward(model, cyl_dev, idx)
+        elif op == "back":
+            sino_dev = to_device(model, sino_np, "sino")
+            run_fn = lambda: run_back(model, sino_dev, idx)
+        elif op == "vcd_nonconst":
+            partitions, partition_sequence = build_partitions(
+                model, sino_np, weights, config.vcd_iterations, config.measure_seed)
+            run_fn = lambda: run_vcd(model, sino_np, weights, partitions,
+                                     partition_sequence, config.measure_seed)
+        elif op == "denoise":
+            run_fn = lambda: run_denoise(model, image_np, config)
+        else:
+            raise ValueError(f"op {op!r} not implemented")
+        reset_peak_memory(devices)               # the ruler starts here
+        stats, result = time_op(model, run_fn, config.warmup, trials)
+        mem_mb, mem_kind = peak_memory_mb(devices)
+        # Re-verify the binding AFTER the timed call: a widening that happened inside
+        # recon() would not be visible at pin time.
+        if int(model.sino_placement.n_devices) != n:
+            raise RuntimeError(
+                f"DEVICE COUNT CHANGED DURING THE OP: pinned {n}, now "
+                f"{int(model.sino_placement.n_devices)}.  Refusing to file under n={n}.")
+        # Fingerprint AFTER the memory read, so the host gather cannot inflate the peak.
+        fp = pt.fingerprint(to_numpy(result), op_true_shape)
+        return stats, mem_mb, mem_kind, {**info, "fingerprint": fp,
+                                         "platform": platform_key}
+
+    rows, failures = run_measure_loop(
+        size_label, device_counts, out_file, build_and_time,
+        header_extra=f" | {geometry} | op={op} | recon={recon_shape}")
+    for r in rows:
+        r["geometry"] = geometry
+        r["op"] = op
+        r["size"] = size_label
+        r["recon_shape"] = list(recon_shape)
+        r["trials"] = trials
+    return {"geometry": geometry, "op": op, "size": size_label,
+            "recon_shape": list(recon_shape), "rows": rows, "failures": failures}
+
+
+def run_worker(argv):
+    p = argparse.ArgumentParser(description="torch_backend_writer worker (internal)")
+    p.add_argument("--worker", action="store_true")
+    p.add_argument("--mode", choices=["setup", "measure"], required=True)
+    p.add_argument("--config", default=None)
+    p.add_argument("--platform", required=True)
+    p.add_argument("--geometry", default=None)
+    p.add_argument("--op", default=None)
+    p.add_argument("--size", default=None)
+    p.add_argument("--device-counts", type=int, nargs="+", default=None)
+    p.add_argument("--out-file", required=True)
+    a = p.parse_args(argv)
+    assert_platform(a.platform)
+    if a.mode == "setup":
+        sc.write_worker_result(a.out_file, probe_environment(a.platform))
+        return
+    config = pt.Config.from_dict(sc.load_yaml(a.config))
+    res = measure_cell_group(config, a.geometry, a.op, a.size, a.device_counts,
+                             a.platform, a.out_file)
+    sc.write_worker_result(a.out_file, res)
+
+
+# ── Environment identity (the platform-mismatch guard class) ──────────────────
+def probe_environment(platform_key):
+    """What this run measured ON, recorded so a night-to-night shift can be attributed
+    to the environment rather than the code.  Runs in a worker, since it imports torch.
+    """
     import torch
     import mbirtorch
-
-    geometry, op, size = cfg["geometry"], cfg["op"], tuple(cfg["size"])
-    trials = cfg["trials"]
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    dev = torch.device(device)
-
-    def sync():
-        if device == "cuda":
-            torch.cuda.synchronize()
-
-    import time
-    if geometry == "parallel":
-        angles = np.linspace(0, np.pi, size[0], endpoint=False)
-        model = mbirtorch.ParallelBeamModel(size, angles, device=device)
-        model.set_params(no_warning=True, verbose=0)
-        recon_shape = tuple(model.get_params('recon_shape'))
-        phantom = mbirtorch.generate_3d_shepp_logan_low_dynamic_range(recon_shape)
-        sinogram = model.forward_project(phantom)
-        sino_dev = torch.as_tensor(sinogram, device=dev)
-        phantom_dev = torch.as_tensor(phantom, device=dev)
-        weights = np.exp(-np.asarray(sinogram) / (2 * np.max(sinogram)))
-
-        if op == "vcd_nonconst":
-            def run():
-                np.random.seed(VCD_SEED)
-                out, _ = model.recon(sinogram, weights=weights,
-                                     max_iterations=VCD_ITERATIONS,
-                                     stop_threshold_change_pct=0.0)
-                return out
-        else:
-            fn = {"direct_filter": lambda: model.direct_filter(sino_dev, output_sharded=True),
-                  "forward": lambda: model.forward_project(phantom_dev, output_sharded=True),
-                  "back": lambda: model.back_project(sino_dev, output_sharded=True)}[op]
-            run = fn
-    else:   # denoiser
-        recon_shape = size
-        model = mbirtorch.QGGMRFDenoiser(size, device=device)
-        model.set_params(no_warning=True, verbose=0,
-                         sharpness=DENOISE_SHARPNESS)
-        rng = np.random.RandomState(INPUT_SEED)
-        image = rng.rand(*size).astype(np.float32)
-
-        def run():
-            np.random.seed(INPUT_SEED)
-            out, _ = model.denoise(image, sigma_noise=DENOISE_SIGMA,
-                                   max_iterations=DENOISE_ITERATIONS,
-                                   stop_threshold_change_pct=0.0)
-            return out
-
-    times_ms = []
-    out = run()
-    sync()
-    for _ in range(max(0, WARMUP - 1)):
-        run(); sync()
-    for _ in range(trials):
-        t0 = time.perf_counter()
-        out = run()
-        sync()
-        times_ms.append(1000 * (time.perf_counter() - t0))
-
-    out_np = out.cpu().numpy() if torch.is_tensor(out) else np.asarray(out)
-    if device == "cuda":
-        mem_mb = torch.cuda.max_memory_allocated() / 2**20
-    else:
-        mem_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20
-
-    return {
-        "n_devices": 1,
-        "min_ms": float(np.min(times_ms)),
-        "mean_ms": float(np.mean(times_ms)),
-        "std_ms": float(np.std(times_ms)),
-        "mem_mb": float(mem_mb),
-        "gpu_health": gpu_health(),
-        "throttled": False,
-        "geometry": geometry,
-        "op": "denoise" if geometry == "denoiser" else op,
-        "size": "x".join(map(str, size)),
-        "recon_shape": list(recon_shape),
-        "trials": trials,
-        "is_sharded": False,
-        "n_shard_devices": 1,
-        "platform": cfg["platform"],
-        "fingerprint": fingerprint(out_np),
-        "speedup": 1.0,
+    info = {
+        "platform": platform_key,
+        "device_label": (f"GPU-TORCH ({torch.cuda.get_device_name(0)})"
+                         if torch.cuda.is_available()
+                         else f"CPU-TORCH ({_platform.processor() or _platform.machine()})"),
+        "max_devices": int(torch.cuda.device_count()) if torch.cuda.is_available() else 1,
+        "toolchain": {
+            "torch": str(torch.__version__),        # TorchVersion is a str SUBCLASS; yaml.safe_dump refuses it
+            "torch_cuda": str(torch.version.cuda) if getattr(torch.version, "cuda", None) else None,
+            "python": _platform.python_version(),
+            "executable": sys.executable,
+            "loaded_modules": os.environ.get("LOADEDMODULES"),
+        },
+        "packages": sc.installed_packages(),
+        "mbirtorch_version": str(mbirtorch.__version__),
     }
+    try:
+        import triton
+        info["toolchain"]["triton"] = str(triton.__version__)
+    except Exception:                              # noqa: BLE001
+        info["toolchain"]["triton"] = None
+    # Which projector bodies this run will actually use.  The nightly measures the
+    # SHIPPED configuration (kernels default-on), so this is recorded, not forced —
+    # the arm-check discipline of phase5_findings.md applied to the nightly.
+    try:
+        from mbirtorch import kernel_availability as ka
+        ok, reason = ka.triton_available()
+        info["kernels"] = {"triton_available": bool(ok), "reason": str(reason),
+                           "disable_env": os.environ.get("MBIRTORCH_DISABLE_TRITON")}
+    except Exception as e:                         # noqa: BLE001
+        info["kernels"] = {"triton_available": None, "reason": f"probe failed: {e}"}
+    return info
 
 
-def git_info(root):
-    def g(*args):
+def git_provenance(root):
+    """{git_commit, git_commit_date, git_branch, ...} for the mbirtorch checkout."""
+    def _g(args):
         try:
-            return subprocess.run(["git", "-C", root, *args], capture_output=True,
-                                  text=True, timeout=10).stdout.strip()
-        except Exception:                                      # noqa: BLE001
-            return ""
-    commit = g("rev-parse", "HEAD") or "0" * 40
-    return {
-        "git_commit": commit,
-        "git_commit_date": g("log", "-1", "--format=%cI") or None,
-        "git_branch": g("rev-parse", "--abbrev-ref", "HEAD") or "main",
-        "git_dirty": bool(g("status", "--porcelain")),
-        "git_dirty_files": [], "git_dirty_code": bool(g("status", "--porcelain")),
+            r = subprocess.run(["git", "-C", root, *args], capture_output=True,
+                               text=True, timeout=10)
+            return r.stdout.strip() if r.returncode == 0 else None
+        except Exception:                          # noqa: BLE001
+            return None
+    dirty = _g(["status", "--porcelain"]) or ""
+    dirty_files = [ln[3:].split(" -> ")[-1] for ln in dirty.splitlines()]
+    return {"git_commit": _g(["rev-parse", "HEAD"]),
+            "git_commit_date": _g(["show", "-s", "--format=%cI", "HEAD"]),
+            "git_branch": _g(["rev-parse", "--abbrev-ref", "HEAD"]),
+            "git_dirty": bool(dirty),
+            "git_dirty_files": dirty_files[:20],
+            "git_dirty_code": any(f.startswith("mbirtorch/") for f in dirty_files)}
+
+
+# ── Orchestrator ──────────────────────────────────────────────────────────────
+def run(config, platform_key):
+    """Sweep, gate, and write the dated YAML + companions."""
+    script = os.path.abspath(__file__)
+    os.makedirs(config.out_dir, exist_ok=True)
+    worker_env = {"PYTHONPATH": os.pathsep.join(
+        [p for p in (config.lib_root, os.environ.get("PYTHONPATH")) if p])}
+
+    print("=" * 72)
+    print("  torch_backend_writer — mbirtorch regression sweep")
+    print(f"  lib_root (under test): {config.lib_root}")
+    print(f"  out_dir:               {config.out_dir}")
+    print(f"  platform / date / tag: {platform_key} / {config.date} / {config.run_tag or '-'}")
+    print("=" * 72)
+
+    setup, rc = sc.run_worker(script, ["--worker", "--mode", "setup",
+                                       "--platform", platform_key], extra_env=worker_env)
+    if setup is None:
+        print(f"  ERROR: setup worker produced no result (rc={rc}); aborting.")
+        return None
+    max_dev = int(setup.get("max_devices") or 1)
+    print(f"  device: {setup['device_label']}   visible devices: {max_dev}")
+    print(f"  torch {setup['toolchain']['torch']} · kernels: {setup.get('kernels')}")
+
+    device_counts = [n for n in config.device_counts if n <= max_dev]
+    if not device_counts:
+        print(f"  ERROR: no requested device count fits {max_dev} visible device(s); aborting.")
+        return None
+
+    fd, cfg_path = tempfile.mkstemp(suffix=".yaml", prefix="torch_cfg_")
+    os.close(fd)
+    sc.save_yaml(cfg_path, config.to_dict())
+
+    cells = []
+    swept_counts = set()
+    for geometry in config.geometries:
+        # The denoiser stays single-device: QGGMRFDenoiser.denoise raises under any
+        # non-trivial placement (current_plans.md §11), and the device-policy work
+        # deliberately leaves it outside the widening.
+        gdc = [1] if geometry == "denoiser" else device_counts
+        swept_counts.update(gdc)
+        gs = (config.geom_sizes.get(geometry, {}) or {}).get(platform_key) \
+            or config.sizes[platform_key]
+        size_labels = [sc.size_label(s) for s in gs]
+        for op in (config.geom_ops.get(geometry) or config.ops):
+            for label in size_labels:
+                print(f"\n=== {geometry} | {op} | {label} @ n={gdc} ===")
+                args = ["--worker", "--mode", "measure", "--config", cfg_path,
+                        "--platform", platform_key, "--geometry", geometry, "--op", op,
+                        "--size", label, "--device-counts", *[str(n) for n in gdc]]
+                res, _rc = sc.run_worker(script, args, extra_env=worker_env)
+                if not res:
+                    print(f"  (no result for {geometry}/{op}/{label})")
+                    continue
+                rows = res.get("rows") or []
+                sc.annotate_speedups(rows)
+                cells.extend(rows)
+                for f in (res.get("failures") or []):
+                    cells.append({"geometry": geometry, "op": op, "size": label,
+                                  "n_devices": f["n_devices"], "failed": True,
+                                  "oom": bool(f.get("oom")), "error": f.get("error")})
+    os.path.exists(cfg_path) and os.remove(cfg_path)
+
+    prov = git_provenance(config.lib_root)
+    if prov.get("git_branch") in (None, "", "HEAD") and config.run_tag:
+        prov["git_branch"] = config.run_tag
+    file_tag = pt._file_tag(prov, config.date)   # COMMIT-time tag: one file per commit,
+    #                                              sorts chronologically, overwrites on re-measure
+
+    records_path = os.path.join(config.out_dir, f"records_{platform_key}.yaml")
+    records = (sc.load_yaml(records_path) or {}) if os.path.exists(records_path) else {}
+    new_lines, n_baselines = pt.update_records(records, cells, prov.get("git_commit") or "?",
+                                               config.date)
+    sc.save_yaml(records_path, records)
+
+    cfg_dict = config.to_dict()
+    cfg_dict["backend"] = "torch"
+    result = {
+        "kind": "regression", "date": config.date, "platform": platform_key,
+        # mbirtorch has no per-geometry sharding capability probe: every geometry either
+        # supports placement or, for the denoiser, is deliberately held at one device.
+        "sharding_by_geom": {g: (g != "denoiser") for g in config.geometries},
+        "device_label": setup["device_label"], **prov,
+        "mbirjax_version": f"mbirtorch {setup['mbirtorch_version']}",
+        "toolchain": setup["toolchain"],
+        "packages": setup.get("packages") or {},
+        "kernels": setup.get("kernels"),
+        "mem_kind": "gpu_peak_per_device" if platform_key == "gpu-torch" else "cpu_rss",
+        "dep_gen": 0, "run_reason": "commit", "jax_available": None,
+        "measured_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "config": cfg_dict, "device_counts": sorted(swept_counts), "cells": cells,
+        "policy": {},
     }
+
+    gate_dict = None
+    if config.compare_to_prior:
+        W = max(1, int(getattr(config, "mem_gate_window", 1)))
+        priors = pt._find_priors(config.out_dir, platform_key, file_tag, W)
+        if priors:
+            ref = sc.load_yaml(priors[0]) or {}
+            gate_result, gate_ref = ((result, ref) if W <= 1
+                                     else pt._apply_mem_window(result, ref, priors, W))
+            refs = [(f"prior:{os.path.basename(priors[0])}", gate_ref)]
+            gate_dict = pt.gate_run(gate_result, refs, config)
+        else:
+            gate_dict = pt.gate_run(result, [], config)   # cold start -> all-SOFT
+        result["gate"] = gate_dict
+
+    out_path = os.path.join(config.out_dir, f"regression_{platform_key}_{file_tag}.yaml")
+    sc.save_yaml(out_path, result)
+    try:
+        import regression_to_table
+        regression_to_table.write_table(regression_to_table.load_yaml(out_path),
+                                        os.path.splitext(out_path)[0] + "_table.yaml")
+    except Exception as e:                         # noqa: BLE001
+        print(f"[warn] companion _table.yaml not written: {e}")
+
+    pt._print_summary(cells)
+    if new_lines:
+        print(f"\n  {len(new_lines)} NEW RECORD(S) this run:")
+        for line in new_lines:
+            print(line)
+    elif n_baselines:
+        print(f"\n  established {n_baselines} baseline record(s) (first run for these cells)")
+    if gate_dict:
+        pt._print_gate(gate_dict)
+    print(f"\nOutput written to: {out_path}")
+    print(f"Record book:       {records_path}")
+    return result
+
+
+def write_tests_log(lib_root, out_dir, platform_key, date):
+    """Run the mbirtorch suite and capture it beside the run, as the jax nightly does.
+
+    The suite is the torch series' cross-framework coverage: test_vs_goldens.py carries
+    the torch-vs-jax value check, which is why this plan puts no cross-framework column
+    in the nightly itself.
+    """
+    tests_path = os.path.join(out_dir, f"tests_{platform_key}_{date}.txt")
+    nproc = "4" if platform_key == "gpu-torch" else "8"
+    runner = os.path.join(lib_root, "dev_scripts", "run_tests.sh")
+    env = {**os.environ, "PYTEST_NPROC": nproc}
+    if os.path.isfile(runner):
+        # run_tests.sh uses a path RELATIVE to dev_scripts/, so it must run from there.
+        proc = subprocess.run(["bash", "run_tests.sh"], cwd=os.path.dirname(runner),
+                              capture_output=True, text=True, env=env)
+    else:
+        proc = subprocess.run([sys.executable, "-m", "pytest", "tests", "-ra", "-n", nproc],
+                              cwd=lib_root, capture_output=True, text=True, env=env)
+    with open(tests_path, "w") as f:
+        f.write(proc.stdout + proc.stderr)
+    print(f"wrote {tests_path}")
+    return tests_path
 
 
 def main():
-    import torch
-    import mbirtorch
+    platform_key = os.environ.get("REG_TORCH_PLATFORM")
+    lib_root = os.environ.get("REG_TORCH_LIB_ROOT")
+    out_dir = os.environ.get("REG_TORCH_OUT_DIR")
+    for name, val in (("REG_TORCH_PLATFORM", platform_key),
+                      ("REG_TORCH_LIB_ROOT", lib_root),
+                      ("REG_TORCH_OUT_DIR", out_dir)):
+        if not val:
+            raise SystemExit(f"torch_backend_writer: required env var {name} is not set")
+    assert_no_calibration()
+    date = os.environ.get("REG_TORCH_DATE") or datetime.datetime.now().strftime("%Y%m%d")
+    counts = [int(x) for x in (os.environ.get("REG_TORCH_DEVICE_COUNTS") or "1").split()]
+    config = build_config(platform_key, out_dir, date,
+                          os.environ.get("REG_TORCH_RUN_TAG", ""), lib_root, counts,
+                          gate=os.environ.get("REG_TORCH_GATE", "1") == "1")
+    if os.environ.get("REG_TORCH_SMOKE") == "1":
+        # Fast plumbing check (NOT a measurement): one tiny cell, end to end.
+        config.geometries = ["parallel"]
+        config.ops = ["back"]
+        config.sizes = {platform_key: [[40, 40, 48]]}
+        config.geom_sizes = {}
+        config.device_counts = [1]
 
-    on_gpu = torch.cuda.is_available()
-    platform_key = "gpu-torch" if on_gpu else "cpu-torch"
-    plat_family = "gpu" if on_gpu else "cpu"
-    device_label = (f"GPU-TORCH ({torch.cuda.get_device_name(0)})" if on_gpu
-                    else f"CPU-TORCH ({_platform.processor() or _platform.machine()})")
-    gi = git_info(MBIRTORCH_ROOT)
-    branch_dir = gi["git_branch"].replace("/", "_")
-    now = datetime.now(timezone.utc)
-    date = now.strftime("%Y%m%d")
-    stamp = now.strftime("%Y%m%dT%H%M%SZ")
-
-    out_dir = REPO_ROOT / "results" / platform_key / branch_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    cells = []
-    jobs = []
-    for size in PARALLEL_SIZES[plat_family]:
-        size_str = "x".join(map(str, size))
-        for op in OPS:
-            trials = 1 if size_str in SINGLE_TRIAL_SIZES else TRIALS_BY_OP[op]
-            jobs.append(dict(geometry="parallel", op=op, size=list(size),
-                             trials=trials, platform=platform_key))
-    for size in DENOISER_SIZES[plat_family]:
-        size_str = "x".join(map(str, size))
-        trials = 1 if size_str in SINGLE_TRIAL_SIZES else TRIALS_BY_OP["denoise"]
-        jobs.append(dict(geometry="denoiser", op="denoise", size=list(size),
-                         trials=trials, platform=platform_key))
-
-    for cfg in jobs:
-        label = f"{cfg['geometry']}/{cfg['op']}/{'x'.join(map(str, cfg['size']))}"
-        print(f"{label} ...", flush=True)
-        cfg_path = str(out_dir / "_cfg_cell.json")
-        res_path = str(out_dir / "_out_cell.json")
-        with open(cfg_path, "w") as f:
-            json.dump(cfg, f)
-        proc = subprocess.run([TORCH_PYTHON, os.path.abspath(__file__), "_cell",
-                               cfg_path, res_path])
-        if proc.returncode != 0:
-            print(f"  FAILED (exit {proc.returncode})", flush=True)
-            cells.append({"n_devices": 1, "geometry": cfg["geometry"],
-                          "op": cfg["op"], "size": "x".join(map(str, cfg["size"])),
-                          "platform": platform_key, "failed": True,
-                          "error": f"worker exited {proc.returncode}"})
-            continue
-        with open(res_path) as f:
-            cell = json.load(f)
-        cells.append(cell)
-        print(f"  {cell['min_ms']:.1f} ms  mem {cell['mem_mb']:.0f} MB", flush=True)
-    for tmp in (out_dir / "_cfg_cell.json", out_dir / "_out_cell.json"):
-        tmp.unlink(missing_ok=True)
-
-    run = {
-        "kind": "regression",
-        "date": date,
-        "platform": platform_key,
-        "sharding_by_geom": {"parallel": False, "denoiser": False},
-        "device_label": device_label,
-        **gi,
-        "mbirjax_version": f"mbirtorch {mbirtorch.__version__}",
-        "toolchain": {"torch": str(torch.__version__),   # TorchVersion is a str SUBCLASS yaml.safe_dump refuses
-                      "python": _platform.python_version()},
-        "packages": {},
-        "dep_gen": 0,
-        "run_reason": "commit",
-        "jax_available": "",
-        "measured_at": now.isoformat(),
-        "config": {"geometries": ["parallel", "denoiser"],
-                   "ops": OPS, "sizes": {plat_family: [list(s) for s in PARALLEL_SIZES[plat_family]]},
-                   "trials_by_op": TRIALS_BY_OP, "warmup": WARMUP,
-                   "vcd_iterations": VCD_ITERATIONS, "weight_seed": VCD_SEED,
-                   "denoise_iterations": DENOISE_ITERATIONS,
-                   "denoise_sigma": DENOISE_SIGMA,
-                   "backend": "torch"},
-        "device_counts": [1],
-        "cells": cells,
-        "policy": {},
-        "gate": {"result": "pass", "hard": [], "soft": []},
-    }
-
-    yaml_path = out_dir / f"regression_{platform_key}_{stamp}_{gi['git_commit'][:8]}.yaml"
-    with open(yaml_path, "w") as f:
-        yaml.safe_dump(run, f, sort_keys=False)
-
-    # Companion tests file: the mbirtorch suite's own output.
-    tests_path = out_dir / f"tests_{platform_key}_{date}.txt"
-    proc = subprocess.run([TORCH_PYTHON, "-m", "pytest", "tests", "-q"],
-                          cwd=MBIRTORCH_ROOT, capture_output=True, text=True)
-    tests_path.write_text(proc.stdout + proc.stderr)
-
-    print(f"\nwrote {yaml_path}")
-    print(f"wrote {tests_path}")
+    result = run(config, platform_key)
+    if result is None:
+        raise SystemExit(2)
+    if os.environ.get("REG_TORCH_SMOKE") != "1":
+        write_tests_log(lib_root, out_dir, platform_key, date)
+    if config.gate and (result.get("gate") or {}).get("result") == "fail":
+        raise SystemExit(1)      # HARD regression -> the wrapper turns this into an alert
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2 and sys.argv[1] == "_cell":
-        with open(sys.argv[2]) as f:
-            cfg = json.load(f)
-        result = cell_worker(cfg)
-        with open(sys.argv[3], "w") as f:
-            json.dump(result, f)
+    if "--worker" in sys.argv:
+        run_worker(sys.argv[1:])
     else:
         main()
