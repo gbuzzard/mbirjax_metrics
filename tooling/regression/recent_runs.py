@@ -92,7 +92,7 @@ def main():
     # NB: 'commit time' is the COMMIT measured; 'meas' is when it was MEASURED (a manual add_run /
     # run_one_night, or a scheduled nightly) — they differ, e.g. a 6/20 commit measured on 6/21.
     print(f"recent runs (from {root}/results, newest first) — 'commit time' = the commit; 'meas' = date measured:")
-    print(f"     {'commit time':<16} {'meas':>5}  {'plat':<4} {'branch':<26} {'commit':<8} {'cfgs':>4} {'gate':>4} {'tests':>5}")
+    print(f"     {'commit time':<16} {'meas':>5}  {'plat':<9} {'branch':<26} {'commit':<8} {'cfgs':>4} {'gate':>4} {'tests':>5}")
     for r in runs[:n]:
         cells = r.get("cells") or []
         nfail = sum(1 for c in cells if c.get("failed"))
@@ -100,7 +100,7 @@ def main():
         tests = r.get("tests")
         tf = tests.get("failed") if tests else None
         therm = _thermal(cells)
-        plat = (r.get("platform") or "?").capitalize()          # Cpu / Gpu — visually distinct
+        plat = (r.get("platform") or "?").capitalize()          # Cpu / Gpu / Gpu-torch — visually distinct
         d = r.get("date") or ""
         meas = f"{d[4:6]}-{d[6:8]}" if (len(d) == 8 and d.isdigit()) else "?"
         branch = (r.get("branch") or "?") + (" ·dirty" if r.get("dirty") else "")
@@ -114,7 +114,7 @@ def main():
                          + f" · n={','.join(map(str, devs))}" + (f" · up to {peak}°C" if peak else ""))
         warn = ("   ⚠ " + " · ".join(extra)) if extra else ""
         glyph = "✗" if (nfail or hard or (tf or 0)) else ("⚠" if therm else "✓")
-        print(f"  {glyph}  {_commit_minute(r):<16} {meas:>5}  {plat:<4} {branch:<26.26} {r.get('commit', '')[:8]:<8} "
+        print(f"  {glyph}  {_commit_minute(r):<16} {meas:>5}  {plat:<9} {branch:<26.26} {r.get('commit', '')[:8]:<8} "
               f"{len(cells):>4} {hard:>4} {tfs:>5}{warn}")
 
     # Echo the dashboard's CORRECTNESS ALERT block + cross-device floor (the same scan build_dashboard

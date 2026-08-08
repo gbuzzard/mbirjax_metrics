@@ -113,3 +113,32 @@ updates; a second immediate run should report no changed branch (fire-on-change 
   (commit-over-commit). The **dashboard** layers on the broader correctness checks (vs `main`,
   single-vs-multi-device, and CPU↔GPU) and the perf "compare against" overlays — all derived from the
   tracked runs themselves, with no hand-captured reference snapshots.
+
+## The mbirtorch nightly (torch sibling)
+
+A second, independently scheduled job gives mbirtorch the same regression protection.  Design
+record: `mbirjax_plans/plans/torch_port/nightly_plan.md`.  The torch files are siblings of the jax
+ones and share NO mutable state with them — different work dir (`~/.mbirtorch/regression`),
+different conda env (`mbirtorch_regression`), a separate scrontab block (`mbirtorch-nightly`,
+03:00, ONE GPU), and disjoint `results//state/` paths (`gpu-torch`, `cpu-torch`):
+
+```
+run_torch_regression.sh    the wrapper (same two-phase shape as run_regression.sh)
+torch_regression.env       infrastructure config (sources action_scripts/torch_run_configs.env)
+lib_torch_env.sh           dedicated-env + install mechanism; torch picks its CUDA build via the
+                           WHEEL INDEX (TORCH_INDEX_URL_gpu, cu130), not a pip extra
+enable/disable/status_torch_nightly.sh, nightly_torch_regression.slurm,
+com.mbirtorch.regression.plist
+```
+
+The measurement layer is `tooling/scaling_tests/torch_backend_writer.py`, which reuses the jax
+engine's decision layer (Config, gate, records, file naming) so the two backends share one gate
+model.  The ops are the jax engine's ops at the same cells, so the dashboard rows sit at identical
+coordinates.  Three guards are torch-specific: the wrapper DECLARES the platform key and the
+writer aborts if `torch.cuda` disagrees; every row pins its device count (`configure_devices` +
+`MBIRTORCH_NUM_DEVICES`) and asserts the realized device list; and the writer refuses to measure
+under `MBIRTORCH_MEMORY_CALIBRATION`.
+
+Trial knobs (pre-schedule runs): `REG_TORCH_SMOKE=1` (toy 1-cell plumbing check),
+`REG_TORCH_NO_PUSH=1` (write locally, push nothing), `REG_TORCH_FORCE=1` (re-measure an unmoved
+tip), `REG_TORCH_VENV=<dir>` (use an existing venv instead of the dedicated env).

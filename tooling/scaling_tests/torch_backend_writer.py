@@ -177,38 +177,49 @@ def assert_no_calibration():
 
 
 # ── Devices: pin explicitly, then verify what was BOUND ───────────────────────
-def pin_devices(model, n):
-    """Pin the model to EXACTLY n devices and return the realized device list.
+def pin_devices(model, n, platform_key):
+    """Pin the model to EXACTLY n devices of the platform's kind and return the
+    realized device list.
 
     The pin is mandatory on every row, at every count including n=1.  mbirtorch's
-    device policy is moving to an all-device default for automatic CUDA models
-    (device_policy_design.md), and an unindexed 'cuda' model is eligible for that
-    widening.  Without this call every row would silently start measuring an
-    all-device run under a cell labelled n=1 the moment the flip lands — the same
-    defect the device-policy design records in p4_gate_readout.py, where the n=1 arm
-    was also the reference the value diffs were taken against.
+    device policy (landed 2026-08-08) gives an unpinned model an all-device default
+    on multi-GPU CUDA, with the single device resolved lazily as cuda > mps > cpu.
+    Without this call every row would silently measure an all-device run under a
+    cell labelled n=1 — the same defect the device-policy design records in
+    p4_gate_readout.py, where the n=1 arm was also the reference the value diffs
+    were taken against.
+
+    The pin must also name the device KIND, not just the count.  On a Mac,
+    configure_devices(num_devices=1) binds the lazily-preferred device, which is
+    MPS — so a cpu-torch row pinned by count alone would silently measure Apple's
+    GPU and file it under cpu.  cpu-torch therefore pins devices=['cpu'] explicitly
+    (repeated virtual cpu devices at n>1, as mbirtorch's own sharding tests do).
 
     configure_devices() sets device_layout_is_automatic=False permanently, which is
     the flag the automatic path consults, so it is the durable pin.  It also rebuilds
     the placements and recreates the projectors, so it must run BEFORE any warmup.
 
     Verification is the layer that makes the pin checkable: read back what the model
-    actually bound and refuse to measure if it is not n (the arm-check discipline of
-    phase5_findings.md, applied to device count).
+    actually bound — count AND kind — and refuse to measure on any disagreement (the
+    arm-check discipline of phase5_findings.md, applied to device binding).
     """
-    import torch
-    if n == 1:
-        model.configure_devices(num_devices=1)
-    elif torch.cuda.is_available():
+    want_kind = "cuda" if platform_key == "gpu-torch" else "cpu"
+    if want_kind == "cuda":
+        # n=1 binds cuda:0: assert_platform already proved CUDA is up on this key.
         model.configure_devices(num_devices=n)
     else:
-        # No CUDA: mbirtorch's own sharding tests use repeated virtual cpu devices.
         model.configure_devices(devices=["cpu"] * n)
     devices = list(model.sino_placement.devices)
     if len(devices) != n:
         raise RuntimeError(
             f"DEVICE PIN FAILED: asked for {n} device(s), model bound {len(devices)} "
             f"({[str(d) for d in devices]}).  Refusing to file this row under n={n}.")
+    wrong = [str(d) for d in devices if d.type != want_kind]
+    if wrong:
+        raise RuntimeError(
+            f"DEVICE PIN FAILED: platform {platform_key} wants only {want_kind} "
+            f"devices, model bound {wrong}.  Refusing to file this row under "
+            f"{platform_key}.")
     return devices
 
 
@@ -221,24 +232,24 @@ def placement_info(model, devices):
 
 # ── Model + inputs ────────────────────────────────────────────────────────────
 def make_model(config, geometry, size, platform_key):
-    """Build a single-device mbirtorch model of ``geometry`` for SINOGRAM ``size``.
+    """Build an mbirtorch model of ``geometry`` for SINOGRAM ``size``.
 
     Mirrors performance_tracking.make_model: the same cone geometry convention
     (magnification 2 via source_detector_dist = 4 * channels), the same recon-shape
-    pinning for cone, verbose off.  ``device`` is named explicitly rather than left
-    at 'auto' so the constructor's choice is recorded, not inferred.
+    pinning for cone, verbose off.  The constructors take no device argument
+    (configure_devices is the single door since the 2026-08-08 policy landing), so
+    every model built here MUST be followed by pin_devices before any use — an
+    unpinned model resolves its device lazily and, on multi-GPU CUDA, auto-widens.
     """
     import mbirtorch
     n_views, n_rows, n_channels = size
-    dev = "cuda" if platform_key == "gpu-torch" else "cpu"
     angles = np.linspace(0, np.pi, n_views, endpoint=False)
     if geometry == "parallel":
-        model = mbirtorch.ParallelBeamModel((n_views, n_rows, n_channels), angles, device=dev)
+        model = mbirtorch.ParallelBeamModel((n_views, n_rows, n_channels), angles)
     elif geometry == "cone":
         sdd = config.cone_sdd_over_channels * n_channels
         model = mbirtorch.ConeBeamModel((n_views, n_rows, n_channels), angles,
-                                        source_detector_dist=sdd, source_iso_dist=sdd / 2.0,
-                                        device=dev)
+                                        source_detector_dist=sdd, source_iso_dist=sdd / 2.0)
         pin = CONE_RECON_SHAPE_PINS.get((int(n_views), int(n_rows), int(n_channels)))
         if pin is not None:
             model.set_params(recon_shape=tuple(int(x) for x in pin), no_warning=True)
@@ -247,7 +258,7 @@ def make_model(config, geometry, size, platform_key):
                   f"using auto {tuple(int(x) for x in model.get_params('recon_shape'))} — add it "
                   f"to CONE_RECON_SHAPE_PINS to decouple from padding policy.", file=sys.stderr)
     elif geometry == "denoiser":
-        model = mbirtorch.QGGMRFDenoiser(tuple(int(x) for x in size), device=dev)
+        model = mbirtorch.QGGMRFDenoiser(tuple(int(x) for x in size))
         model.set_params(sharpness=config.denoise_sharpness, no_warning=True)
     else:
         raise ValueError(f"unknown geometry {geometry!r} (expected parallel/cone/denoiser)")
@@ -466,7 +477,7 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, platform
     image_np = pt.make_noisy_image(config, size) if is_denoiser else None
 
     base_model = make_model(config, geometry, size, platform_key)
-    pin_devices(base_model, 1)
+    pin_devices(base_model, 1, platform_key)
     recon_shape = tuple(int(x) for x in base_model.get_params('recon_shape'))
     if is_denoiser:
         idx = cylinders = num_pixels = None
@@ -492,7 +503,7 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, platform
 
     def build_and_time(n):
         model = make_model(config, geometry, size, platform_key)
-        devices = pin_devices(model, n)          # pin FIRST, before any warmup
+        devices = pin_devices(model, n, platform_key)   # pin FIRST, before any warmup
         info = placement_info(model, devices)
         if op == "direct_filter":
             sino_dev = to_device(model, sino_np, "sino")
@@ -668,10 +679,19 @@ def run(config, platform_key):
         for op in (config.geom_ops.get(geometry) or config.ops):
             for label in size_labels:
                 print(f"\n=== {geometry} | {op} | {label} @ n={gdc} ===")
+                # Second, independent pin layer (nightly_plan.md §3(d)): the process-wide
+                # env pin covers any model a code path constructs WITHOUT an explicit
+                # configure_devices call (explicit pins always win over it).  It is a
+                # single value per process, so it is exportable only when this worker
+                # sweeps exactly one count — true for every n=1 row today.  The n>1
+                # increment sweeps several counts per worker and relies on the explicit
+                # pin + realized-list assertion alone.
+                cell_env = (dict(worker_env, MBIRTORCH_NUM_DEVICES=str(gdc[0]))
+                            if len(gdc) == 1 else worker_env)
                 args = ["--worker", "--mode", "measure", "--config", cfg_path,
                         "--platform", platform_key, "--geometry", geometry, "--op", op,
                         "--size", label, "--device-counts", *[str(n) for n in gdc]]
-                res, _rc = sc.run_worker(script, args, extra_env=worker_env)
+                res, _rc = sc.run_worker(script, args, extra_env=cell_env)
                 if not res:
                     print(f"  (no result for {geometry}/{op}/{label})")
                     continue
@@ -802,7 +822,9 @@ def main():
     result = run(config, platform_key)
     if result is None:
         raise SystemExit(2)
-    if os.environ.get("REG_TORCH_SMOKE") != "1":
+    # The nightly wrapper owns the test step (live output, crash detection, alert mail), so it
+    # exports REG_TORCH_SKIP_TESTS=1; a standalone/manual invocation still runs the suite here.
+    if os.environ.get("REG_TORCH_SMOKE") != "1" and os.environ.get("REG_TORCH_SKIP_TESTS") != "1":
         write_tests_log(lib_root, out_dir, platform_key, date)
     if config.gate and (result.get("gate") or {}).get("result") == "fail":
         raise SystemExit(1)      # HARD regression -> the wrapper turns this into an alert

@@ -1645,9 +1645,14 @@ function init() {
   $("footer").innerHTML = `${M.runs.length} run(s) · platforms ${M.platforms.join(", ")} · branches ${M.branches.join(", ")} · regenerate with <code>action_scripts/build_dashboard.sh</code>`;
   if (!M.runs.length) { $("tiles").innerHTML = "<p class='muted'>No runs found under results/.</p>"; return; }
 
-  // Open on the GLOBALLY most-recent run (by commit time), whatever platform/branch it's on — so a newer
+  // Open on the most-recent JAX-family run (by commit time), whatever platform/branch it's on — so a newer
   // CPU-only commit isn't hidden behind a stale GPU run (the old fixed "prefer gpu" default did exactly that).
-  const newest = M.runs.reduce((a, b) => (runTime(b) > runTime(a) ? b : a));
+  // The torch platforms are excluded from this default choice: mbirtorch is under active development, so its
+  // nightly rows would otherwise own the newest commit — and the landing view — on most nights (the
+  // nightly_plan.md §9 display decision).  The torch rows stay one Platform-dropdown click away; if only
+  // torch runs exist, fall back to the global newest.
+  const jaxRuns = M.runs.filter((r) => !PLAT_IS_TORCH(r.platform));
+  const newest = (jaxRuns.length ? jaxRuns : M.runs).reduce((a, b) => (runTime(b) > runTime(a) ? b : a));
   ui_state.platform = newest.platform;
   ui_state.branch = newest.branch;
   ui_state.runKey = runKey(newest);

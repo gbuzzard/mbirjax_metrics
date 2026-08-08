@@ -97,3 +97,16 @@ On a Gautschi login node:
    To pre-flight the SLURM directives without running, `sbatch --test-only tooling/regression/nightly_regression.slurm`.
 
 See `tooling/dashboard/README.md` (dashboard) and `tooling/regression/README.md` (nightly) for details.
+
+## The mbirtorch nightly (torch entry points)
+
+Siblings of the jax entry points; they drive the separate mbirtorch nightly and never touch the
+jax schedule.  Knobs live in `torch_run_configs.env` (tracked branches — `main` to start; the
+cu130 `TORCH_INDEX_URL_gpu`, which must stay in sync with the node's CUDA module; the memory-gate
+window; `TORCH_SLURM_*` — ONE GPU).  Infrastructure lives in `tooling/regression/torch_regression.env`.
+
+| script | purpose |
+|---|---|
+| `run_one_torch_night.sh` | One mbirtorch nightly pass by hand (add `--sbatch` on the cluster to submit it as a one-GPU batch job). |
+| `enable_torch_nightly.sh` / `disable_torch_nightly.sh` | Start / stop the scheduled torch nightly (launchd agent on macOS; `mbirtorch-nightly` scrontab block at 03:00 on Gautschi). |
+| `status_torch_nightly.sh` | Read-only check of the torch schedule + `ENABLED` kill-switch, plus the recent-runs table (torch rows beside jax ones). |
