@@ -86,7 +86,11 @@ fi
 echo "  ENABLED kill-switch (torch_regression.env): ${ENABLED:-0}"
 echo
 if [ "$scheduled" = "1" ] && [ "${ENABLED:-0}" = "1" ]; then
-  echo "✅ mbirtorch nightly WILL run — scheduled and ENABLED=1.  Wakes on POLL_SCHEDULE=\"$POLL_SCHEDULE\";"
+  # The cadence comes from a different knob per platform: the cluster reads POLL_SCHEDULE
+  # (a cron expression), macOS reads TORCH_MACOS_NIGHTLY_TIME (launchd ignores POLL_SCHEDULE).
+  if [ "$(uname -s)" = "Darwin" ]; then _when="TORCH_MACOS_NIGHTLY_TIME=\"${TORCH_MACOS_NIGHTLY_TIME:-10:00}\" daily"
+  else _when="POLL_SCHEDULE=\"$POLL_SCHEDULE\""; fi
+  echo "✅ mbirtorch nightly WILL run — scheduled and ENABLED=1.  Wakes on $_when;"
   echo "   actual work happens only when a tracked mbirtorch branch has moved (fire-on-change)."
 elif [ "$scheduled" = "1" ]; then
   echo "⏸  Scheduled, but ENABLED=0 — the wrapper exits immediately.  Set ENABLED=1 in"
