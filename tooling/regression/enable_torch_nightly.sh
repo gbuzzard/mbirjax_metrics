@@ -38,12 +38,20 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit 0
 fi
 
-# ── macOS / launchd (the cpu-torch series, when enabled) ──────────────────────────────────────
+# ── macOS / launchd (the cpu-torch series) ────────────────────────────────────────────────────
 LABEL="com.mbirtorch.regression"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-WRAPPER="$HERE/run_torch_regression.sh"
 TEMPLATE="$HERE/com.mbirtorch.regression.plist"
 LOGDIR="$HOME/.mbirtorch/regression"
+
+# The agent runs the ENTRY CLONE's wrapper, never this checkout's — a launchd bash cannot read
+# anything under ~/Documents (macOS TCC), and the failure is silent.  See lib_mac_entry.sh.
+# This clone is the torch nightly's own, so refreshing it cannot perturb the jax entrypoint.
+ENTRY_DIR="$HOME/.mbirtorch/entry"
+# shellcheck disable=SC1091
+source "$HERE/lib_mac_entry.sh"
+reg_entry_clone "$ENTRY_DIR" || { echo "ERROR: could not prepare the entry clone at $ENTRY_DIR"; exit 1; }
+WRAPPER="$ENTRY_DIR/tooling/regression/run_torch_regression.sh"
 
 [ -f "$WRAPPER" ] || { echo "ERROR: wrapper not found at $WRAPPER"; exit 1; }
 command -v conda >/dev/null 2>&1 || { echo "ERROR: conda not on PATH (run from a shell where conda works)."; exit 1; }
@@ -69,5 +77,7 @@ launchctl unload -w "$PLIST" 2>/dev/null || true
 launchctl load -w "$PLIST"
 printf 'Loaded %s — runs daily at %02d:%02d\n' "$LABEL" "$HR" "$MIN"
 echo "  wrapper: $WRAPPER"
+echo "           (the launchd ENTRY CLONE, refreshed just now — this checkout is not used by"
+echo "            the agent, because launchd cannot read ~/Documents; see lib_mac_entry.sh)"
 echo "  logs:    $LOGDIR/launchd.{out,err}.log"
 echo "  (ENABLED=$ENABLED in torch_regression.env is the in-wrapper kill-switch; this controls the schedule.)"

@@ -47,9 +47,18 @@ fi
 # ── macOS / launchd ───────────────────────────────────────────────────────────────────────────
 LABEL="com.mbirjax.regression"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-WRAPPER="$HERE/run_regression.sh"
 TEMPLATE="$HERE/com.mbirjax.regression.plist"
 LOGDIR="$HOME/.mbirjax/regression"
+
+# The agent runs the ENTRY CLONE's wrapper, never this checkout's.  A launchd bash cannot read
+# anything under ~/Documents (macOS TCC), and this repo commonly lives there — the resulting
+# failure is silent and cost 51 consecutive nights before it was diagnosed.  See lib_mac_entry.sh.
+# The entry clone supplies only phase 1; the measured code still comes from origin every night.
+ENTRY_DIR="$HOME/.mbirjax/entry"
+# shellcheck disable=SC1091
+source "$HERE/lib_mac_entry.sh"
+reg_entry_clone "$ENTRY_DIR" || { echo "ERROR: could not prepare the entry clone at $ENTRY_DIR"; exit 1; }
+WRAPPER="$ENTRY_DIR/tooling/regression/run_regression.sh"
 
 [ -f "$WRAPPER" ] || { echo "ERROR: wrapper not found at $WRAPPER"; exit 1; }
 command -v conda >/dev/null 2>&1 || { echo "ERROR: conda not on PATH (run from a shell where conda works)."; exit 1; }
@@ -77,5 +86,7 @@ launchctl unload -w "$PLIST" 2>/dev/null || true
 launchctl load -w "$PLIST"
 printf 'Loaded %s — runs daily at %02d:%02d\n' "$LABEL" "$HR" "$MIN"
 echo "  wrapper: $WRAPPER"
+echo "           (the launchd ENTRY CLONE, refreshed just now — this checkout is not used by"
+echo "            the agent, because launchd cannot read ~/Documents; see lib_mac_entry.sh)"
 echo "  logs:    $LOGDIR/launchd.{out,err}.log"
 echo "  (ENABLED=$ENABLED in regression.env is the in-wrapper kill-switch; this controls the schedule.)"
