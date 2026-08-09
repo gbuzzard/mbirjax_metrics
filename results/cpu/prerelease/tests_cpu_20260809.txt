@@ -1,0 +1,43 @@
+Running pytest with multiple workers on all tests.
+============================= test session starts ==============================
+platform darwin -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/gbuzzard/.mbirjax/regression/lib_prerelease
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 8/8 workers
+8 workers [359 items]
+
+........................................................................ [ 20%]
+........................................................s............... [ 40%]
+........................................................................ [ 60%]
+........................................................................ [ 80%]
+.................................................................s.....  [100%]
+=============================== warnings summary ===============================
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_across_elevation
+tests/geometries/test_multiaxis_elevation.py::TestMultiAxisElevationPhysics::test_mass_conservation_mixed_elevation
+  /Users/gbuzzard/.mbirjax/regression/lib_prerelease/mbirjax/multiaxis_parallel.py:92: UserWarning: One or more elevation angles exceed 45 degrees. This may degrade approximation quality.
+    warnings.warn("One or more elevation angles exceed 45 degrees. This may degrade approximation quality.")
+
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestCorrectSinoPlasticMetal::test_constraint_update_path
+tests/sharding/test_mar.py::TestConstraintSelectionRobustness::test_negative_measurement_on_support_cannot_explode_theta
+tests/sharding/test_mar.py::TestConstraintSelectionRobustness::test_negative_measurement_on_support_cannot_explode_theta
+tests/sharding/test_mar.py::TestConstraintSelectionRobustness::test_negative_measurement_on_support_cannot_explode_theta
+tests/sharding/test_mar.py::TestConstraintSelectionRobustness::test_negative_measurement_on_support_cannot_explode_theta
+tests/sharding/test_mar.py::TestConstraintSelectionRobustness::test_negative_measurement_on_support_cannot_explode_theta
+tests/sharding/test_mar.py::TestConstraintSelectionRobustness::test_osqp_infeasible_returns_none
+  /Users/gbuzzard/miniforge3/envs/mbirjax_regression/lib/python3.11/site-packages/osqp/interface.py:405: PendingDeprecationWarning: The default value of raise_error will change to True in the future.
+    warnings.warn(
+
+tests/sharding/test_dc_damping.py::TestDampedReconSharded::test_damping_changes_recon_and_prox_runs
+tests/sharding/test_dc_damping.py::TestDampedReconSharded::test_two_devices_match_one_with_padding
+  /Users/gbuzzard/.mbirjax/regression/lib_prerelease/mbirjax/tomography_model.py:2778: UserWarning: 
+  Unable to determine sinogram background. This may affect regularization.
+  
+    warnings.warn('\nUnable to determine sinogram background. This may affect regularization.\n')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [2] ../tests/sharding/test_padding.py:431: sharded VCD loop is geometry-independent (gated on parallel + cone)
+=========== 357 passed, 2 skipped, 13 warnings in 175.02s (0:02:55) ============
