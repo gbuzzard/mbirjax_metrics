@@ -44,7 +44,8 @@ Env vars (set by tooling/regression/run_torch_regression.sh):
   REG_TORCH_DATE       (optional)  YYYYMMDD, resolved once by the wrapper
   REG_TORCH_GATE       (optional)  '1' (default) to exit non-zero on a hard regression
   REG_TORCH_RUN_TAG    (optional)  branch name recorded in the YAML
-  REG_TORCH_DEVICE_COUNTS (optional)  space-separated, default '1'
+  REG_TORCH_DEVICE_COUNTS (optional)  space-separated, default '1'; n>1 applies only at the
+                                      MULTI_DEVICE_SIZE_LABELS cells — every other cell stays n=1
   REG_TORCH_MEM_GATE_WINDOW (optional) rolling-min window in runs; default 1 (see build_config)
   REG_TORCH_SMOKE      (optional)  '1' -> a toy 1-cell sweep, for plumbing checks
 """
@@ -102,6 +103,23 @@ DENOISER_SIZES = {
     "gpu-torch": [(225, 241, 257), (512, 448, 384), (1024, 1008, 992)],
     "cpu-torch": [(128, 144, 160), (225, 241, 257)],
 }
+
+# Sizes that sweep MULTIPLE device counts (when REG_TORCH_DEVICE_COUNTS asks for them).
+# The multi-GPU rows exist at the two sizes the torch campaign gates on, where multi-device
+# history is directly comparable to the campaign record; the smaller sizes measure mostly
+# communication overhead at n>1 and stay single-device (nightly_plan.md §3(c)).  The denoiser
+# stays single-device at every size: QGGMRFDenoiser.denoise raises under any non-trivial
+# placement, and the device-policy work deliberately leaves it outside the widening.
+MULTI_DEVICE_SIZE_LABELS = {"512x448x384", "1024x1008x992"}
+
+
+def cell_device_counts(geometry, size_label, device_counts):
+    """The device counts one (geometry, op, size) cell group sweeps."""
+    if geometry == "denoiser":
+        return [1]
+    if size_label in MULTI_DEVICE_SIZE_LABELS:
+        return list(device_counts)
+    return [1]
 
 
 def build_config(platform_key, out_dir, date, run_tag, lib_root, device_counts, gate):
@@ -294,12 +312,18 @@ def to_numpy(out):
 
     Test for a tensor FIRST: torch.Tensor also has a .gather method (the indexing
     one), so duck-typing on 'gather' alone calls that with no arguments.
+
+    Shards.gather() already returns NUMPY (it detaches and concatenates on the host
+    internally), so it must not be detached again — doing so raised
+    "'numpy.ndarray' object has no attribute 'detach'" on every n>1 row of the first
+    multi-device trial.  The n=1 path never reaches this branch, which is why the
+    single-device verification could not have caught it.
     """
     import torch
     if torch.is_tensor(out):
         return out.detach().cpu().numpy()
     if hasattr(out, "tensors") and hasattr(out, "placement"):   # _sharding.Shards
-        return out.gather().detach().cpu().numpy()
+        return np.asarray(out.gather())
     return np.asarray(out)
 
 
@@ -668,16 +692,15 @@ def run(config, platform_key):
     cells = []
     swept_counts = set()
     for geometry in config.geometries:
-        # The denoiser stays single-device: QGGMRFDenoiser.denoise raises under any
-        # non-trivial placement (current_plans.md §11), and the device-policy work
-        # deliberately leaves it outside the widening.
-        gdc = [1] if geometry == "denoiser" else device_counts
-        swept_counts.update(gdc)
         gs = (config.geom_sizes.get(geometry, {}) or {}).get(platform_key) \
             or config.sizes[platform_key]
         size_labels = [sc.size_label(s) for s in gs]
         for op in (config.geom_ops.get(geometry) or config.ops):
             for label in size_labels:
+                # Per-(geometry, size) counts: only the MULTI_DEVICE_SIZE_LABELS cells
+                # sweep n>1; everything else, and the whole denoiser, stays n=1.
+                gdc = cell_device_counts(geometry, label, device_counts)
+                swept_counts.update(gdc)
                 print(f"\n=== {geometry} | {op} | {label} @ n={gdc} ===")
                 # Second, independent pin layer (nightly_plan.md §3(d)): the process-wide
                 # env pin covers any model a code path constructs WITHOUT an explicit
