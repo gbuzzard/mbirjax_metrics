@@ -22,6 +22,10 @@
 #                         the trial's second run exercising the vs-prior gate)
 #   REG_TORCH_VENV=<dir>  use this existing venv instead of the dedicated conda env (the trial's
 #                         TORCHPY-layered venv; see lib_torch_env.sh)
+#
+# Watchdog knob (production leaves it unset):
+#   REG_TORCH_NO_WATCHDOG=1  skip the dependency-watch watchdog line (see its block below) — the
+#                         one way to silence it without editing this file
 set -uo pipefail
 # Keep an INTERACTIVE terminal open on a nonzero exit so the message stays visible; a tty-less run
 # (launchd/scrontab/slurm) skips the pause.  Exit 1 is a REGRESSION (an alert — the run completed),
@@ -98,6 +102,212 @@ log "platform=$PLAT env=${REG_TORCH_VENV:-$CONDA_ENV} metrics=$METRICS_REPO"
 export GIT_TERMINAL_PROMPT=0
 if [ -n "${TOKEN_FILE:-}" ] && [ -f "$TOKEN_FILE" ]; then
   git -C "$METRICS_REPO" config credential.helper "store --file=$TOKEN_FILE"
+fi
+
+# ── Dependency-watch watchdog (plan python_matrix_nightly_check.md §3.4) ──────────────────────
+# THE WATCH is a scheduled GitHub Actions workflow in cabouman/mbirtorch.  It compares the CI
+# Python test matrix and the torch floor against the Python versions torch publishes wheels for,
+# and on a divergence it opens a ready-made pull request.  It can die without anyone noticing:
+# GitHub disables a schedule after 60 days of repository quiet, scheduled runs are best-effort and
+# can be skipped, and a failing scheduled run emails only whoever last touched the workflow file.
+# None of those surfaces is watched daily, so "the watch found nothing" and "the watch is dead"
+# look identical from the outside.
+#
+# THE WATCHDOG LINE is this nightly's independent second opinion.  It re-runs the watch's own
+# checker (so detection is never reimplemented here), reads the repository's pull requests, and
+# prints THREE FACTS SEPARATELY — the divergence, the pull-request state, the verdict — because a
+# read that FAILED must never print as "no divergence".  Four verdicts:
+#   quiet    no divergence; nothing for the watch to propose.
+#   ok       a divergence, and its pull request is open or merged: the watch is working.
+#   ALARM    a divergence with no open or merged pull request.  Two shapes, named in the line:
+#            "(standing veto)"    = the pull request was closed unmerged — the maintainers' "no",
+#                                   which §3.3 requires be reported every night until it lands;
+#            "(no pull request)"  = the watch is broken, disabled, or has not yet reached the
+#                                   two-night confirmation it waits for before acting.
+#   UNKNOWN  the watchdog itself could not read something.  Distinct from every verdict above.
+#
+# Read-only and stateless.  It fetches nothing but the checker script; --remote then makes the
+# checker read the version file and pyproject straight from the public prerelease branch, so no
+# mbirtorch checkout is needed — and on an unchanged night there is none.  It passes no --state:
+# the two-night confirmation file is the Action's own business, and the watchdog reports what is
+# true TONIGHT.  With no --state and no --act the checker writes nothing anywhere.  Both network
+# reads are unauthenticated because the repository is public (the cluster reaches both through the
+# preamble's HTTPS_PROXY, which curl and python's urllib each honour from the environment).
+#
+# FAILURE ISOLATION is absolute: every step is captured and no step is fatal, and every step that
+# touches the network is hard-bounded — 10 s to fetch the checker, 30 s to run it, 10 s for the
+# pull-request read, so 50 s is the worst case (measured at 40 s with the checker hung and the API
+# host blackholed).  Nothing here can change this script's exit status or delay the nightly.
+#
+# It runs on the CLUSTER ONLY.  PLAT is the wrapper's own platform signal: gautschi's nightly is
+# gpu-torch and the Mac's is cpu-torch, and Greg ruled the slurm jobs the more reliable host for
+# the backstop (§3.4).  REG_TORCH_NO_WATCHDOG=1 silences it without an edit.
+#
+# Placement: UNCONDITIONAL, above the no-change exit.  A watch that only reported on nights when
+# some branch happened to move would not be a watchdog.
+watchdog_line() {
+  local tmp py ck url api slug sha out rc br detail torch_v raw code body cls tok
+  local ck_pid waited why f_div f_pr verdict
+
+  # WATCHDOG_CHECKER_URL / WATCHDOG_PR_API override the two endpoints; they exist so this block
+  # can be exercised against a fixture without touching GitHub, and production leaves both unset.
+  # The repository slug comes from MBIRTORCH_URL, so the watchdog always watches the same
+  # repository this nightly measures.
+  slug="$(printf '%s' "${MBIRTORCH_URL:-}" | sed -n 's#^https://github.com/\(.*\)\.git$#\1#p')"
+  [ -n "$slug" ] || slug="cabouman/mbirtorch"
+  url="${WATCHDOG_CHECKER_URL:-https://raw.githubusercontent.com/$slug/prerelease/ci/dependency_watch.py}"
+  api="${WATCHDOG_PR_API:-https://api.github.com/repos/$slug/pulls}"
+
+  tmp="$(mktemp -d 2>/dev/null)" || { log "watchdog: VERDICT UNKNOWN — no temp dir; the watchdog did not run."; return 0; }
+  py="$(command -v python || command -v python3 || true)"
+
+  # ── Fact 1: the divergence, from the watch's own checker ───────────────────────────────────
+  ck="$tmp/dependency_watch.py"; sha="?"
+  if [ -z "$py" ]; then
+    f_div="UNKNOWN — no python on PATH to run the checker"
+  elif ! curl -fsSL --max-time 10 "$url" -o "$ck" 2>"$tmp/curl.err"; then
+    f_div="UNKNOWN — could not fetch the checker from $url ($(head -1 "$tmp/curl.err" 2>/dev/null || echo 'curl failed'))"
+  else
+    # Record WHICH checker ran: a watchdog that silently switched code is not a witness.
+    if command -v sha256sum >/dev/null 2>&1; then sha="$(sha256sum "$ck" | cut -c1-12)"
+    elif command -v shasum >/dev/null 2>&1;    then sha="$(shasum -a 256 "$ck" | cut -c1-12)"; fi
+    # The checker's own network reads are urllib, not curl, so --max-time cannot reach them and
+    # their 60 s-per-fetch timeout is well over this budget.  Bound it from outside instead: run
+    # it in the background and kill it at 30 s.  Deliberately NOT `timeout`, which macOS does not
+    # ship — a missing `timeout` would have removed the bound on exactly the host where a hang is
+    # least expected and hardest to notice.  This poll needs nothing but bash, and it preserves
+    # the checker's own exit status; 124 is kept as the killed-by-timeout code, as `timeout` uses.
+    "$py" "$ck" --remote --json >"$tmp/checker.out" 2>&1 &
+    ck_pid=$!; waited=0
+    while kill -0 "$ck_pid" 2>/dev/null && [ "$waited" -lt 30 ]; do sleep 1; waited=$((waited + 1)); done
+    if kill -0 "$ck_pid" 2>/dev/null; then
+      kill -9 "$ck_pid" 2>/dev/null; wait "$ck_pid" 2>/dev/null; rc=124
+    else
+      wait "$ck_pid"; rc=$?
+    fi
+    out="$(cat "$tmp/checker.out" 2>/dev/null)"
+    br="$(printf '%s\n' "$out" | sed -n 's/^dependency-watch: DIVERGENCE -> branch //p' | head -1)"
+    torch_v="$(printf '%s\n' "$out" | sed -n 's/^dependency-watch: torch \([^ ]*\) supports.*$/\1/p' | head -1)"
+    detail="$(printf '%s\n' "$out" | awk '/^dependency-watch:   /{sub(/^dependency-watch: +/,""); printf "%s%s", s, $0; s="; "}')"
+    if [ "$rc" -ne 0 ]; then
+      # 124 is the kill above; anything else is the checker's own failure (its "VERSION FILE NOT
+      # READ" path exits 1 for exactly this reason).  Report the last line it managed to print.
+      if [ "$rc" = "124" ]; then why="timed out after 30 s"
+      else why="$(printf '%s\n' "$out" | grep -v '^$' | tail -1)"; fi
+      f_div="UNKNOWN — the checker exited $rc (${why:-no output})"
+    elif [ -n "$br" ]; then
+      f_div="DUE on branch $br (torch ${torch_v:-?}; $detail)"
+    elif printf '%s\n' "$out" | grep -q '^dependency-watch: verdict none'; then
+      f_div="none (torch ${torch_v:-?}; the matrix and both floors match)"
+    else
+      # The checker succeeded but said neither thing — its output shape changed under us.  This is
+      # the case the three-facts rule exists for: it is NOT "no divergence".
+      f_div="UNKNOWN — the checker reported neither a divergence nor 'verdict none'"
+    fi
+  fi
+
+  # ── Fact 2: the pull-request state, from the public API ────────────────────────────────────
+  # No -f: a 403 rate-limit or a 404 still has a readable body, and its message is reported as
+  # itself.  The body and the status code come back in one call, newline-separated.
+  cat >"$tmp/prs.py" <<'PY'
+# Classify the repository's pull requests for the watchdog line.  Reads the API's JSON array on
+# stdin; argv is the divergence's branch ("" when there is none) and the automated-branch prefix.
+# Prints one line, "<token>|<human text>".
+import json, sys
+branch, prefix = sys.argv[1], sys.argv[2]
+try:
+    prs = json.load(sys.stdin)
+    if not isinstance(prs, list):
+        why = prs.get("message", "not a list") if isinstance(prs, dict) else "not a list"
+        raise ValueError(why)
+except Exception as e:
+    print("unreadable|the pull-request list did not parse (%s)" % e)
+    raise SystemExit(0)
+
+def ref(p):
+    return str((p.get("head") or {}).get("ref", ""))
+
+def state(p):
+    if p.get("merged_at"):
+        return "MERGED"
+    return "OPEN" if p.get("state") == "open" else "CLOSED UNMERGED"
+
+def describe(ps):
+    return ", ".join("#%d %s (%s)" % (p["number"], ref(p), state(p)) for p in ps)
+
+read = "%d pull request%s read" % (len(prs), "" if len(prs) == 1 else "s")
+if len(prs) >= 100:
+    read += " (the 100 newest only; older ones were not read)"
+auto = [p for p in prs if ref(p).startswith(prefix)]
+# The plan's duplicate rule keys on the pull request, not the branch: merged or open means the
+# watch acted, so prefer those over a closed one when a branch has several.
+rank = {"MERGED": 0, "OPEN": 1, "CLOSED UNMERGED": 2}
+mine = sorted((p for p in auto if branch and ref(p) == branch), key=lambda p: rank[state(p)])
+if mine:
+    p = mine[0]
+    s = state(p)
+    tok = {"MERGED": "merged", "OPEN": "open", "CLOSED UNMERGED": "closed"}[s]
+    print("%s|%s; #%d for %s is %s" % (tok, read, p["number"], branch, s))
+elif branch:
+    others = describe(auto)
+    tail = ("; other %s branches: " % prefix) + others if others else ""
+    print("none|%s; NO pull request for %s%s" % (read, branch, tail))
+else:
+    listed = describe(auto)
+    tail = ("%s pull requests: " % prefix) + listed if listed else "none on a %s branch" % prefix
+    print("n/a|%s; %s" % (read, tail))
+PY
+  tok="unreadable"
+  if [ -z "$py" ]; then
+    f_pr="UNKNOWN — no python on PATH to parse the pull-request list"
+  else
+    raw="$(curl -sS --max-time 10 -H 'Accept: application/vnd.github+json' -w '\n%{http_code}' \
+             "$api?state=all&per_page=100&sort=created&direction=desc" 2>&1)"; rc=$?
+    code="${raw##*$'\n'}"; body="${raw%$'\n'*}"
+    if [ "$rc" -ne 0 ]; then
+      f_pr="UNKNOWN — the pull-request read failed: curl exited $rc ($(printf '%s' "$raw" | head -1))"
+    elif [ "$code" != "200" ]; then
+      f_pr="UNKNOWN — the pull-request read failed: HTTP $code from $api"
+    else
+      cls="$(printf '%s' "$body" | "$py" "$tmp/prs.py" "${br:-}" "nightly/" 2>&1)"
+      case "$cls" in
+        *"|"*) tok="${cls%%|*}"; f_pr="${cls#*|}" ;;
+        *)     f_pr="UNKNOWN — the pull-request read could not be classified ($cls)" ;;
+      esac
+      [ "$tok" = "unreadable" ] && f_pr="UNKNOWN — the pull-request read failed: $f_pr"
+    fi
+  fi
+
+  # ── Fact 3: the verdict ────────────────────────────────────────────────────────────────────
+  case "$f_div" in
+    UNKNOWN*) verdict="UNKNOWN — the watchdog could not check tonight; the watch's health is unproven, which is NOT the same as healthy." ;;
+    none*)    case "$f_pr" in
+                UNKNOWN*) verdict="UNKNOWN — no divergence was found, but the pull-request read failed, so a suppressed one cannot be ruled out." ;;
+                *)        verdict="quiet — no divergence tonight, so the watch has nothing to propose." ;;
+              esac ;;
+    *)        case "$tok" in
+                open|merged) verdict="ok — a divergence, and its pull request is open or merged: the watch is working." ;;
+                closed)      verdict="ALARM (standing veto) — a divergence whose pull request was closed unmerged: the maintainers' standing \"no\" (plan §3.3).  Deleting the branch withdraws it." ;;
+                none)        verdict="ALARM (no pull request) — a divergence with no pull request at all: the watch is broken, disabled, or has not yet reached its two-night confirmation.  Check the dependency_watch workflow's runs in $slug." ;;
+                *)           verdict="UNKNOWN — a divergence was found, but the pull-request read failed, so it is not known whether the watch acted." ;;
+              esac ;;
+  esac
+
+  log "watchdog: checker $url @ sha256 $sha"
+  log "watchdog: divergence: $f_div"
+  log "watchdog: pull requests: $f_pr"
+  log "watchdog: VERDICT $verdict"
+  rm -rf "$tmp"
+  return 0
+}
+
+if [ "${REG_TORCH_NO_WATCHDOG:-0}" = "1" ]; then
+  log "watchdog: skipped (REG_TORCH_NO_WATCHDOG=1) — no verdict tonight."
+elif [ "$PLAT" != "gpu-torch" ]; then
+  log "watchdog: not run on $PLAT — the cluster (gpu-torch) nightly owns it (plan §3.4)."
+else
+  # The `|| true` is belt to the function's own braces: the watchdog can never fail the nightly.
+  watchdog_line || true
 fi
 
 # ── Change detection via ls-remote (don't clone mbirtorch unless something moved) ──────────────

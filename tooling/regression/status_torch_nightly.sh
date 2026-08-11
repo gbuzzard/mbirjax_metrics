@@ -117,6 +117,24 @@ else
   echo "last wake: no torch nightly log found yet (it hasn't fired on this machine, or logs live elsewhere)"
 fi
 
+# The dependency-watch watchdog's last verdict, read out of that same log (the wrapper writes it;
+# see the watchdog block in run_torch_regression.sh and plan §3.4).  This is the one routine
+# surface that distinguishes "the GitHub Actions dependency watch found nothing" from "the watch
+# stopped running" — from the outside those look identical, which is why the verdict is printed
+# here.  The verdict line is the LAST of the watchdog's four, so tail -1 is what to read; the
+# fallback catches a run that logged the facts but died before the verdict, and the cluster-only
+# skip line a Mac log carries instead.
+if [ -n "${FIRED_LOG:-}" ] && [ -f "$FIRED_LOG" ]; then
+  WDV="$(grep -a 'watchdog: VERDICT' "$FIRED_LOG" 2>/dev/null | tail -1 || true)"
+  [ -n "$WDV" ] || WDV="$(grep -a 'watchdog: ' "$FIRED_LOG" 2>/dev/null | tail -1 || true)"
+  if [ -n "$WDV" ]; then
+    echo "watchdog:  ${WDV#*] watchdog: }"   # drop the log's "[timestamp] watchdog: " prefix
+  else
+    echo "watchdog:  no watchdog line in that log — it runs on the cluster (gpu-torch) nightly"
+    echo "           only, and REG_TORCH_NO_WATCHDOG=1 silences it."
+  fi
+fi
+
 # Tile-style summary of recent runs via the dashboard's collect_data() (recent_runs.py shows every
 # platform, so the torch rows appear beside the jax ones).  Prefer the torch nightly's persistent
 # metrics clone when it has results; else this checkout.
