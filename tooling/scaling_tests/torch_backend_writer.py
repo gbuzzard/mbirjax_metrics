@@ -376,28 +376,50 @@ def run_denoise(model, image, config):
 
 
 # ── Timing + memory ───────────────────────────────────────────────────────────
-def time_op(model, run_fn, warmup, trials):
-    """Time run_fn() over warmup + trials iterations, synchronising each result.
+def time_op(model, run_fn, warmup, trials, devices=None):
+    """Time run_fn() over warmup + trials iterations, synchronising each result,
+    and read the peak memory PER ITERATION.
 
     Mirrors scaling_common.time_op, including the memory discipline: drop the PREVIOUS
     iteration's result before allocating the next, so the device peak reflects a single
     call (input + one output) rather than two outputs alive at once.  gc.collect() sits
     outside the timed region so it cannot perturb the timing.
+
+    The peak counters are reset before EVERY iteration and read after it, so each
+    reading covers exactly one call.  One reading spanning the whole loop cannot say
+    which call carried the peak: a 2026-08-19 comparison found a four-device arm
+    recording a 26.6 GiB lead-device watermark where a fresh single reconstruction
+    peaks at 6.84 GiB, and the spanning read could not localize it (the mechanism
+    remains open; open item G4 in the plans repository).  Per-iteration readings make
+    the column mean "one call's peak" and make an inflated iteration visible by
+    itself.  On CPU the reset is a no-op and each reading is whole-process RSS, so
+    cpu rows keep their coarse cumulative semantics; mem_kind says which ruler
+    applied.
+
+    Returns (stats, result, mem): mem carries the warmup iterations' peaks and the
+    trial iterations' peaks in MB, in order, plus the ruler's name.
     """
     result = None
     times = []
+    mem = {"peaks_warmup_mb": [], "peaks_trial_mb": [], "mem_kind": "n/a"}
     for i in range(warmup + trials):
         result = None
         gc.collect()
+        if devices is not None:
+            reset_peak_memory(devices)
         t0 = time.perf_counter()
         result = run_fn()
         _sync(model)
         dt = time.perf_counter() - t0
+        if devices is not None:
+            peak_mb, mem["mem_kind"] = peak_memory_mb(devices)
+            key = "peaks_trial_mb" if i >= warmup else "peaks_warmup_mb"
+            mem[key].append(round(float(peak_mb), 1))
         if i >= warmup:
             times.append(dt)
     arr = np.array(times) * 1e3
     return ({"min_ms": float(arr.min()), "mean_ms": float(arr.mean()),
-             "std_ms": float(arr.std())}, result)
+             "std_ms": float(arr.std())}, result, mem)
 
 
 def reset_peak_memory(devices):
@@ -547,9 +569,16 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, platform
             run_fn = lambda: run_denoise(model, image_np, config)
         else:
             raise ValueError(f"op {op!r} not implemented")
-        reset_peak_memory(devices)               # the ruler starts here
-        stats, result = time_op(model, run_fn, config.warmup, trials)
-        mem_mb, mem_kind = peak_memory_mb(devices)
+        # The memory ruler lives INSIDE the timing loop: the counters reset
+        # before every iteration and are read after it, so the row's number is
+        # the largest single-call peak among the warm trials, and the warmup's
+        # own peaks (which include the compiles) are recorded beside it rather
+        # than folded in.
+        stats, result, mem = time_op(model, run_fn, config.warmup, trials,
+                                     devices=devices)
+        mem_kind = mem["mem_kind"]
+        trial_peaks = mem["peaks_trial_mb"]
+        mem_mb = max(trial_peaks) if trial_peaks else 0.0
         # Re-verify the binding AFTER the timed call: a widening that happened inside
         # recon() would not be visible at pin time.
         if int(model.sino_placement.n_devices) != n:
@@ -559,7 +588,10 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, platform
         # Fingerprint AFTER the memory read, so the host gather cannot inflate the peak.
         fp = pt.fingerprint(to_numpy(result), op_true_shape)
         return stats, mem_mb, mem_kind, {**info, "fingerprint": fp,
-                                         "platform": platform_key}
+                                         "platform": platform_key,
+                                         "mem_peaks_warmup_mb":
+                                             mem["peaks_warmup_mb"],
+                                         "mem_peaks_trial_mb": trial_peaks}
 
     rows, failures = run_measure_loop(
         size_label, device_counts, out_file, build_and_time,
