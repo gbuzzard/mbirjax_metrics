@@ -122,6 +122,25 @@ def cell_device_counts(geometry, size_label, device_counts):
     return [1]
 
 
+# The automatic-device-choice check, one per multi-GPU night.  Every measured
+# row pins its device count, and a pin bypasses the automatic choice entirely,
+# so the path a multi-GPU user hits by default -- the library choosing how many
+# devices to use -- would otherwise never run on real hardware on a schedule.
+# The check builds one UNPINNED model, lets the settle choose, and compares the
+# realized count against what the shipped widening floors say it should be.
+# The cell is the 512-class cone reconstruction, because its expected choice
+# there is a MIDDLE count (the floors admit two devices and hold four on a
+# four-GPU node), so the floors, their ordering, and the capacity search all
+# participate in one check.  The expected count is computed at run time from
+# the shipped floors table, never hardcoded, so a floors refresh moves the
+# expectation with it and the check fails only when the realized choice
+# disagrees with the table that shipped.  The verdict is recorded under its
+# own key in the run file rather than as a measured row, so it cannot collide
+# with the pinned rows' (geometry, op, size, n_devices) coordinates.
+AUTO_CHOICE_GEOMETRY = "cone"
+AUTO_CHOICE_SIZE = (512, 448, 384)
+
+
 def build_config(platform_key, out_dir, date, run_tag, lib_root, device_counts, gate):
     """The nightly torch sweep as a performance_tracking.Config.
 
@@ -606,10 +625,83 @@ def measure_cell_group(config, geometry, op, size_label, device_counts, platform
             "recon_shape": list(recon_shape), "rows": rows, "failures": failures}
 
 
+def auto_choice_check(config, platform_key):
+    """One UNPINNED settle on real devices, judged against the shipped floors.
+
+    Runs in its own worker process like every other job here.  The model is
+    built and its sinogram placed through the public entry
+    (``prepare_sino_for_devices``), with no pin of either kind, so the settle
+    inside it is the same automatic choice a user's first reconstruction
+    makes.  The expected count comes from the floors table alone -- the widest
+    count ``_widening_floors.admitted`` accepts at this cell's size -- which is
+    an independent reading of the same table the policy consults, under the
+    assumption that memory is ample.  On the nightly's dedicated node that
+    assumption holds by a wide margin at this cell, and a capacity refusal
+    would itself be an anomaly; the recorded per-count reasons say which rule
+    drove any mismatch.
+
+    ``ok`` is False when the realized count differs from the expected one,
+    when the layout did not come from the automatic branch, when the guard was
+    disabled in the environment, or when a device-count pin had leaked into
+    this process (popped and recorded, since a leaked pin silently un-tests
+    exactly the path this check exists to cover).
+    """
+    import torch
+    import mbirtorch  # noqa: F401
+    from mbirtorch import _widening_floors as wf
+
+    leaked_pin = os.environ.pop("MBIRTORCH_NUM_DEVICES", None)
+    size = tuple(AUTO_CHOICE_SIZE)
+    geometry = AUTO_CHOICE_GEOMETRY
+    visible = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    result = dict(kind="auto_choice", geometry=geometry, size=list(size),
+                  visible_devices=int(visible),
+                  leaked_env_pin=leaked_pin,
+                  guard_enabled=bool(wf.guard_enabled()),
+                  floors_stale_note=wf.stale_note())
+
+    elements = wf.sinogram_elements(size)
+    admitted = {}
+    for n in range(1, max(int(visible), 1) + 1):
+        ok, why = wf.admitted(geometry, n, elements)
+        admitted[int(n)] = {"admitted": bool(ok), "why": str(why)}
+    result["admitted_by_count"] = admitted
+    expected = max([n for n, v in admitted.items() if v["admitted"]] or [1])
+    result["expected_n_devices"] = int(expected)
+
+    model = make_model(config, geometry, size, platform_key)
+    sino_np = pt.make_sinogram(config, size)
+    model.prepare_sino_for_devices(sino_np)
+    realized = int(model.sino_placement.n_devices)
+    result["realized_n_devices"] = realized
+    result["layout_is_automatic"] = bool(
+        getattr(model, "device_layout_is_automatic", False))
+    result["choice_rejections"] = [
+        [int(count), str(why)] for count, why
+        in (getattr(model, "device_choice_rejections", None) or [])]
+
+    problems = []
+    if leaked_pin is not None:
+        problems.append(f"MBIRTORCH_NUM_DEVICES={leaked_pin!r} had leaked into "
+                        f"this process (popped before the settle)")
+    if not result["guard_enabled"]:
+        problems.append("the widening guard is disabled in this environment, "
+                        "so the floors were never consulted")
+    if not result["layout_is_automatic"]:
+        problems.append("the settled layout is not marked automatic, so "
+                        "something pinned or configured it")
+    if realized != expected:
+        problems.append(f"the automatic choice took {realized} device(s) where "
+                        f"the shipped floors say {expected}")
+    result["problems"] = problems
+    result["ok"] = not problems
+    return result
+
+
 def run_worker(argv):
     p = argparse.ArgumentParser(description="torch_backend_writer worker (internal)")
     p.add_argument("--worker", action="store_true")
-    p.add_argument("--mode", choices=["setup", "measure"], required=True)
+    p.add_argument("--mode", choices=["setup", "measure", "auto-choice"], required=True)
     p.add_argument("--config", default=None)
     p.add_argument("--platform", required=True)
     p.add_argument("--geometry", default=None)
@@ -623,6 +715,9 @@ def run_worker(argv):
         sc.write_worker_result(a.out_file, probe_environment(a.platform))
         return
     config = pt.Config.from_dict(sc.load_yaml(a.config))
+    if a.mode == "auto-choice":
+        sc.write_worker_result(a.out_file, auto_choice_check(config, a.platform))
+        return
     res = measure_cell_group(config, a.geometry, a.op, a.size, a.device_counts,
                              a.platform, a.out_file)
     sc.write_worker_result(a.out_file, res)
@@ -721,6 +816,43 @@ def run(config, platform_key):
     os.close(fd)
     sc.save_yaml(cfg_path, config.to_dict())
 
+    # The automatic-device-choice check runs once, before the sweep, wherever a
+    # choice exists (two or more visible devices).  Every measured row below
+    # pins its count, so this is the only place the automatic path runs.  The
+    # worker gets NO device-count pin.
+    auto_choice = None
+    if platform_key == "gpu-torch" and max_dev >= 2:
+        print("\n=== automatic device choice (unpinned settle, "
+              f"{AUTO_CHOICE_GEOMETRY} {sc.size_label(AUTO_CHOICE_SIZE)}) ===")
+        auto_choice, _rc = sc.run_worker(
+            script, ["--worker", "--mode", "auto-choice", "--config", cfg_path,
+                     "--platform", platform_key], extra_env=worker_env)
+        if auto_choice is None:
+            auto_choice = {"kind": "auto_choice", "ok": False,
+                           "problems": ["the auto-choice worker produced no "
+                                        "result"]}
+        if auto_choice.get("ok"):
+            print(f"  ok: chose {auto_choice.get('realized_n_devices')} "
+                  f"device(s), as the shipped floors say "
+                  f"(expected {auto_choice.get('expected_n_devices')}, "
+                  f"{auto_choice.get('visible_devices')} visible)")
+        else:
+            print("  AUTO-CHOICE MISMATCH:")
+            for problem in auto_choice.get("problems") or []:
+                print(f"    {problem}")
+            for count, why in auto_choice.get("choice_rejections") or []:
+                print(f"    count {count} rejected: {why}")
+        if auto_choice.get("floors_stale_note"):
+            print(f"  note: {auto_choice['floors_stale_note']}")
+    else:
+        auto_choice = {"kind": "auto_choice",
+                       "skipped": ("single-device night: no choice exists"
+                                   if platform_key == "gpu-torch" else
+                                   "cpu platform: the automatic choice is a "
+                                   "CUDA path")}
+        print(f"\n  automatic device choice check skipped: "
+              f"{auto_choice['skipped']}")
+
     cells = []
     swept_counts = set()
     for geometry in config.geometries:
@@ -788,6 +920,7 @@ def run(config, platform_key):
         "measured_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
         "config": cfg_dict, "device_counts": sorted(swept_counts), "cells": cells,
         "policy": {},
+        "auto_choice": auto_choice,
     }
 
     gate_dict = None
@@ -802,6 +935,21 @@ def run(config, platform_key):
             gate_dict = pt.gate_run(gate_result, refs, config)
         else:
             gate_dict = pt.gate_run(result, [], config)   # cold start -> all-SOFT
+        result["gate"] = gate_dict
+
+    # A failed auto-choice check gates HARD, cold start included: its
+    # expectation comes from the shipped floors table, not from a prior run,
+    # so there is nothing to warm up.  A skipped check gates nothing.
+    if auto_choice and not auto_choice.get("skipped") and not auto_choice.get("ok"):
+        line = ("[auto-choice] the automatic device choice disagrees with the "
+                "shipped floors: " + "; ".join(auto_choice.get("problems")
+                                               or ["no detail recorded"]))
+        if gate_dict is None:
+            gate_dict = {"result": "fail", "hard": [line], "soft": [],
+                         "compared_to": []}
+        else:
+            gate_dict["hard"] = list(gate_dict.get("hard") or []) + [line]
+            gate_dict["result"] = "fail"
         result["gate"] = gate_dict
 
     out_path = os.path.join(config.out_dir, f"regression_{platform_key}_{file_tag}.yaml")
