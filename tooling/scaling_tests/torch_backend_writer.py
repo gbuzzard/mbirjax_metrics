@@ -26,8 +26,9 @@ Design record: ``mbirjax_plans/plans/torch_port/nightly_plan.md``.
 
 THE OPS ARE THE JAX ENGINE'S OPS.  ``forward`` is ``sparse_forward_project`` over
 the full ROR pixel set, ``back`` is ``sparse_back_project``, and ``vcd_nonconst``
-is ``vcd_recon`` with the partitions built OUTSIDE the timed region — not the
-user-facing whole-volume calls, and not ``recon()`` with its initialisation timed.
+is ``_vcd_recon`` (the jax engine's ``vcd_recon``) with the partitions built
+OUTSIDE the timed region — not the user-facing whole-volume calls, and not
+``recon()`` with its initialisation timed.
 The inputs are the engine's own generators at the engine's own seeds.  An earlier
 version of this file measured different operations under the same names, which
 made the adjacent torch and jax dashboard rows an apples-to-oranges comparison.
@@ -201,7 +202,7 @@ def assert_platform(declared):
 def assert_no_calibration():
     """Refuse to measure with mbirtorch's memory-calibration mode on.
 
-    That mode calls reset_peak_memory_stats at the top of vcd_recon and OWNS the peak
+    That mode calls reset_peak_memory_stats at the top of _vcd_recon and OWNS the peak
     counter, so it would clobber the very number these rows record.  Checked rather
     than trusted, because it is an ambient environment variable.
     """
@@ -380,9 +381,9 @@ def build_partitions(model, sino_np, weights, max_iterations, seed):
 def run_vcd(model, sino_np, weights, partitions, partition_sequence, measure_seed):
     """Timed op: one full VCD reconstruction with NONCONSTANT weights."""
     np.random.seed(measure_seed)
-    recon, _stats = model.vcd_recon(sino_np, partitions, partition_sequence,
-                                    stop_threshold_change_pct=0.0,
-                                    weights=weights, init_recon=None)
+    recon, _stats = model._vcd_recon(sino_np, partitions, partition_sequence,
+                                     stop_threshold_change_pct=0.0,
+                                     weights=weights, init_recon=None)
     return recon
 
 
