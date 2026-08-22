@@ -1,0 +1,177 @@
+run:
+  kind: regression
+  platform: gpu-torch
+  branch: main
+  commit: b8bbd8a0
+  commit_date: '2026-08-21T19:17:23-04:00'
+  mbirjax_version: mbirtorch 0.0.2
+  date: '20260822'
+  device: GPU-TORCH (NVIDIA H100 80GB HBM3)
+  toolchain:
+    torch: 2.13.0+cu130
+    torch_cuda: '13.0'
+    python: 3.12.13
+    executable: /home/buzzard/.conda/envs/mbirtorch_regression/bin/python
+    loaded_modules: conda/2026.03:gcc/11.4.1:zlib/1.2.11-bw5swtx:openmpi/5.0.5:xalt/3.1.4:modtree/gpu:libiconv/1.17-2v5s4pp:libxml2/2.10.3-7g6anly:cuda/12.6.1:cudnn/9.2.0.82-12
+    triton: 3.7.1
+  sharding_by_geom:
+    parallel: true
+    cone: true
+    denoiser: false
+  device_counts:
+  - 1
+  - 2
+  - 4
+  gate:
+    result: fail
+    hard: 26
+    soft: 0
+GEOMETRY parallel:
+  OP direct_filter:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '       3.1 ms       63.2 MB   1.00x'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      15.5 ms      699.0 MB   1.00x'
+      n=2: '       9.8 ms      363.0 MB   1.58x'
+      n=4: '       9.7 ms      195.0 MB   1.59x'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      16.3 ms      708.1 MB   1.00x'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     111.1 ms    7,884.0 MB   1.00x'
+      n=2: '      55.9 ms    3,980.0 MB   1.99x'
+      n=4: '      39.3 ms    2,025.0 MB   2.82x'
+  OP forward:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '       4.0 ms      161.6 MB   1.00x     HARD: memory +43.6%'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      87.5 ms    1,212.0 MB   1.00x     HARD: memory +38.3%'
+      n=2: '      47.5 ms      691.3 MB   1.84x     HARD: memory +37.4%'
+      n=4: '      27.5 ms      474.9 MB   3.18x     HARD: memory +65.5%'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      91.0 ms    1,429.2 MB   1.00x     HARD: memory +62.1%'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '   2,516.3 ms    9,737.4 MB   1.00x     HARD: memory +9.2%'
+      n=2: '   1,230.6 ms    4,815.2 MB   2.04x'
+      n=4: '     629.5 ms    3,096.9 MB   4.00x     HARD: memory +10.4%'
+  OP back:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '       1.8 ms      110.4 MB   1.00x'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      28.9 ms      959.0 MB   1.00x'
+      n=2: '      17.4 ms      650.6 MB   1.66x'
+      n=4: '      13.4 ms      393.6 MB   2.16x'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      30.1 ms      982.1 MB   1.00x'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     777.1 ms   11,117.3 MB   1.00x     throttled'
+      n=2: '     412.8 ms    7,488.5 MB   1.88x     throttled'
+      n=4: '     245.0 ms    4,140.9 MB   3.17x     throttled'
+  OP vcd_nonconst:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=2: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=4: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=2: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=4: '         — ms          — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+GEOMETRY cone:
+  OP direct_filter:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '       5.9 ms       64.0 MB   1.00x'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      25.3 ms      701.7 MB   1.00x'
+      n=2: '      17.9 ms      365.7 MB   1.41x'
+      n=4: '      19.9 ms      197.7 MB   1.28x'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      25.8 ms      710.5 MB   1.00x'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     141.6 ms    7,891.8 MB   1.00x'
+      n=2: '      81.6 ms    3,987.8 MB   1.74x'
+      n=4: '      93.0 ms    2,032.8 MB   1.52x'
+  OP forward:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '      10.5 ms      157.9 MB   1.00x'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     306.6 ms    1,268.3 MB   1.00x'
+      n=2: '     152.4 ms      691.3 MB   2.01x     HARD: memory +32.1%'
+      n=4: '      76.9 ms      474.9 MB   3.99x     HARD: memory +54.7%'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     310.1 ms    1,279.4 MB   1.00x'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '   8,003.0 ms    8,791.1 MB   1.00x'
+      n=2: '   4,031.1 ms    4,815.2 MB   1.99x'
+      n=4: '   2,082.4 ms    3,096.9 MB   3.84x     HARD: memory +9.6%'
+  OP back:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '       7.2 ms      167.9 MB   1.00x'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     152.6 ms    1,240.1 MB   1.00x'
+      n=2: '      92.9 ms    1,016.3 MB   1.64x'
+      n=4: '      57.9 ms      716.5 MB   2.63x'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     175.6 ms    1,261.2 MB   1.00x'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '   4,546.2 ms   11,145.2 MB   1.00x'
+      n=2: '   2,355.1 ms    7,756.6 MB   1.93x'
+      n=4: '   1,251.7 ms    4,533.0 MB   3.63x'
+  OP vcd_nonconst:
+    size 200x208x160:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=2: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=4: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 513x449x385:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=2: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+      n=4: '         — ms          — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+GEOMETRY denoiser:
+  OP denoise:
+    size 225x241x257:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     130.6 ms      180.1 MB   1.00x'
+    size 512x448x384:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '     275.6 ms    1,096.8 MB   1.00x'
+    size 1024x1008x992:
+      labels: '  min time      peak mem   speedup   notes'
+      n=1: '   2,426.6 ms   12,458.5 MB   1.00x'
