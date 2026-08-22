@@ -1,0 +1,116 @@
+run:
+  kind: regression
+  platform: cpu-torch
+  branch: main
+  commit: b8bbd8a0
+  commit_date: '2026-08-21T19:17:23-04:00'
+  mbirjax_version: mbirtorch 0.0.2
+  date: '20260822'
+  device: CPU-TORCH (arm)
+  toolchain:
+    torch: 2.13.0
+    torch_cuda:
+    python: 3.12.13
+    executable: /Users/gbuzzard/miniforge3/envs/mbirtorch_regression/bin/python
+    loaded_modules:
+    triton:
+  sharding_by_geom:
+    parallel: true
+    cone: true
+    denoiser: false
+  device_counts:
+  - 1
+  gate:
+    result: fail
+    hard: 6
+    soft: 0
+GEOMETRY parallel:
+  OP direct_filter:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      14.9 ms     271.8 MB   1.00x'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      16.1 ms     271.7 MB   1.00x'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     206.1 ms     339.8 MB   1.00x'
+  OP forward:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      83.3 ms     458.6 MB   1.00x'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      80.2 ms     461.4 MB   1.00x'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     658.7 ms     601.0 MB   1.00x'
+  OP back:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      46.2 ms     458.0 MB   1.00x'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      46.0 ms     485.0 MB   1.00x'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     470.7 ms     598.4 MB   1.00x'
+  OP vcd_nonconst:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '         — ms         — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '         — ms         — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '         — ms         — MB       —     FAILED; ''ParallelBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+GEOMETRY cone:
+  OP direct_filter:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      17.9 ms     280.4 MB   1.00x'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '      19.0 ms     287.0 MB   1.00x'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     225.1 ms     367.3 MB   1.00x'
+  OP forward:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     471.6 ms   1,042.5 MB   1.00x'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     501.3 ms   1,091.6 MB   1.00x'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '   5,753.6 ms   4,021.2 MB   1.00x'
+  OP back:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     427.4 ms   2,172.5 MB   1.00x'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     501.6 ms   2,243.8 MB   1.00x'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '   5,622.7 ms   9,996.6 MB   1.00x'
+  OP vcd_nonconst:
+    size 128x112x96:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '         — ms         — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 129x113x97:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '         — ms         — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+    size 200x208x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '         — ms         — MB       —     FAILED; ''ConeBeamModel'' object has no attribute ''vcd_recon''; HARD: now fails'
+GEOMETRY denoiser:
+  OP denoise:
+    size 128x144x160:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '     484.3 ms     509.7 MB   1.00x'
+    size 225x241x257:
+      labels: '  min time     peak mem   speedup   notes'
+      n=1: '   2,427.2 ms     770.8 MB   1.00x'
